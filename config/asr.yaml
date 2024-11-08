@@ -1,0 +1,7 @@
+task:
+  __target__: ezspeech.task.asr.asr
+  model:
+  dataset:
+    _target_:
+      
+callbacks:

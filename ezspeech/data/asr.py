@@ -64,7 +64,7 @@ class ASRDataset(Dataset):
         return audio_feature, transcript_ids
 
 
-def collate(batch):
+def collate_asr(batch):
     audio_features = [i[0] for i in batch]
     audio_feature_length = [len(i) for i in audio_features]
     audio_features = pad_sequence(audio_features, batch_first=True)
