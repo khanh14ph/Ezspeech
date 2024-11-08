@@ -13,7 +13,7 @@ setup(
     long_description_content_type='text/markdown',
     author='Your Name',
     author_email='your_email@example.com',
-    url='https://github.com/your-username/Ezspeech',
+    url='https://github.com/khanh14ph/Ezspeech',
     packages=find_packages(),
     install_requires=install_requires,
     classifiers=[
