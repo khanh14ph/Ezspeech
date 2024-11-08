@@ -3,6 +3,7 @@ from torch.nn import functional as F
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
+
 class MyLightningModule(pl.LightningModule):
     def __init__(self, model, lr=1e-3):
         super().__init__()
@@ -16,20 +17,20 @@ class MyLightningModule(pl.LightningModule):
         x, y = batch
         y_hat = self.forward(x)
         loss = F.cross_entropy(y_hat, y)
-        self.log('train_loss', loss)
+        self.log("train_loss", loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self.forward(x)
         loss = F.cross_entropy(y_hat, y)
-        self.log('val_loss', loss)
+        self.log("val_loss", loss)
 
     def test_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self.forward(x)
         loss = F.cross_entropy(y_hat, y)
-        self.log('test_loss', loss)
+        self.log("test_loss", loss)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
