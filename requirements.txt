@@ -1,0 +1,5 @@
+torchaudio
+torch
+librosa
+pytorch - lightning
+hydra - core
