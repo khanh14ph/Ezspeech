@@ -8,7 +8,7 @@ task:
   _target_: ezspeech.task.asr.ASR_ctc_task
   model:
     architecture:
-      _target_: ezspeech.models.conformer.Conformer
+      _target_: ezspeech.models.conformer_asr.Conformer
       d_input: 128
       d_dim: &d_hidden 512
       num_heads: 8
@@ -17,7 +17,7 @@ task:
       vocab_size: 98
 
     criterion:
-      _target_: ezspeech.modules.criterion.CTCLoss
+      _target_: ezspeech.losses.ctc.CTCLoss
       reduction: 'mean'
       zero_infinity: True
     manager:
@@ -32,17 +32,24 @@ task:
         eta_min: 1e-6
 
   dataset:
+    augmentation:
+      time_masking:
+        _target_: ezspeech.data.augment.time_masking
+        proportion: 0.2
+      frequency_masking:
+        _target_: ezspeech.data.augment.frequency_masking
+        proportion: 0.2
+
     trainset:
       _target_: ezspeech.data.asr.ASRDataset
       filepath: /home4/khanhnd/vivos/train.tsv
       vocab_file: ezspeech/resources/vocab.txt
-      feature_type: Mel
+      augment_prob: 0.2
     valset:
       _target_: ezspeech.data.asr.ASRDataset
       filepath: /home4/khanhnd/vivos/test.tsv
       vocab_file: ezspeech/resources/vocab.txt
-      feature_type: Mel
-    batch_size: 8
+    batch_size: 16
 
 callbacks:
   checkpoint: 

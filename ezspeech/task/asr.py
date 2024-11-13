@@ -13,7 +13,7 @@ from omegaconf import DictConfig
 
 
 class ASR_ctc_task(pl.LightningModule):
-    def __init__(self, model: DictConfig, dataset=DictConfig):
+    def __init__(self, model: DictConfig, dataset: DictConfig):
         super(ASR_ctc_task,self).__init__()
         self.save_hyperparameters()  # -> This will help us to have self.hparams with key is model_config and dataset_config
         self.dataset_cfg=dataset
@@ -51,6 +51,7 @@ class ASR_ctc_task(pl.LightningModule):
 
     def train_dataloader(self) -> DataLoader:
         train_dataset=instantiate(self.dataset_cfg.trainset)
+        train_dataset.get_augment(self.dataset_cfg.augmentation)
         return DataLoader(
             train_dataset,
             batch_size=self.dataset_cfg.batch_size,
