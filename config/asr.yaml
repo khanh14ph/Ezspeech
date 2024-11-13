@@ -1,46 +1,48 @@
+trainer: 
+  max_epochs: &max_epoch 40
+  accelerator: 'auto'
+  devices: 1
+  log_every_n_steps: 10
+  
 task:
   _target_: ezspeech.task.asr.ASR_ctc_task
   model:
     architecture:
       _target_: ezspeech.models.conformer.Conformer
       d_input: 128
-      d_dim: 512
-      num_heads: 4
-      ffn_dim: 128
-      num_layers: 4
+      d_dim: &d_hidden 512
+      num_heads: 8
+      num_layers: 12
       depthwise_conv_kernel_size: 31
       vocab_size: 98
 
     criterion:
       _target_: ezspeech.modules.criterion.CTCLoss
       reduction: 'mean'
-      zero_infinity: False
+      zero_infinity: True
     manager:
       _target_: ezspeech.modules.optimizer.AdamOptimizer
       optimizer:
-        lr: 0.001
+        lr: 2e-5
         betas: [ 0.9, 0.999 ]
         eps: 1e-9
         weight_decay: 0.01
       scheduler:
-        mode: min
-        factor: 0.1
-        patience: 10
-        threshold: 0.0001
-        threshold_mode: 'rel'
+        T_max: *max_epoch
+        eta_min: 1e-6
 
   dataset:
     trainset:
       _target_: ezspeech.data.asr.ASRDataset
-      filepath: train.tsv
+      filepath: /home4/khanhnd/vivos/train.tsv
       vocab_file: ezspeech/resources/vocab.txt
       feature_type: Mel
     valset:
       _target_: ezspeech.data.asr.ASRDataset
-      filepath: train.tsv
+      filepath: /home4/khanhnd/vivos/test.tsv
       vocab_file: ezspeech/resources/vocab.txt
       feature_type: Mel
-    batch_size: 2
+    batch_size: 8
 
 callbacks:
   checkpoint: 
@@ -53,11 +55,11 @@ callbacks:
     every_n_epochs: 1
   lr_monitor:
     _target_: pytorch_lightning.callbacks.LearningRateMonitor
-    logging_interval: step
   swa:
     _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
     swa_epoch_start: 0.8
     swa_lrs: 1e-2
+    annealing_epochs: 1
 
 logger:
   _target_: pytorch_lightning.loggers.TensorBoardLogger
@@ -65,9 +67,5 @@ logger:
   name: 'lightning_logs'
   version: test_code
   
-trainer: 
-  max_epochs: 2
-  accelerator: 'auto'
-  devices: 1
-  log_every_n_steps: 10
-  val_check_interval: 0.25  #
+
+  # val_check_interval: 1  #

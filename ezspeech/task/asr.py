@@ -25,6 +25,7 @@ class ASR_ctc_task(pl.LightningModule):
         x, x_len, label, label_len = batch
         x, x_len = self.encoder(x, x_len)
         loss = self.criterion(x, x_len, label, label_len)
+        
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -83,3 +84,6 @@ class ASR_ctc_task(pl.LightningModule):
         }
         
         return {'optimizer': optimizer, 'lr_scheduler': scheduler_res}
+    def export_checkpoint(self,path):
+        ckpt=torch.load(path)
+        

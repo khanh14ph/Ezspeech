@@ -3,15 +3,14 @@ model:
     _target_: ezspeech.models.conformer.Conformer
     d_input: 128
     d_dim: 512
-    num_heads: 4
-    ffn_dim: 128
-    num_layers: 4
+    num_heads: 8
+    num_layers: 12
     depthwise_conv_kernel_size: 31
     vocab_size: 98
   criterion:
     _target_: ezspeech.modules.criterion.CTCLoss
     reduction: mean
-    zero_infinity: false
+    zero_infinity: true
   manager:
     _target_: ezspeech.modules.optimizer.AdamOptimizer
     optimizer:
@@ -22,20 +21,17 @@ model:
       eps: 1.0e-09
       weight_decay: 0.01
     scheduler:
-      mode: min
-      factor: 0.1
-      patience: 10
-      threshold: 0.0001
-      threshold_mode: rel
+      step_size: 30
+      gamma: 0.1
 dataset:
   trainset:
     _target_: ezspeech.data.asr.ASRDataset
-    filepath: /home/msi/Documents/Ezspeech/train.tsv
-    vocab_file: /home/msi/Documents/Ezspeech/ezspeech/resources/vocab.txt
+    filepath: /home4/khanhnd/vivos/train.tsv
+    vocab_file: ezspeech/resources/vocab.txt
     feature_type: Mel
   valset:
     _target_: ezspeech.data.asr.ASRDataset
-    filepath: /home/msi/Documents/Ezspeech/train.tsv
-    vocab_file: /home/msi/Documents/Ezspeech/ezspeech/resources/vocab.txt
+    filepath: /home4/khanhnd/vivos/test.tsv
+    vocab_file: ezspeech/resources/vocab.txt
     feature_type: Mel
-  batch_size: 2
+  batch_size: 8
