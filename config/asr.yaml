@@ -49,7 +49,7 @@ task:
       _target_: ezspeech.data.asr.ASRDataset
       filepath: /home4/khanhnd/vivos/test.tsv
       vocab_file: ezspeech/resources/vocab.txt
-    batch_size: 16
+    batch_size: 8
 
 callbacks:
   checkpoint: 
