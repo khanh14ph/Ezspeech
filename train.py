@@ -25,7 +25,8 @@ def train(cfg: DictConfig):
     )
     
     # # Train
-    trainer.fit(task,ckpt_path="/home4/khanhnd/Ezspeech/log/lightning_logs/test_code/checkpoints/model-epoch=14-val_loss=1.17.ckpt")
+    trainer.fit(task,
+                ckpt_path="/home4/khanhnd/Ezspeech/log/lightning_logs/test_code1/checkpoints/model-epoch=09-val_loss=1.45.ckpt")
 
 if __name__ == "__main__":
     train()

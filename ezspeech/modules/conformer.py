@@ -1,6 +1,6 @@
 from typing import Optional, Tuple
 import torch
-
+from .attention import MultiHeadedSelfAttentionModule
 def _lengths_to_padding_mask(lengths: torch.Tensor) -> torch.Tensor:
     
     batch_size = lengths.shape[0]
@@ -194,6 +194,94 @@ class ConformerLayer(torch.nn.Module):
 
         x = self.final_layer_norm(x)
         return x
+class ConformerLayer1(torch.nn.Module):
+    r"""Conformer layer that constitutes Conformer.
+
+    Args:
+        input_dim (int): input dimension.
+        ffn_dim (int): hidden layer dimension of feedforward network.
+        num_attention_heads (int): number of attention heads.
+        depthwise_conv_kernel_size (int): kernel size of depthwise convolution layer.
+        dropout (float, optional): dropout probability. (Default: 0.0)
+        use_group_norm (bool, optional): use ``GroupNorm`` rather than ``BatchNorm1d``
+            in the convolution module. (Default: ``False``)
+        convolution_first (bool, optional): apply the convolution module ahead of
+            the attention module. (Default: ``False``)
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        ffn_dim: int,
+        num_attention_heads: int,
+        depthwise_conv_kernel_size: int,
+        dropout: float = 0.0,
+        use_group_norm: bool = False,
+        convolution_first: bool = False,
+    ) -> None:
+        super().__init__()
+
+        self.ffn1 = _FeedForwardModule(input_dim, ffn_dim, dropout=dropout)
+
+        self.self_attn_layer_norm = torch.nn.LayerNorm(input_dim)
+        self.self_attn = MultiHeadedSelfAttentionModule(input_dim, num_attention_heads, dropout)
+        self.self_attn_dropout = torch.nn.Dropout(dropout)
+
+        self.conv_module = _ConvolutionModule(
+            input_dim=input_dim,
+            num_channels=input_dim,
+            depthwise_kernel_size=depthwise_conv_kernel_size,
+            dropout=dropout,
+            bias=True,
+            use_group_norm=use_group_norm,
+        )
+
+        self.ffn2 = _FeedForwardModule(input_dim, ffn_dim, dropout=dropout)
+        self.final_layer_norm = torch.nn.LayerNorm(input_dim)
+        self.convolution_first = convolution_first
+
+    def _apply_convolution(self, input: torch.Tensor) -> torch.Tensor:
+        residual = input
+        input = input.transpose(0, 1)
+        input = self.conv_module(input)
+        input = input.transpose(0, 1)
+        input = residual + input
+        return input
+
+    def forward(self, input: torch.Tensor, key_padding_mask: Optional[torch.Tensor]) -> torch.Tensor:
+        r"""
+        Args:
+            input (torch.Tensor): input, with shape `(T, B, D)`.
+            key_padding_mask (torch.Tensor or None): key padding mask to use in self attention layer.
+
+        Returns:
+            torch.Tensor: output, with shape `(T, B, D)`.
+        """
+        residual = input
+        x = self.ffn1(input)
+        x = x * 0.5 + residual
+
+        if self.convolution_first:
+            x = self._apply_convolution(x)
+
+        residual = x
+        x = self.self_attn_layer_norm(x)
+        x= self.self_attn(
+            x
+        )
+        x = self.self_attn_dropout(x)
+        x = x + residual
+
+        if not self.convolution_first:
+            x = self._apply_convolution(x)
+
+        residual = x
+        x = self.ffn2(x)
+        x = x * 0.5 + residual
+
+        x = self.final_layer_norm(x)
+        return x
+
 class ConformerEncoder(torch.nn.Module):
     r"""Conformer architecture introduced in
     *Conformer: Convolution-augmented Transformer for Speech Recognition*
@@ -268,7 +356,7 @@ class ConformerEncoder(torch.nn.Module):
                     number of valid frames for i-th batch element in output frames.
         """
         encoder_padding_mask = _lengths_to_padding_mask(lengths)
-
+        
         x = input.transpose(0, 1)
         for layer in self.conformer_layers:
             x = layer(x, encoder_padding_mask)

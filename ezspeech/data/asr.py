@@ -29,16 +29,18 @@ def tokenize(text, vocab, blank_idx=0, word_delimiter_idx=1, unk_idx=2):
 
 
 class ASRDataset(Dataset):
-    def __init__(self, filepath, vocab_file, augment_prob=0):
+    def __init__(self, filepath, vocab_file,augmentations=None):
         self.data = pd.read_csv(filepath, sep="\t")
         self.vocab = open(vocab_file).read().split("\n")[:-1]
         sr=16000
-        self.augment_prob=augment_prob
+        self.is_train=False
+        if augmentations!=None:
+            self.is_train=True
+            self.feature_augments=[j for i,j  in augmentations.feature.items()]
+            self.wav_augment=[j for i,j in augmentations.raw_wav.items()]
         # https://pytorch.org/audio/main/tutorials/audio_feature_extractions_tutorial.html#sphx-glr-tutorials-audio-feature-extractions-tutorial-py
         self.augment=None
             
-    def get_augment(self,augmention_cfg: DictConfig):
-        self.augment=[instantiate(augmention_cfg[i]) for i in augmention_cfg.keys()]
     def __len__(self):
         return len(self.data)
 
@@ -46,11 +48,13 @@ class ASRDataset(Dataset):
     def __getitem__(self, idx):
         item = self.data.iloc[idx]
         speech, sr = torchaudio.load(item["audio_filepath"])
+        if self.is_train:
+            for i in self.wav_augment:
+                speech=i(speech)
         audio_feature = extract_audio_feature(speech,sr)
-        if self.augment!=None:
-            for i in self.augment:
-                if random.uniform(0, 1) < self.augment_prob:
-                    audio_feature=i(audio_feature)
+        # if self.is_train:
+        #     for i in self.feature_augments:        
+        #         audio_feature=i(audio_feature)
         transcript = item["transcript"]
         tokenized_transcript = tokenize(transcript, self.vocab)
         transcript_ids = torch.tensor(
@@ -71,11 +75,6 @@ def collate_asr(batch):
 
 
 if __name__ == "__main__":
-    dataset = ASRDataset(
-        "/home/msi/Documents/Ezspeech/train.tsv",
-        "/home/msi/Documents/Ezspeech/ezspeech/resources/vocab.txt",
-        feature_type="Mel",
-    )
-    data_loader = DataLoader(dataset, batch_size=2, shuffle=True, collate_fn=collate)
-    for b in data_loader:
-        m, n, p, q = b
+    vocab = open("/home4/khanhnd/Ezspeech/ezspeech/resources/vocab.txt").read().split("\n")[:-1]
+    res=tokenize("trở nên thụ ?? động",vocab)
+    print([vocab.index(token) for token in res])
