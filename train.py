@@ -8,7 +8,7 @@ import torch
 import logging
 
 log = logging.getLogger(__name__)
-
+torch.autograd.set_detect_anomaly(True)
 
 @hydra.main(version_base=None, config_path="./config", config_name="asr")
 def train(cfg: DictConfig):
@@ -25,8 +25,9 @@ def train(cfg: DictConfig):
     )
     
     # # Train
-    trainer.fit(task,
-                ckpt_path="/home4/khanhnd/Ezspeech/log/lightning_logs/test_code1/checkpoints/model-epoch=09-val_loss=1.45.ckpt")
+    trainer.fit(task, 
+                # ckpt_path="/home4/khanhnd/Ezspeech/log/self-condition/english/checkpoints/last.ckpt"
+                )
 
 if __name__ == "__main__":
     train()

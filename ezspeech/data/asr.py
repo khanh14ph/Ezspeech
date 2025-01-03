@@ -8,25 +8,12 @@ import torchaudio.transforms as T
 from ezspeech.data.util import extract_audio_feature
 from hydra.utils import instantiate
 from omegaconf import DictConfig
-def tokenize(text, vocab, blank_idx=0, word_delimiter_idx=1, unk_idx=2):
+import re
+def tokenize(text, vocab):
     text = text.replace(" ", "|")
-    sorted_vocab = sorted(vocab, key=len, reverse=True)
-    tokens = []
-    while text:
-        matched = False
-
-        for subword in sorted_vocab:
-            if text.startswith(subword):
-                tokens.append(subword)
-                text = text[len(subword) :]
-                matched = True
-                break
-        if not matched:
-            tokens.append(vocab[unk_idx])
-            text = text[1:]
-
+    patterns="|".join(map(re.escape,sorted(vocab,reverse=True)))
+    tokens=re.findall(patterns,text)
     return tokens
-
 
 class ASRDataset(Dataset):
     def __init__(self, filepath, vocab_file,augmentations=None):
@@ -47,21 +34,27 @@ class ASRDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.data.iloc[idx]
-        speech, sr = torchaudio.load(item["audio_filepath"])
-        if self.is_train:
-            for i in self.wav_augment:
-                speech=i(speech)
-        audio_feature = extract_audio_feature(speech,sr)
-        # if self.is_train:
-        #     for i in self.feature_augments:        
-        #         audio_feature=i(audio_feature)
         transcript = item["transcript"]
         tokenized_transcript = tokenize(transcript, self.vocab)
         transcript_ids = torch.tensor(
             [self.vocab.index(token) for token in tokenized_transcript],
             dtype=torch.long,
         )
-        return audio_feature.t(), transcript_ids
+        speech, sr = torchaudio.load(item["audio_filepath"])
+        # if self.is_train:
+        #     for i in self.wav_augment:
+        #         speech=i(speech)
+        # print("speech",speech.shape)
+
+        audio_feature = extract_audio_feature(speech,sr)
+        # print("audio_feature",audio_feature.shape)
+        # print(item["audio_filepath"])
+        # print("audio_feature",audio_feature.shape)
+        if self.is_train:
+            for i in self.feature_augments:        
+                audio_feature=i(audio_feature)
+        audio=item["audio_filepath"]
+        return audio_feature.t(), transcript_ids,audio
 
 
 def collate_asr(batch):
@@ -71,10 +64,26 @@ def collate_asr(batch):
     transcript_ids = [i[1] for i in batch]
     transcript_ids_length = torch.tensor([len(i) for i in transcript_ids],dtype=torch.long)
     transcript_ids = pad_sequence(transcript_ids, batch_first=True)
-    return audio_features, audio_feature_length, transcript_ids, transcript_ids_length
+    # print("audio_features",audio_features.shape)
+    audio=[i[2] for i in batch]
+    # print("audio1",audio)
+    return audio_features, audio_feature_length, transcript_ids, transcript_ids_length,audio
 
 
 if __name__ == "__main__":
     vocab = open("/home4/khanhnd/Ezspeech/ezspeech/resources/vocab.txt").read().split("\n")[:-1]
-    res=tokenize("trở nên thụ ?? động",vocab)
-    print([vocab.index(token) for token in res])
+    res=tokenize("thụ động",vocab)
+    print(res)
+    import pandas as pd
+    import librosa
+    df=pd.read_csv("/home4/khanhnd/vivos/train.tsv",sep="\t")
+    for idx,i in df.iterrows():
+        transcript=i["transcript"]
+        dur=librosa.get_duration(path=i["audio_filepath"])
+        transcript_idx=tokenize(transcript,vocab)
+        if (dur/0.04)< len(transcript_idx)-3:
+            print(i["audio_filepath"])
+
+    # print([vocab.index(token) for token in res])
+    a=ASRDataset("/home4/khanhnd/vivos/train.tsv","/home4/khanhnd/Ezspeech/ezspeech/resources/vocab.txt")
+    a[0]
