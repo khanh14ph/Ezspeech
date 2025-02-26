@@ -82,10 +82,6 @@ class Conformer_self_condition_phoneme_share(torch.nn.Module):
         self.lm_head = torch.nn.Linear(d_hidden, vocab_size)
         self.back_to_hidden=torch.nn.Linear(vocab_size, d_hidden)
 
-        self.ln =nn.LayerNorm(d_hidden) 
-
-
-        self.phoneme_ln=nn.LayerNorm(d_hidden) 
         self.phoneme_inter_layer=phoneme_inter_layer
         self.phoneme_lm_head = torch.nn.Linear(d_hidden, phoneme_vocab_size)
         self.phoneme_back_to_hidden=torch.nn.Linear(phoneme_vocab_size, d_hidden)
@@ -105,8 +101,7 @@ class Conformer_self_condition_phoneme_share(torch.nn.Module):
             hidden=hidden.transpose(0, 1)
             new_hidden=hidden
             if idx+1 in self.phoneme_inter_layer:
-                hidden_ln=self.phoneme_ln(hidden)
-                inter_layer_out=self.phoneme_lm_head(hidden_ln)
+                inter_layer_out=self.phoneme_lm_head(hidden)
                 phoneme_inter_prediction= inter_layer_out.log_softmax(2)
                 phoneme_inter_layer_in=self.phoneme_back_to_hidden(phoneme_inter_prediction)
                 phoneme_inter_layer_softmax_lst.append(phoneme_inter_prediction)
@@ -114,8 +109,7 @@ class Conformer_self_condition_phoneme_share(torch.nn.Module):
                 
             if idx+1 in self.inter_layer:
                 
-                hidden_ln=self.ln(hidden)
-                inter_layer_out=self.lm_head(hidden_ln)
+                inter_layer_out=self.lm_head(hidden)
                 inter_prediction= inter_layer_out.log_softmax(2)
                 inter_layer_in=self.back_to_hidden(inter_prediction)
                 inter_layer_softmax_lst.append(inter_prediction)
@@ -124,7 +118,6 @@ class Conformer_self_condition_phoneme_share(torch.nn.Module):
             
             hidden=new_hidden.transpose(1,0)
         last_hidden=hidden.transpose(0, 1)
-        last_hidden=self.ln(last_hidden)
         pred = self.lm_head(last_hidden)
         pred = pred.log_softmax(2)
 

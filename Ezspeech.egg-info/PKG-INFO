@@ -18,3 +18,6 @@ Requires-Dist: pytorch-lightning
 Requires-Dist: hydra-core
 Requires-Dist: tensorboardX
 Requires-Dist: pandas
+Requires-Dist: transformers[torch]
+Requires-Dist: datasets
+Requires-Dist: jiwer

@@ -5,3 +5,6 @@ pytorch-lightning
 hydra-core
 tensorboardX
 pandas
+transformers[torch]
+datasets
+jiwer
