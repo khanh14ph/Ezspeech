@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.2
 Name: Ezspeech
 Version: 0.1.0
 Summary: A simple speech recognition and text-to-speech library
@@ -21,3 +21,10 @@ Requires-Dist: pandas
 Requires-Dist: transformers[torch]
 Requires-Dist: datasets
 Requires-Dist: jiwer
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: requires-dist
+Dynamic: summary
