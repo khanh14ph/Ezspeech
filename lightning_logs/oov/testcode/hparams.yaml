@@ -1,11 +1,11 @@
 dataset:
-  vocab: /data/khanhnd65/ezspeech_khanhnd/src/ezspeech/corpus/vocab_code_switching.txt
+  vocab: ezspeech/resource/vocab.txt
   train_ds:
     _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
     filepaths:
     - /home4/khanhnd/Ezspeech/data/mix.jsonl
+    vocab: ezspeech/resource/vocab.txt
     augmentation:
-      audio_augment: null
       feature_augment:
         freq_masking:
           _target_: ezspeech.modules.dataset.augment.FrequencyMasking
@@ -19,7 +19,7 @@ dataset:
     _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
     filepaths:
     - /home4/khanhnd/Ezspeech/data/test.jsonl
-    vocab: /data/khanhnd65/ezspeech_khanhnd/src/ezspeech/corpus/vocab_code_switching.txt
+    vocab: ezspeech/resource/vocab.txt
   loaders:
     batch_size: 4
     num_workers: 8
@@ -56,7 +56,16 @@ model:
     input_dim: 512
     output_dim: 1830
   criterion:
-    _target_: ezspeech.modules.criterion.asr_loss.HybridRNNT_CTC
+    _target_: ezspeech.modules.losses.hybrid.HybridRNNT_CTC
+    ctc_loss:
+      _target_: ezspeech.modules.losses.ctc.CTCLoss
+      blank: 0
+      reduction: mean_batch
+      zero_infinity: true
+    rnnt_loss:
+      _target_: ezspeech.modules.losses.rnnt_pytorch.RNNTLossPytorch
+      blank: 0
+      reduction: mean_batch
     ctc_weight: 1.0
     rnnt_weight: 1.0
   optimizer:

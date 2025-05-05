@@ -98,7 +98,16 @@ task:
       output_dim: *vocab_size
 
     criterion:
-      _target_: ezspeech.modules.criterion.asr_loss.HybridRNNT_CTC
+      _target_: ezspeech.modules.losses.hybrid.HybridRNNT_CTC
+      ctc_loss:
+        _target_: ezspeech.modules.losses.ctc.CTCLoss
+        blank: 0
+        reduction: mean_batch
+        zero_infinity: true
+      rnnt_loss:
+        _target_: ezspeech.modules.losses.rnnt_pytorch.RNNTLossPytorch
+        blank: 0
+        reduction: mean
       ctc_weight: 1.0
       rnnt_weight: 1.0
 
@@ -135,7 +144,7 @@ callbacks:
 loggers:
   tb:
     _target_: pytorch_lightning.loggers.TensorBoardLogger
-    save_dir: lightning_logs/oov
+    save_dir: ../lightning_logs/oov
     name: null
     version: testcode
 

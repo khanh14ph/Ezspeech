@@ -3,6 +3,7 @@ outputs
 exported*
 *wav
 data
-lightning_logs
+lightning_logs/*
+
 __pycache__/
 *.py[cod]
