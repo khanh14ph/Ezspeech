@@ -1,7 +1,0 @@
-README.md
-setup.py
-Ezspeech.egg-info/PKG-INFO
-Ezspeech.egg-info/SOURCES.txt
-Ezspeech.egg-info/dependency_links.txt
-Ezspeech.egg-info/requires.txt
-Ezspeech.egg-info/top_level.txt

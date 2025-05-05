@@ -75,3 +75,6 @@ def csv2json(csv_path,jsonl_path,sep=","):
     df=pd.read_csv(csv_path,sep=sep)
     df.to_json(jsonl_path,orient="records",lines=True,force_ascii=False)    
 
+if __name__ == "__main__":
+    import fire
+    fire.Fire()
