@@ -1,104 +1,152 @@
-trainer: 
-  max_epochs: &max_epoch 300
-  accelerator: 'auto'
-  devices: [3]
-  log_every_n_steps: 10
-  accumulate_grad_batches: 2
-  check_val_every_n_epoch: 1
-  
 task:
-  _target_: ezspeech.task.asr.ASR_ctc_task
-  model:
-    encoder:
-      _target_: ezspeech.models.conformer_asr.Conformer
-      d_input: 128
-      d_hidden: &d_hidden 512
-      num_heads: 8
-      num_layers: 12
-      depthwise_conv_kernel_size: 31
-      vocab_size: &vocab_size 30
-      subsampling_num_filter: 256
-      subsampling_kernel_size:  3
-
-    predictor:
-      _target_: ezspeech.modules.decoder.PredictorNetwork
-      num_embeddings: *vocab_size
-      embedding_dim: *d_hidden
-      d_model: *d_hidden
-      dropout: 0.1
-
-
-
-    jointer:
-      _target_: ezspeech.modules.decoder.JointNetwork
-      input_dim: *d_hidden
-      output_dim: *vocab_size
-    criterion:
-      _target_: ezspeech.modules.criterion.SequenceToSequenceLoss
-    optimizer:
-      lr: 5
-      betas: [ 0.9, 0.999 ]
-      eps: 1e-9
-      weight_decay: 0.01
-      foreach: False
-      fused: True
-    scheduler:
-      d_model: *d_hidden
-
-      warmup_steps: 10000
+  _target_: ezspeech.tasks.recognition.SpeechRecognitionTask
 
   dataset:
-    
-    trainset:
-      _target_: ezspeech.data.asr.ASRDataset
-      filepath: /home4/khanhnd/Ezspeech/data/librispeech_train_100h.tsv
-      vocab_file: /home4/khanhnd/Ezspeech/ezspeech/resources/vocab_en.txt
-      # augmentations:
-        # feature:
-        #   time_masking:
-        #     _target_: ezspeech.data.augment.time_masking
-        #     time_width: 0.05
-        #     time_masks: 10
-        #     prob: 0.3
-        #   frequency_masking:
-        #     _target_: ezspeech.data.augment.frequency_masking
-        #     freq_width: 27
-        #     freq_masks: 1
-        #     prob: 0.3
-        # raw_wav:
-        #   wav_augment:
-        #     _target_: ezspeech.data.augment.AddBackgroundNoise
-        #     noise_filepath_16k: /home4/khanhnd/Ezspeech/ezspeech/resources/augment_data.jsonl
-        #     min_snr_db: 0
-        #     max_snr_db: 30
-        #     probability: 0.2
+    vocab: &vocab /data/khanhnd65/ezspeech_khanhnd/src/ezspeech/corpus/vocab_code_switching.txt
+    train_ds:
+      _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
+      filepaths:
+        - /data/khanhnd65/ezspeech_khanhnd/data/code_switching_test.jsonl
 
-    valset:
-      _target_: ezspeech.data.asr.ASRDataset
-      filepath: /home4/khanhnd/self-condition/librispeech_test.tsv
-      vocab_file: /home4/khanhnd/Ezspeech/ezspeech/resources/vocab_en.txt
-    batch_size: 1
+      augmentation:
+        audio_augment:
+          # speed_perturbation:
+          #   _target_: ezspeech.datas.augment.SpeedPerturbation
+          #   orig_freqs: 16000
+          #   factors: [0.9, 1.1, 1.0, 1.0, 1.0]
+
+          # pitchshift:
+          #   _target_: ezspeech.datas.augment.PitchShift
+          #   min_step: -5
+          #   max_step: 5
+          #   sample_rates: [16000]
+          #   probability: 0.2
+
+          # rir_noise:
+          #   _target_: ezspeech.datas.augment.ApplyImpulseResponse
+          #   rir_filepath_16k: /data/sondd9/noise-16k/RIR.json
+          #   second_before_peak: 0.01
+          #   second_after_peak: 0.5
+          #   probability: 0.2
+
+          # background_noise:
+          #   _target_: ezspeech.augment.AddBackgroundNoise
+          #   noise_filepath_16k: /data/sondd9/noise-16k/background-noise.json
+          #   # noise_filepath_8k: /dataset/8k/noise/background-noise.json
+          #   min_snr_db: 0.0
+          #   max_snr_db: 30.0
+          #   probability: 0.2
+
+        feature_augment:
+          freq_masking:
+            _target_: ezspeech.modules.dataset.augment.FrequencyMasking
+            freq_masks: 1
+            freq_width: 27
+
+          time_masking:
+            _target_: ezspeech.modules.dataset.augment.TimeMasking
+            time_masks: 10
+            time_width: 0.05
+
+
+    val_ds:
+      _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
+      filepaths:
+
+      vocab: *vocab
+    loaders:
+      batch_size: 12
+      num_workers: 8
+      pin_memory: false
+
+  model:
+    d_model: &d_model 512
+    vocab_size: &vocab_size 1830
+    # pretrained_weights: /data/datbt7/checkpoints/asr-offline-60000h.ckpt
+    
+
+
+    encoder:
+      _target_: ezspeech.modules.encoder.Squeezeformer.SqueezeformerEncoder
+      input_dim: 128
+      d_model: *d_model
+      num_layers: 12
+      subsampling_factor: 4
+      subsampling_num_filters: 256
+      subsampling_kernel_size: 3
+      attn_num_heads: 8
+      attn_group_size: 3
+      attn_max_pos_encoding: 10000
+      conv_kernel_size: 31
+      dropout: 0.1
+    decoder:
+      _target_: ezspeech.modules.decoder.decoder.CTCDecoder
+      input_dim: *d_model
+      hidden_dim: *d_model
+      output_dim: *vocab_size
+
+    predictor:
+      _target_: ezspeech.modules.decoder.decoder.PredictorNetwork
+      num_embeddings: *vocab_size
+      embedding_dim: *d_model
+      d_model: *d_model
+      dropout: 0.1
+
+    joint:
+      _target_: ezspeech.modules.decoder.decoder.JointNetwork
+      input_dim: *d_model
+      output_dim: *vocab_size
+
+    criterion:
+      _target_: ezspeech.modules.criterion.asr_loss.HybridRNNT_CTC
+      ctc_weight: 1.0
+      rnnt_weight: 1.0
+
+    optimizer:
+      lr: 1
+      betas: [0.9, 0.999]
+      weight_decay: 1e-2
+      eps: 1e-9
+      foreach: False
+      fused: True
+
+    scheduler:
+      d_model: *d_model
+      warmup_steps: 10000
+
 callbacks:
-  checkpoint: 
+  lr:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+
+  swa:
+    _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
+    swa_lrs: 1e-6
+    swa_epoch_start: 0.8
+    annealing_epochs: 1
+
+  cb:
     _target_: pytorch_lightning.callbacks.ModelCheckpoint
-    # monitor: val_loss
     monitor: step
-    filename: 'model-{epoch:02d}-{val_loss:.2f}'
     save_top_k: 3
     save_last: True
-    mode: 'max'
+    filename: "{epoch}-{val_ctc_loss:.5f}"
     every_n_epochs: 1
-  lr_monitor:
-    _target_: pytorch_lightning.callbacks.LearningRateMonitor
-  # swa:
-  #   _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
-  #   swa_epoch_start: 0.8
-  #   swa_lrs: 1e-6
-  #   annealing_epochs: 1
 
-logger:
-  _target_: pytorch_lightning.loggers.TensorBoardLogger
-  save_dir: log
-  name: self-condition
-  version: english
-  # val_check_interval: 5  #
+loggers:
+  tb:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: lightning_logs/oov
+    name: null
+    version: testcode
+
+    default_hp_metric: false
+
+trainer:
+  max_epochs: 60
+  # strategy: ddp
+  accelerator: gpu
+  devices: [1]
+  accumulate_grad_batches: 2
+  # detect_anomaly: True
+  # precision: 16
+  val_check_interval: 0.1

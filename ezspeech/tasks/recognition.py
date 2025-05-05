@@ -18,13 +18,11 @@ class SpeechRecognitionTask(LightningModule):
         self.save_hyperparameters()
 
         self.encoder = instantiate(model.encoder)
-        for param in self.encoder.parameters():
-                param.requires_grad = False
-        self.freeze_encoder=True
+
         self.decoder = instantiate(model.decoder)
 
-        # self.predictor = instantiate(model.predictor)
-        # self.joint = instantiate(model.joint)
+        self.predictor = instantiate(model.predictor)
+        self.joint = instantiate(model.joint)
 
         self.criterion = instantiate(model.criterion)
 
@@ -61,11 +59,11 @@ class SpeechRecognitionTask(LightningModule):
         inputs, input_lengths, targets, target_lengths,audio_filepaths= batch
         # print("inputs", inputs.shape)
         # print("____________")
-        loss = self._shared_step(
+        loss,ctc_loss,rnnt_loss = self._shared_step(
             inputs, input_lengths, targets, target_lengths
         )
-        # self.log("train_ctc_loss", ctc_loss, sync_dist=True,prog_bar=True)
-        # self.log("train_rnnt_loss", rnnt_loss, sync_dist=True,prog_bar=True)
+        self.log("train_ctc_loss", ctc_loss, sync_dist=True,prog_bar=True)
+        self.log("train_rnnt_loss", rnnt_loss, sync_dist=True,prog_bar=True)
         self.log("train_loss", loss, sync_dist=True,prog_bar=True)
 
         return loss
@@ -76,12 +74,12 @@ class SpeechRecognitionTask(LightningModule):
 
         inputs, input_lengths, targets, target_lengths,_ = batch
 
-        loss= self._shared_step(
+        loss,ctc_loss,rnnt_loss= self._shared_step(
             inputs, input_lengths, targets, target_lengths
         )
 
-        # self.log("val_ctc_loss", ctc_loss, sync_dist=True)
-        # self.log("val_rnnt_loss", rnnt_loss, sync_dist=True)
+        self.log("val_ctc_loss", ctc_loss, sync_dist=True)
+        self.log("val_rnnt_loss", rnnt_loss, sync_dist=True)
         self.log("val_loss", loss, sync_dist=True, prog_bar=True)
 
         return loss
@@ -93,24 +91,19 @@ class SpeechRecognitionTask(LightningModule):
         targets: torch.Tensor,
         target_lengths: torch.Tensor,
     ) -> Tuple[torch.Tensor, ...]:
-        if self.freeze_encoder:
-            if self.trainer.global_step > 6000:
-                print("UNFREEZE ENCODER")
-                self.freeze_encoder=False
-                for param in self.encoder.parameters():
-                    param.requires_grad = True
+    
         enc_outs, enc_lens = self.encoder(inputs, input_lengths)
         ctc_logits = self.decoder(enc_outs)
 
-        # ys = F.pad(targets, (1, 0))
-        # pred_outs, __ = self.predictor(ys)
-        # rnnt_logits = self.joint(enc_outs, pred_outs)
+        ys = F.pad(targets, (1, 0))
+        pred_outs, __ = self.predictor(ys)
+        rnnt_logits = self.joint(enc_outs, pred_outs)
 
-        loss = self.criterion(
-            ctc_logits, enc_lens, targets, target_lengths
+        loss,ctc_loss,rnnt_loss = self.criterion(
+            ctc_logits, rnnt_logits,enc_lens, targets, target_lengths
         )
 
-        return loss
+        return loss,ctc_loss,rnnt_loss
 
     def configure_optimizers(self):
         optimizer = AdamW(

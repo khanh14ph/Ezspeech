@@ -4,27 +4,92 @@ from typing import List, Tuple, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchaudio.models import Emformer
-from torchaudio.transforms import MelSpectrogram, PitchShift
 
-from lightspeech.layers.sampling import ConvolutionSubsampling
+from ezspeech.layers.sampling import ConvolutionSubsampling
 
-from lightspeech.layers.block import (
-    SqueezeformerBlock,
-    ConformerBlock,
-    _lengths_to_padding_mask,
+from ezspeech.layers.block import (
+    AttentionBlock,
+    FeedForwardBlock,
+    ConvolutionBlock,
 )
 
-from lightspeech.utils.common import (
+from ezspeech.utils.common import (
     make_padding_mask,
     time_reduction,
 )
-from transformers import AutoModel
 
-# from lightspeech.modules.conformer import SumaryMixing_ConformerLayer
+# from ezspeech.modules.conformer import SumaryMixing_ConformerLayer
 
+class SqueezeformerBlock(nn.Module):
+    def __init__(
+        self,
+        d_model: int,
+        attn_num_heads: int,
+        attn_group_size: int,
+        attn_max_pos_encoding: int,
+        conv_kernel_size: int,
+        dropout: float,
+    ):
+        super(SqueezeformerBlock, self).__init__()
 
-class AcousticEncoder(nn.Module):
+        self.attn = AttentionBlock(
+            d_model=d_model,
+            num_heads=attn_num_heads,
+            group_size=attn_group_size,
+            max_pos_encoding=attn_max_pos_encoding,
+            dropout=dropout,
+        )
+        self.norm_attn = nn.LayerNorm(d_model)
+
+        self.ffn1 = FeedForwardBlock(
+            d_model=d_model,
+            dropout=dropout,
+        )
+        self.norm_ffn1 = nn.LayerNorm(d_model)
+
+        self.conv = ConvolutionBlock(
+            d_model=d_model,
+            kernel_size=conv_kernel_size,
+            dropout=dropout,
+        )
+        self.norm_conv = nn.LayerNorm(d_model)
+
+        self.ffn2 = FeedForwardBlock(
+            d_model=d_model,
+            dropout=dropout,
+        )
+        self.norm_ffn2 = nn.LayerNorm(d_model)
+
+    def forward(
+        self,
+        xs: torch.Tensor,
+        attn_masks: torch.Tensor,
+        conv_masks: torch.Tensor,
+    ) -> torch.Tensor:
+
+        residual = xs.clone()
+        xs = self.attn(xs, attn_masks)
+        xs = xs + residual
+        xs = self.norm_attn(xs)
+
+        residual = xs.clone()
+        xs = self.ffn1(xs)
+        xs = xs + residual
+        xs = self.norm_ffn1(xs)
+
+        residual = xs.clone()
+        xs = self.conv(xs, conv_masks)
+        xs = xs + residual
+        xs = self.norm_conv(xs)
+
+        residual = xs.clone()
+        xs = self.ffn2(xs)
+        xs = xs + residual
+        xs = self.norm_ffn2(xs)
+
+        return xs
+
+class SqueezeFormerEncoder(nn.Module):
     def __init__(
         self,
         input_dim: int,
@@ -39,7 +104,7 @@ class AcousticEncoder(nn.Module):
         dropout: float,
         subsampling_factor: int = 4,
     ):
-        super(AcousticEncoder, self).__init__()
+        super(SqueezeFormerEncoder, self).__init__()
 
         self.subsampling = ConvolutionSubsampling(
             input_dim=input_dim,
