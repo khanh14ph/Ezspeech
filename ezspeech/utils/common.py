@@ -40,7 +40,18 @@ def make_padding_mask(seq_lens: torch.Tensor, max_time: int) -> torch.Tensor:
     mask = seq_range < seq_length
 
     return mask
+def compute_statistic(
+    xs: torch.Tensor, x_lens: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
 
+    masks = make_padding_mask(x_lens, xs.size(1))
+    masks = masks[:, :, None]
+
+    T = masks.sum(1)
+    mean = (xs * masks).sum(1) / T
+    std = (((xs - mean.unsqueeze(1)) ** 2 * masks).sum(1) / T).sqrt()
+
+    return mean, std
 def time_reduction(
     xs: torch.Tensor, x_lens: torch.Tensor, stride: int
 ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -70,11 +81,14 @@ def load_module(
 
     return net
 
-def csv2json(csv_path,jsonl_path,sep=","):
+def csv2json(csv_path,jsonl_path,sep=",",replace_columns=None):
     import pandas as pd 
     df=pd.read_csv(csv_path,sep=sep)
-    df.to_json(jsonl_path,orient="records",lines=True,force_ascii=False)    
+    if replace_columns!=None:
+        df.rename(columns=replace_columns, inplace=True)
 
-if __name__ == "__main__":
-    import fire
-    fire.Fire()
+    df=list(df.T.to_dict().values())
+    save_dataset(df,jsonl_path)   
+
+# if __name__ == "__main__":
+    # csv2json("/home4/khanhnd/hieupt/thesis/data/my-code-switch-data/mix_vietnam_english.csv","/home4/khanhnd/Ezspeech/data/mix.jsonl")

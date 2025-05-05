@@ -4,9 +4,9 @@ from typing import List, Tuple, Optional
 import torch
 import torch.nn as nn
 
-from lightspeech.layers.sampling import ConvolutionSubsampling
+from ezspeech.layers.sampling import ConvolutionSubsampling
 
-from lightspeech.layers.block import _lengths_to_padding_mask,
+from ezspeech.layers.block import _lengths_to_padding_mask
 
 
 class ConformerBlock(torch.nn.Module):

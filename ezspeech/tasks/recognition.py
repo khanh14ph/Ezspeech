@@ -8,8 +8,8 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
-from lightspeech.datas.dataset import collate_asr_data
-from lightspeech.optims.scheduler import NoamAnnealing
+from ezspeech.modules.dataset.dataset import collate_asr_data
+from ezspeech.optims.scheduler import NoamAnnealing
 
 
 class SpeechRecognitionTask(LightningModule):
@@ -56,7 +56,7 @@ class SpeechRecognitionTask(LightningModule):
         self, batch: Tuple[torch.Tensor, ...], batch_idx: int
     ) -> torch.Tensor:
 
-        inputs, input_lengths, targets, target_lengths,audio_filepaths= batch
+        inputs, input_lengths, targets, target_lengths= batch
         # print("inputs", inputs.shape)
         # print("____________")
         loss,ctc_loss,rnnt_loss = self._shared_step(
@@ -72,7 +72,7 @@ class SpeechRecognitionTask(LightningModule):
         self, batch: Tuple[torch.Tensor, ...], batch_idx: int
     ) -> torch.Tensor:
 
-        inputs, input_lengths, targets, target_lengths,_ = batch
+        inputs, input_lengths, targets, target_lengths= batch
 
         loss,ctc_loss,rnnt_loss= self._shared_step(
             inputs, input_lengths, targets, target_lengths

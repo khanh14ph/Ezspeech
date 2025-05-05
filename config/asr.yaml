@@ -2,14 +2,14 @@ task:
   _target_: ezspeech.tasks.recognition.SpeechRecognitionTask
 
   dataset:
-    vocab: &vocab /data/khanhnd65/ezspeech_khanhnd/src/ezspeech/corpus/vocab_code_switching.txt
+    vocab: &vocab ezspeech/resource/vocab.txt
     train_ds:
       _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
       filepaths:
-        - /data/khanhnd65/ezspeech_khanhnd/data/code_switching_test.jsonl
-
+        - /home4/khanhnd/Ezspeech/data/mix.jsonl
+      vocab: *vocab
       augmentation:
-        audio_augment:
+        # audio_augment:
           # speed_perturbation:
           #   _target_: ezspeech.datas.augment.SpeedPerturbation
           #   orig_freqs: 16000
@@ -52,10 +52,11 @@ task:
     val_ds:
       _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
       filepaths:
+        - /home4/khanhnd/Ezspeech/data/test.jsonl
 
       vocab: *vocab
     loaders:
-      batch_size: 12
+      batch_size: 4
       num_workers: 8
       pin_memory: false
 
@@ -63,11 +64,10 @@ task:
     d_model: &d_model 512
     vocab_size: &vocab_size 1830
     # pretrained_weights: /data/datbt7/checkpoints/asr-offline-60000h.ckpt
-    
 
 
     encoder:
-      _target_: ezspeech.modules.encoder.Squeezeformer.SqueezeformerEncoder
+      _target_: ezspeech.modules.encoder.squeezeformer.SqueezeFormerEncoder
       input_dim: 128
       d_model: *d_model
       num_layers: 12

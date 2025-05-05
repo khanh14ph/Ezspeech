@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Optional, Tuple
-from lightspeech.layers.attention import MultiHeadSelfAttention
-from lightspeech.layers.normalization import ScaleBiasNorm
+from ezspeech.layers.attention import MultiHeadSelfAttention
+from ezspeech.layers.normalization import ScaleBiasNorm
 
 
 class _ConvolutionModule(torch.nn.Module):

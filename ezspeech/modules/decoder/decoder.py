@@ -3,9 +3,6 @@ from typing import List, Tuple, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchaudio.transforms as T_audio
-
-from lightspeech.utils.common import make_padding_mask
 
 
 class PredictorNetwork(nn.Module):

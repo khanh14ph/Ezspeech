@@ -8,8 +8,6 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
-from lightspeech.datas.dataset import collate_alignment_data
-from lightspeech.optims.scheduler import NoamAnnealing
 from transformers import AutoModel, AutoTokenizer
 
 

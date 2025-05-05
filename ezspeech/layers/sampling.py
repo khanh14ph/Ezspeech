@@ -4,7 +4,7 @@ from typing import Tuple, Optional
 import torch
 import torch.nn as nn
 
-from lightspeech.utils.common import make_padding_mask
+from ezspeech.utils.common import make_padding_mask
 
 
 class ConvolutionSubsampling(nn.Module):

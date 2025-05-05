@@ -7,8 +7,8 @@ import torch.nn.functional as F
 import torchaudio
 import torchaudio.transforms as T
 
-from lightspeech.utils.common import load_dataset
-from lightspeech.utils.operation import fft_convolution
+from ezspeech.utils.common import load_dataset
+from ezspeech.utils.operation import fft_convolution
 
 
 class SpeedPerturbation:

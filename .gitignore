@@ -2,3 +2,6 @@ log
 outputs
 exported*
 *wav
+data
+__pycache__/
+*.py[cod]

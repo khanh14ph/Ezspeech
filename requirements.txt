@@ -8,3 +8,4 @@ pandas
 transformers[torch]
 datasets
 jiwer
+orjson

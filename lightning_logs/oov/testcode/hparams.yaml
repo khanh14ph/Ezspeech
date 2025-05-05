@@ -1,0 +1,73 @@
+dataset:
+  vocab: /data/khanhnd65/ezspeech_khanhnd/src/ezspeech/corpus/vocab_code_switching.txt
+  train_ds:
+    _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
+    filepaths:
+    - /home4/khanhnd/Ezspeech/data/mix.jsonl
+    augmentation:
+      audio_augment: null
+      feature_augment:
+        freq_masking:
+          _target_: ezspeech.modules.dataset.augment.FrequencyMasking
+          freq_masks: 1
+          freq_width: 27
+        time_masking:
+          _target_: ezspeech.modules.dataset.augment.TimeMasking
+          time_masks: 10
+          time_width: 0.05
+  val_ds:
+    _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
+    filepaths:
+    - /home4/khanhnd/Ezspeech/data/test.jsonl
+    vocab: /data/khanhnd65/ezspeech_khanhnd/src/ezspeech/corpus/vocab_code_switching.txt
+  loaders:
+    batch_size: 4
+    num_workers: 8
+    pin_memory: false
+model:
+  d_model: 512
+  vocab_size: 1830
+  encoder:
+    _target_: ezspeech.modules.encoder.squeezeformer.SqueezeFormerEncoder
+    input_dim: 128
+    d_model: 512
+    num_layers: 12
+    subsampling_factor: 4
+    subsampling_num_filters: 256
+    subsampling_kernel_size: 3
+    attn_num_heads: 8
+    attn_group_size: 3
+    attn_max_pos_encoding: 10000
+    conv_kernel_size: 31
+    dropout: 0.1
+  decoder:
+    _target_: ezspeech.modules.decoder.decoder.CTCDecoder
+    input_dim: 512
+    hidden_dim: 512
+    output_dim: 1830
+  predictor:
+    _target_: ezspeech.modules.decoder.decoder.PredictorNetwork
+    num_embeddings: 1830
+    embedding_dim: 512
+    d_model: 512
+    dropout: 0.1
+  joint:
+    _target_: ezspeech.modules.decoder.decoder.JointNetwork
+    input_dim: 512
+    output_dim: 1830
+  criterion:
+    _target_: ezspeech.modules.criterion.asr_loss.HybridRNNT_CTC
+    ctc_weight: 1.0
+    rnnt_weight: 1.0
+  optimizer:
+    lr: 1
+    betas:
+    - 0.9
+    - 0.999
+    weight_decay: 0.01
+    eps: 1.0e-09
+    foreach: false
+    fused: true
+  scheduler:
+    d_model: 512
+    warmup_steps: 10000

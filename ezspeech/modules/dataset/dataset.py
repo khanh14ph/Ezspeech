@@ -7,19 +7,15 @@ import torchaudio
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 import sentencepiece as spm
+import torchaudio.transforms as T
 
-
-from lightspeech.datas.text import (
-    build_vocab,
-    build_lexicon,
-    tokenize
-)
-from lightspeech.datas.audio import (
+from ezspeech.modules.dataset.utils.text import tokenize
+from ezspeech.modules.dataset.utils.audio import (
     get_augmentation,
     extract_filterbank,
     extract_melspectrogram,
 )
-from lightspeech.utils.common import load_dataset, time_reduction
+from ezspeech.utils.common import load_dataset, time_reduction
 
 
 def collate_asr_data(batch: List[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
@@ -45,8 +41,6 @@ class SpeechRecognitionDataset(Dataset):
         augmentation: Optional[DictConfig] = None,
     ):
         super(SpeechRecognitionDataset, self).__init__()
-
-        self.lexicon = build_lexicon()
         sample_rate = 16000
         self.transformation = torchaudio.transforms.MelSpectrogram(
             sample_rate=sample_rate,

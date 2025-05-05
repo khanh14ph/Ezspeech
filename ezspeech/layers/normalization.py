@@ -3,7 +3,7 @@ import random
 import torch
 import torch.nn as nn
 
-from lightspeech.utils.common import compute_statistic
+from ezspeech.utils.common import compute_statistic
 
 
 class ScaleBiasNorm(nn.Module):
