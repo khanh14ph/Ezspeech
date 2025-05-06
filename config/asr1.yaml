@@ -56,7 +56,7 @@ task:
 
       vocab: *vocab
     loaders:
-      batch_size: 4
+      batch_size: 8
       num_workers: 8
       pin_memory: false
 
@@ -73,7 +73,7 @@ task:
       _target_: ezspeech.modules.encoder.squeezeformer.SqueezeFormerEncoder
       input_dim: 128
       d_model: *d_model
-      num_layers: 12
+      num_layers: 6
       subsampling_factor: 4
       subsampling_num_filters: 256
       subsampling_kernel_size: 3
@@ -104,7 +104,7 @@ task:
         dropout: 0.2
 
     joint:
-      _target_: nemo.collections.asr.modules.RNNTJoint
+      _target_: ezspeech.modules.decoder.rnnt.rnnt.RNNTJoint
       num_classes: *vocab_size
       log_softmax: null  # 'null' would set it automatically according to CPU/GPU device
       preserve_memory: false  # dramatically slows down training, but might preserve some memory
@@ -118,7 +118,7 @@ task:
       # However, to preserve memory, this ratio can be 1:8 or even 1:16.
       # Extreme case of 1:B (i.e. fused_batch_size=1) should be avoided as training speed would be very slow.
       fuse_loss_wer: true
-      fused_batch_size: 16
+      fused_batch_size: 2
 
       jointnet:
         encoder_hidden: *d_model
@@ -155,7 +155,23 @@ task:
       use_cer: self.wer.use_cer,
       log_prediction: self.wer.log_prediction,
       dist_sync_on_step: True,
-
+    decoding:
+    # Using greedy decoding is highly recommended for TDT models. Using greedy-batch will give very bad results
+    # if omega is 0; even if omega is non-zero, greedy-batch results are still going to be inaccurate.
+      strategy: "greedy"
+      model_type: "tdt"
+      # this must not be None in order to use the TDT specific decoding method.
+      durations: ${task.model.num_tdt_durations}
+      # greedy strategy config
+      greedy:
+        max_symbols: 10
+      # beam strategy config
+      beam:
+        beam_size: 2
+        return_best_hypothesis: False
+        score_norm: true
+        tsd_max_sym_exp: 50  # for Time Synchronous Decoding
+        alsd_max_target_len: 2.0  # for Alignment-Length Synchronous Decoding
     optimizer:
       lr: 1
       betas: [0.9, 0.999]
@@ -167,7 +183,7 @@ task:
     scheduler:
       d_model: *d_model
       warmup_steps: 10000
-
+  
 callbacks:
   lr:
     _target_: pytorch_lightning.callbacks.LearningRateMonitor
@@ -199,7 +215,7 @@ trainer:
   max_epochs: 60
   # strategy: ddp
   accelerator: gpu
-  devices: [1]
+  devices: [2]
   accumulate_grad_batches: 2
   # detect_anomaly: True
   # precision: 16

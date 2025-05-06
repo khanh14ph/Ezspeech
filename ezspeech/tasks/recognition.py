@@ -167,21 +167,23 @@ class SpeechRecognitionTask(LightningModule):
         self.ctc_loss= instantiate(model.loss.ctc_loss)
 
 
+
+        self.vocab=open(dataset.vocab).read().splitlines()
         self.decoding = RNNTDecoding(
-            decoding_cfg=self.cfg.decoding,
+            decoding_cfg=model.decoding,
             decoder=self.predictor,
             joint=self.joint,
-            vocabulary=self.joint.vocabulary,
+            vocabulary=self.vocab,
         )
         # Setup WER calculation
         self.wer = WER(
             decoding=self.decoding,
             batch_dim_index=0,
-            use_cer=self._cfg.get('use_cer', False),
-            log_prediction=self._cfg.get('log_prediction', True),
+            use_cer=False,
+            log_prediction=True,
             dist_sync_on_step=True,
         )
-
+        self.joint.set_wer(self.wer)
     def train_dataloader(self) -> DataLoader:
         dataset = instantiate(self.hparams.dataset.train_ds, _recursive_=False)
         loaders = self.hparams.dataset.loaders

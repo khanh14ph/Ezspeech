@@ -141,5 +141,4 @@ class SqueezeFormerEncoder(nn.Module):
 
         for layer in self.encoder_layers:
             xs = layer(xs, attn_masks, conv_masks)
-
         return xs, x_lens
