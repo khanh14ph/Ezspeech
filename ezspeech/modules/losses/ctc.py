@@ -20,7 +20,7 @@ __all__ = ['CTCLoss']
 
 
 class CTCLoss(nn.CTCLoss):
-    def __init__(self, blank, zero_infinity=False, reduction='mean_batch'):
+    def __init__(self, blank_idx, zero_infinity=False, reduction='mean_batch'):
         # Don't forget to properly call base constructor
         if reduction not in ['none', 'mean', 'sum', 'mean_batch', 'mean_volume']:
             raise ValueError('`reduction` must be one of [mean, sum, mean_batch, mean_volume]')
@@ -32,7 +32,7 @@ class CTCLoss(nn.CTCLoss):
         elif reduction in ['sum', 'mean', 'none']:
             ctc_reduction = reduction
             self._apply_reduction = False
-        super().__init__(blank=blank, reduction=ctc_reduction, zero_infinity=zero_infinity)
+        super().__init__(blank=blank_idx, reduction=ctc_reduction, zero_infinity=zero_infinity)
 
     def reduce(self, losses, target_lengths):
         if self.config_reduction == 'mean_batch':

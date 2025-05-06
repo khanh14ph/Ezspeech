@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 
-from ezspeech.modules.decoder import  rnnt_utils
+from ezspeech.modules.decoder.rnnt.rnnt_utils import Hypothesis
 import torch.nn as nn
 
 

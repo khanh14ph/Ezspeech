@@ -44,7 +44,7 @@ from ezspeech.modules.losses.rnnt_numba.rnnt_pytorch import TDTLossNumba
 
 class TDTLoss(nn.modules.loss._Loss):
 
-    def __init__(self, reduction: str = 'mean_batch', loss_name: str = "default", loss_kwargs=None):
+    def __init__(self,blank_idx,reduction,**kwargs):
         """
         RNN-T Loss function based on https://github.com/HawkAaron/warp-transducer.
         Optionally, can utilize a numba implementation of the same loss without having to compile the loss,
@@ -107,9 +107,9 @@ class TDTLoss(nn.modules.loss._Loss):
         if reduction not in [None, 'mean', 'sum', 'mean_batch', 'mean_volume']:
             raise ValueError('`reduction` must be one of [mean, sum, mean_batch, mean_volume]')
 
-        self._blank = 0
+        self._blank = blank_idx
         self.reduction = reduction
-        self._loss = TDTLossNumba(blank_idx=self._blank, loss_kwargs=loss_kwargs)
+        self._loss = TDTLossNumba(blank=self._blank, **kwargs)
         self._fp16_compat_checked = False
 
     def reduce(self, losses, target_lengths):

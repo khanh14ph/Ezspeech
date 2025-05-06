@@ -105,6 +105,7 @@ task:
 
     joint:
       _target_: nemo.collections.asr.modules.RNNTJoint
+      num_classes: *vocab_size
       log_softmax: null  # 'null' would set it automatically according to CPU/GPU device
       preserve_memory: false  # dramatically slows down training, but might preserve some memory
 
@@ -120,18 +121,40 @@ task:
       fused_batch_size: 16
 
       jointnet:
+        encoder_hidden: *d_model
+        pred_hidden: ${task.model.predictor.prednet.pred_hidden}
         joint_hidden: *d_model
         activation: "relu"
         dropout: 0.2
-      num_extra_outputs: ${model.num_tdt_durations}
+      num_extra_outputs: ${task.model.num_tdt_durations}
 
-    criterion:
-      _target_: ezspeech.modules.losses.hybrid.HybridRNNT_CTC
-        blank: 0
+     
+      
+    loss:
+      ctc_loss:
+        _target_: ezspeech.modules.losses.ctc.CTCLoss
+        blank_idx: 0
         reduction: mean_batch
         zero_infinity: true
-      ctc_weight: 1.0
-      rnnt_weight: 1.0
+      tdt_loss:
+        _target_: ezspeech.modules.losses.rnnt.TDTLoss
+        blank_idx: 0
+        reduction: mean_batch
+        # FastEmit regularization: https://arxiv.org/abs/2010.11148
+        # You may enable FastEmit to reduce the latency of the model for streaming
+        fastemit_lambda: 0.001  # Recommended values to be in range [1e-4, 1e-2], 0.001 is a good start.
+        clamp: -1.0  # if > 0, applies gradient clamping in range [-clamp, clamp] for the joint tensor only.
+
+        # refer to https://arxiv.org/abs/2304.06795 for the meaning of the following three configs.
+        durations: ${task.model.tdt_durations}
+        sigma: 0.05 # hyper-param for under-normalization.
+        omega: 0.1 # weight for regular RNN-T loss.
+    metric:
+      decoding: self.decoding,
+      batch_dim_index: self.wer.batch_dim_index,
+      use_cer: self.wer.use_cer,
+      log_prediction: self.wer.log_prediction,
+      dist_sync_on_step: True,
 
     optimizer:
       lr: 1

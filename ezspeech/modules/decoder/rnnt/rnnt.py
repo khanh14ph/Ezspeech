@@ -4,7 +4,7 @@ import torch
 from omegaconf import DictConfig
 
 from ezspeech.modules.decoder.rnnt import rnnt_abstract
-from ezspeech.modules.decoder import  rnnt_utils
+from ezspeech.modules.decoder.rnnt import  rnnt_utils
 from ezspeech.modules.decoder.rnnt import rnn
 class RNNTDecoder(rnnt_abstract.AbstractRNNTDecoder):
     """A Recurrent Neural Network Transducer Decoder / Prediction Network (RNN-T Prediction Network).
@@ -223,9 +223,6 @@ class RNNTDecoder(rnnt_abstract.AbstractRNNTDecoder):
 
         del y, start, state
 
-        # Adapter module forward step
-        if self.is_adapter_available():
-            g = self.forward_enabled_adapters(g)
 
         return g, hid
 
@@ -720,14 +717,6 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint):
             Default to -1.0, which runs standard Joint network computation; if > 0, then masking out decoder output
             with the specified probability.
     """
-
-
-
-    def _prepare_for_export(self, **kwargs):
-        self._fuse_loss_wer = False
-        self.log_softmax = False
-        super()._prepare_for_export(**kwargs)
-
 
     def __init__(
         self,
