@@ -1,4 +1,12 @@
-class RNNTDecoder(rnnt_abstract.AbstractRNNTDecoder, Exportable, AdapterModuleMixin):
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import torch
+from omegaconf import DictConfig
+
+from ezspeech.modules.decoder.rnnt import rnnt_abstract
+from ezspeech.modules.decoder import  rnnt_utils
+from ezspeech.modules.decoder.rnnt import rnn
+class RNNTDecoder(rnnt_abstract.AbstractRNNTDecoder):
     """A Recurrent Neural Network Transducer Decoder / Prediction Network (RNN-T Prediction Network).
     An RNN-T Decoder/Prediction network, comprised of a stateful LSTM model.
 
@@ -56,44 +64,6 @@ class RNNTDecoder(rnnt_abstract.AbstractRNNTDecoder, Exportable, AdapterModuleMi
             Therefore, it is not recommended to disable this flag.
     """
 
-    @property
-    def input_types(self):
-        """Returns definitions of module input ports."""
-        return {
-            "targets": NeuralType(('B', 'T'), LabelsType()),
-            "target_length": NeuralType(tuple('B'), LengthsType()),
-            "states": [NeuralType(('D', 'B', 'D'), ElementType(), optional=True)],  # must always be last
-        }
-
-    @property
-    def output_types(self):
-        """Returns definitions of module output ports."""
-        return {
-            "outputs": NeuralType(('B', 'D', 'T'), EmbeddedTextType()),
-            "prednet_lengths": NeuralType(tuple('B'), LengthsType()),
-            "states": [NeuralType((('D', 'B', 'D')), ElementType(), optional=True)],  # must always be last
-        }
-
-    def input_example(self, max_batch=1, max_dim=1):
-        """
-        Generates input examples for tracing etc.
-        Returns:
-            A tuple of input examples.
-        """
-        length = max_dim
-        targets = torch.full(fill_value=self.blank_idx, size=(max_batch, length), dtype=torch.int32).to(
-            next(self.parameters()).device
-        )
-        target_length = torch.randint(0, length, size=(max_batch,), dtype=torch.int32).to(
-            next(self.parameters()).device
-        )
-        states = tuple(self.initialize_state(targets.float()))
-        return (targets, target_length, states)
-
-    def _prepare_for_export(self, **kwargs):
-        self._rnnt_export = True
-        super()._prepare_for_export(**kwargs)
-
     def __init__(
         self,
         prednet: Dict[str, Any],
@@ -132,7 +102,6 @@ class RNNTDecoder(rnnt_abstract.AbstractRNNTDecoder, Exportable, AdapterModuleMi
         )
         self._rnnt_export = False
 
-    @typecheck()
     def forward(self, targets, target_length, states=None):
         # y: (B, U)
         y = rnn.label_collate(targets)
@@ -680,19 +649,8 @@ class RNNTDecoder(rnnt_abstract.AbstractRNNTDecoder, Exportable, AdapterModuleMi
         # LSTM in PyTorch returns a tuple of 2 tensors as a state
         return states[0][:, mask], states[1][:, mask]
 
-    # Adapter method overrides
-    def add_adapter(self, name: str, cfg: DictConfig):
-        # Update the config with correct input dim
-        cfg = self._update_adapter_cfg_input_dim(cfg)
-        # Add the adapter
-        super().add_adapter(name=name, cfg=cfg)
 
-    def _update_adapter_cfg_input_dim(self, cfg: DictConfig):
-        cfg = adapter_utils.update_adapter_cfg_input_dim(self, cfg, module_dim=self.pred_hidden)
-        return cfg
-
-
-class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable, AdapterModuleMixin):
+class RNNTJoint(rnnt_abstract.AbstractRNNTJoint):
     """A Recurrent Neural Network Transducer Joint Network (RNN-T Joint Network).
     An RNN-T Joint network, comprised of a feedforward model.
 
@@ -763,54 +721,13 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable, AdapterModuleMixin)
             with the specified probability.
     """
 
-    @property
-    def input_types(self):
-        """Returns definitions of module input ports."""
-        return {
-            "encoder_outputs": NeuralType(('B', 'D', 'T'), AcousticEncodedRepresentation()),
-            "decoder_outputs": NeuralType(('B', 'D', 'T'), EmbeddedTextType()),
-            "encoder_lengths": NeuralType(tuple('B'), LengthsType(), optional=True),
-            "transcripts": NeuralType(('B', 'T'), LabelsType(), optional=True),
-            "transcript_lengths": NeuralType(tuple('B'), LengthsType(), optional=True),
-            "compute_wer": NeuralType(optional=True),
-        }
 
-    @property
-    def output_types(self):
-        """Returns definitions of module output ports."""
-        if not self._fuse_loss_wer:
-            return {
-                "outputs": NeuralType(('B', 'T', 'T', 'D'), LogprobsType()),
-            }
-
-        else:
-            return {
-                "loss": NeuralType(elements_type=LossType(), optional=True),
-                "wer": NeuralType(elements_type=ElementType(), optional=True),
-                "wer_numer": NeuralType(elements_type=ElementType(), optional=True),
-                "wer_denom": NeuralType(elements_type=ElementType(), optional=True),
-            }
 
     def _prepare_for_export(self, **kwargs):
         self._fuse_loss_wer = False
         self.log_softmax = False
         super()._prepare_for_export(**kwargs)
 
-    def input_example(self, max_batch=1, max_dim=8192):
-        """
-        Generates input examples for tracing etc.
-        Returns:
-            A tuple of input examples.
-        """
-        B, T, U = max_batch, max_dim, max_batch
-        encoder_outputs = torch.randn(B, self.encoder_hidden, T).to(next(self.parameters()).device)
-        decoder_outputs = torch.randn(B, self.pred_hidden, U).to(next(self.parameters()).device)
-        return (encoder_outputs, decoder_outputs)
-
-    @property
-    def disabled_deployment_input_names(self):
-        """Implement this method to return a set of input names disabled for export"""
-        return set(["encoder_lengths", "transcripts", "transcript_lengths", "compute_wer"])
 
     def __init__(
         self,
@@ -831,7 +748,7 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable, AdapterModuleMixin)
 
         self._vocab_size = num_classes
         self._num_extra_outputs = num_extra_outputs
-        self._num_classes = num_classes + 1 + num_extra_outputs  # 1 is for blank
+        self._num_classes = num_classes + num_extra_outputs  
 
         self.masking_prob = masking_prob
         if self.masking_prob > 0.0:
@@ -854,12 +771,7 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable, AdapterModuleMixin)
         self.log_softmax = log_softmax
         self.preserve_memory = preserve_memory
 
-        if preserve_memory:
-            logging.warning(
-                "`preserve_memory` was set for the Joint Model. Please be aware this will severely impact "
-                "the forward-backward step time. It also might not solve OOM issues if the GPU simply "
-                "does not have enough memory to compute the joint."
-            )
+
 
         # Required arguments
         self.encoder_hidden = jointnet['encoder_hidden']
@@ -885,7 +797,7 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable, AdapterModuleMixin)
         # to change, requires running ``model.temperature = T`` explicitly
         self.temperature = 1.0
 
-    @typecheck()
+
     def forward(
         self,
         encoder_outputs: torch.Tensor,
@@ -1111,10 +1023,6 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable, AdapterModuleMixin)
 
         del f, g
 
-        # Forward adapter modules on joint hidden
-        if self.is_adapter_available():
-            inp = self.forward_enabled_adapters(inp)
-
         res = self.joint_net(inp)  # [B, T, U, V + 1]
 
         del inp
@@ -1172,16 +1080,7 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable, AdapterModuleMixin)
         )
         return pred, enc, torch.nn.Sequential(*layers)
 
-    # Adapter method overrides
-    def add_adapter(self, name: str, cfg: DictConfig):
-        # Update the config with correct input dim
-        cfg = self._update_adapter_cfg_input_dim(cfg)
-        # Add the adapter
-        super().add_adapter(name=name, cfg=cfg)
-
-    def _update_adapter_cfg_input_dim(self, cfg: DictConfig):
-        cfg = adapter_utils.update_adapter_cfg_input_dim(self, cfg, module_dim=self.joint_hidden)
-        return cfg
+   
 
     @property
     def num_classes_with_blank(self):
