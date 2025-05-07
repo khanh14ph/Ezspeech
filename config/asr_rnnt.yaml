@@ -137,18 +137,9 @@ task:
         reduction: mean
         zero_infinity: False
       rnnt_loss:
-        _target_: ezspeech.modules.losses.rnnt.TDTLoss
+        _target_: ezspeech.modules.losses.rnnt.RNNTLossTorchAudio
         blank_idx: 0
         reduction: mean
-        # FastEmit regularization: https://arxiv.org/abs/2010.11148
-        # You may enable FastEmit to reduce the latency of the model for streaming
-        fastemit_lambda: 0.001  # Recommended values to be in range [1e-4, 1e-2], 0.001 is a good start.
-        clamp: -1.0  # if > 0, applies gradient clamping in range [-clamp, clamp] for the joint tensor only.
-
-        # refer to https://arxiv.org/abs/2304.06795 for the meaning of the following three configs.
-        durations: ${task.model.tdt_durations}
-        sigma: 0.05 # hyper-param for under-normalization.
-        omega: 0.1 # weight for regular RNN-T loss.
     metric:
       decoding: self.decoding,
       batch_dim_index: self.wer.batch_dim_index,
@@ -217,7 +208,7 @@ trainer:
   strategy: ddp
   accelerator: gpu
   devices: [2]
-  accumulate_grad_batches: 1
+  accumulate_grad_batches: 2
   # detect_anomaly: True
   precision: 16
-  val_check_interval: 0.1
+  val_check_interval: 0.5

@@ -3,10 +3,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 from omegaconf import DictConfig
 
-from ezspeech.modules.decoder.rnnt import rnnt_abstract
 from ezspeech.modules.decoder.rnnt import  rnnt_utils
 from ezspeech.modules.decoder.rnnt import rnn
-class RNNTDecoder(rnnt_abstract.AbstractRNNTDecoder):
+class RNNTDecoder(torch.nn.Module):
     """A Recurrent Neural Network Transducer Decoder / Prediction Network (RNN-T Prediction Network).
     An RNN-T Decoder/Prediction network, comprised of a stateful LSTM model.
 
@@ -73,12 +72,13 @@ class RNNTDecoder(rnnt_abstract.AbstractRNNTDecoder):
         blank_as_pad: bool = True,
     ):
         # Required arguments
+        super().__init__()
         self.pred_hidden = prednet['pred_hidden']
         self.pred_rnn_layers = prednet["pred_rnn_layers"]
         self.blank_idx = vocab_size
-
+        self.blank_as_pad=blank_as_pad
         # Initialize the model (blank token increases vocab size by 1)
-        super().__init__(vocab_size=vocab_size, blank_idx=self.blank_idx, blank_as_pad=blank_as_pad)
+
 
         # Optional arguments
         forget_gate_bias = prednet.get('forget_gate_bias', 1.0)
@@ -647,7 +647,7 @@ class RNNTDecoder(rnnt_abstract.AbstractRNNTDecoder):
         return states[0][:, mask], states[1][:, mask]
 
 
-class RNNTJoint(rnnt_abstract.AbstractRNNTJoint):
+class RNNTJoint(torch.nn.Module):
     """A Recurrent Neural Network Transducer Joint Network (RNN-T Joint Network).
     An RNN-T Joint network, comprised of a feedforward model.
 
@@ -732,7 +732,6 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint):
         masking_prob: float = -1.0,
     ):
         super().__init__()
-
         self.vocabulary = vocabulary
 
         self._vocab_size = num_classes
@@ -876,10 +875,9 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint):
 
                     # Compute sub batch loss
                     # preserve loss reduction type
-                    loss_reduction = self.loss.reduction
 
                     # override loss reduction to sum
-                    self.loss.reduction = None
+      
 
                     # compute and preserve loss
                     loss_batch = self.loss(
@@ -888,11 +886,11 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint):
                         input_lengths=sub_enc_lens,
                         target_lengths=sub_transcript_lens,
                     )
+                    
                     losses.append(loss_batch)
                     target_lengths.append(sub_transcript_lens)
-
+                                            
                     # reset loss reduction type
-                    self.loss.reduction = loss_reduction
 
                 else:
                     losses = None
@@ -927,9 +925,7 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint):
 
                 del sub_enc, sub_transcripts, sub_enc_lens, sub_transcript_lens
 
-            # Reduce over sub batches
-            if losses is not None:
-                losses = self.loss.reduce(losses, target_lengths)
+            losses = self.loss.reduce(losses, target_lengths,batch_size)
 
             # Collect sub batch wer results
             if compute_wer:
@@ -942,7 +938,49 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint):
                 wer_denom = None
 
             return losses, wer, wer_num, wer_denom
+    def project_prednet(self, prednet_output: torch.Tensor) -> torch.Tensor:
+        """
+        Project the Prediction Network (Decoder) output to the joint hidden dimension.
 
+        Args:
+            prednet_output: A torch.Tensor of shape [B, U, D]
+
+        Returns:
+            A torch.Tensor of shape [B, U, H]
+        """
+        raise NotImplementedError()
+
+    def joint(self, f: torch.Tensor, g: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the joint step of the network.
+
+        Here,
+        B = Batch size
+        T = Acoustic model timesteps
+        U = Target sequence length
+        H1, H2 = Hidden dimensions of the Encoder / Decoder respectively
+        H = Hidden dimension of the Joint hidden step.
+        V = Vocabulary size of the Decoder (excluding the RNNT blank token).
+
+        NOTE:
+            The implementation of this model is slightly modified from the original paper.
+            The original paper proposes the following steps :
+            (enc, dec) -> Expand + Concat + Sum [B, T, U, H1+H2] -> Forward through joint hidden [B, T, U, H] -- *1
+            *1 -> Forward through joint final [B, T, U, V + 1].
+
+            We instead split the joint hidden into joint_hidden_enc and joint_hidden_dec and act as follows:
+            enc -> Forward through joint_hidden_enc -> Expand [B, T, 1, H] -- *1
+            dec -> Forward through joint_hidden_dec -> Expand [B, 1, U, H] -- *2
+            (*1, *2) -> Sum [B, T, U, H] -> Forward through joint final [B, T, U, V + 1].
+
+        Args:
+            f: Output of the Encoder model. A torch.Tensor of shape [B, T, H1]
+            g: Output of the Decoder model. A torch.Tensor of shape [B, U, H2]
+
+        Returns:
+            Logits / log softmaxed tensor of shape (B, T, U, V + 1).
+        """
+        return self.joint_after_projection(self.project_encoder(f), self.project_prednet(g))
     def project_encoder(self, encoder_output: torch.Tensor) -> torch.Tensor:
         """
         Project the encoder output to the joint hidden dimension.

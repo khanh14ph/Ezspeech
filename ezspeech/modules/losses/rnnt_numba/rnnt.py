@@ -35,7 +35,9 @@ from ezspeech.modules.losses.rnnt_numba.utils import global_constants, rnnt_help
 from ezspeech.modules.losses.rnnt_numba.utils.cpu_utils import cpu_rnnt
 from ezspeech.modules.losses.rnnt_numba.utils.cuda_utils import gpu_rnnt
 
-
+import torch
+from torch.autograd import Function
+from torch.nn import Module
 def rnnt_loss_cpu(
     acts: torch.Tensor,
     labels: torch.Tensor,
@@ -362,122 +364,96 @@ def tdt_loss_gpu(
     del gpu_workspace, tdt_workspace, wrapper
     return True
 
-
-def multiblank_rnnt_loss_gpu(
-    acts: torch.Tensor,
-    labels: torch.Tensor,
-    input_lengths: torch.Tensor,
-    label_lengths: torch.Tensor,
-    costs: torch.Tensor,
-    grads: torch.Tensor,
-    blank_label: int,
-    big_blank_durations: list,
-    fastemit_lambda: float,
-    clamp: float,
-    num_threads: int,
-    sigma: float,
-):
+class _TDTNumba(Function):
     """
-    Wrapper method for accessing GPU Multi-blank RNNT loss (https://arxiv.org/pdf/2211.03541.pdf).
+    Numba class for Token-and-Duration Transducer (TDT) loss (https://arxiv.org/abs/2304.06795)
+    """
 
-    CUDA implementation ported from [HawkAaron/warp-transducer](https://github.com/HawkAaron/warp-transducer).
-
-    Args:
-        acts: Activation tensor of shape [B, T, U, V + num_big_blanks + 1].
-        labels: Ground truth labels of shape [B, U].
-        input_lengths: Lengths of the acoustic sequence as a vector of ints [B].
-        label_lengths: Lengths of the target sequence as a vector of ints [B].
-        costs: Zero vector of length [B] in which costs will be set.
-        grads: Zero tensor of shape [B, T, U, V + num_big_blanks + 1] where the gradient will be set.
-        blank_label: Index of the standard blank token in the vocabulary.
-        big_blank_durations: A list of supported durations for big blank symbols
-            in the model, e.g. [2, 4, 8]. Note we only include durations for ``big
-            blanks'' here and it should not include 1 for the standard blank.
-            Those big blanks have vocabulary indices after the standard blank index.
+    @staticmethod
+    def forward(
+        ctx,
+        label_acts,
+        duration_acts,
+        labels,
+        act_lens,
+        label_lens,
+        blank,
+        durations,
+        fastemit_lambda,
+        clamp,
+        sigma,
+        omega,
+    ):
+        """
+        log_probs: Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
+        labels: 2 dimensional Tensor containing all the targets of the batch with zero padded
+        act_lens: Tensor of size (batch) containing size of each output sequence from the network
+        label_lens: Tensor of (batch) containing label length of each example
         fastemit_lambda: Float scaling factor for FastEmit regularization. Refer to
             FastEmit: Low-latency Streaming ASR with Sequence-level Emission Regularization.
-        clamp: Float value. When set to value >= 0.0, will clamp the gradient to [-clamp, clamp].
-        num_threads: Number of threads for OpenMP.
-        sigma: logit-undernormalization weight used in the multi-blank model. Refer to
-            the multi-blank paper https://arxiv.org/pdf/2211.03541 for detailed explanations.
-    """
-    minibatch_size = acts.shape[0]
-    maxT = acts.shape[1]
-    maxU = acts.shape[2]
-    alphabet_size = acts.shape[3]
+        durations: list of durations for TDT model, must include 0 and 1, e.g.
+            [0, 1, 2, 3, 4].
+        sigma: hyper-parameter for logit under-normalization method for training
+            TDT models. Recommended value 0.05.
+        omega: probability for sampling the standard RNN-T loss.
+        Refer to https://arxiv.org/abs/2304.06795 for detailed explanations for
+            the above parameters;
+        """
+        is_cuda = label_acts.is_cuda
 
-    if hasattr(cuda, 'external_stream'):
-        stream = cuda.external_stream(torch.cuda.current_stream(acts.device).cuda_stream)
-    else:
-        stream = cuda.default_stream()
+        if clamp < 0:
+            raise ValueError("`clamp` must be 0.0 or positive float value.")
 
-    if num_threads < 0:
-        num_threads = multiprocessing.cpu_count()
+        if is_cuda:
+            loss_func = tdt_loss_gpu
+        else:
+            raise ValueError("TDT is not yet implemented for non CUDA computation.")
 
-    num_threads = max(1, num_threads)  # have to use at least 1 thread
+        label_grads = torch.zeros_like(label_acts) if label_acts.requires_grad else None
+        duration_grads = torch.zeros_like(duration_acts) if duration_acts.requires_grad else None
+        minibatch_size = label_acts.size(0)
+        costs = torch.zeros(minibatch_size, device=label_acts.device, dtype=label_acts.dtype)
 
-    gpu_size, status = rnnt_helper.get_workspace_size(maxT, maxU, minibatch_size, gpu=True)
-
-    if status != global_constants.RNNTStatus.RNNT_STATUS_SUCCESS:
-        raise RuntimeError("Invalid parameter passed when calculating working space memory")
-
-    # Select GPU index
-    cuda.select_device(acts.device.index)
-    gpu_workspace = torch.zeros(gpu_size, device=acts.device, dtype=acts.dtype, requires_grad=False)
-
-    big_blank_workspace = torch.zeros(
-        len(big_blank_durations), device=acts.device, dtype=torch.long, requires_grad=False
-    )
-
-    for i in range(0, len(big_blank_durations)):
-        big_blank_workspace[i] = big_blank_durations[i]
-
-    ### VIEW TENSORS AS VECTORS FOR POINTER INDEXING ###
-    acts, acts_shape = rnnt_helper.flatten_tensor(acts)
-
-    wrapper = gpu_rnnt.MultiblankGPURNNT(
-        minibatch=minibatch_size,
-        maxT=maxT,
-        maxU=maxU,
-        alphabet_size=alphabet_size,
-        workspace=gpu_workspace,
-        big_blank_workspace=big_blank_workspace,
-        num_big_blanks=len(big_blank_durations),
-        blank=blank_label,
-        fastemit_lambda=fastemit_lambda,
-        clamp=clamp,
-        num_threads=num_threads,
-        stream=stream,
-        sigma=sigma,
-    )
-
-    if grads is None:
-        status = wrapper.score_forward(
-            acts=acts.data,
-            costs=costs.data,
-            pad_labels=labels.data,
-            label_lengths=label_lengths.data,
-            input_lengths=input_lengths.data,
+        loss_func(
+            label_acts,
+            duration_acts,
+            labels=labels,
+            input_lengths=act_lens,
+            label_lengths=label_lens,
+            costs=costs,
+            label_grads=label_grads,
+            duration_grads=duration_grads,
+            blank_label=blank,
+            durations=durations,
+            fastemit_lambda=fastemit_lambda,
+            clamp=clamp,
+            sigma=sigma,
+            omega=omega,
+            num_threads=0,
         )
 
-        if status != global_constants.RNNTStatus.RNNT_STATUS_SUCCESS:
-            raise RuntimeError("Could not calculate forward scores")
+        costs = costs.sum().unsqueeze_(-1)
+        ctx.save_for_backward(label_grads, duration_grads)
 
-    else:
-        ### FLATTEN GRAD TENSOR ###
-        grads, grads_shape = rnnt_helper.flatten_tensor(grads)
+        return costs
 
-        status = wrapper.cost_and_grad(
-            acts=acts.data,
-            grads=grads.data,
-            costs=costs.data,
-            pad_labels=labels.data,
-            label_lengths=label_lengths.data,
-            input_lengths=input_lengths.data,
-        )
+    @staticmethod
+    def backward(ctx, grad_output):
+        label_grads, duration_grads = ctx.saved_tensors
+        if grad_output is not None and label_grads is not None:
+            grad_output = grad_output.view(-1, 1, 1, 1).to(label_grads)
+            return (
+                label_grads.mul_(grad_output),
+                duration_grads.mul_(grad_output),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
 
-        if status != global_constants.RNNTStatus.RNNT_STATUS_SUCCESS:
-            raise RuntimeError("Could not calculate forward scores")
-
-    del gpu_workspace, big_blank_workspace, wrapper
-    return True

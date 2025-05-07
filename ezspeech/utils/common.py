@@ -90,5 +90,5 @@ def csv2json(csv_path,jsonl_path,sep=",",replace_columns=None):
     df=list(df.T.to_dict().values())
     save_dataset(df,jsonl_path)   
 
-# if __name__ == "__main__":
-    # csv2json("/home4/khanhnd/hieupt/thesis/data/my-code-switch-data/mix_vietnam_english.csv","/home4/khanhnd/Ezspeech/data/mix.jsonl")
+if __name__ == "__main__":
+    csv2json("/home4/khanhnd/vivos/test.tsv","/home4/khanhnd/Ezspeech/data/test.jsonl",sep="\t")

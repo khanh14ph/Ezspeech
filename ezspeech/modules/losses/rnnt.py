@@ -1,50 +1,28 @@
-# ! /usr/bin/python
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
-# Copyright 2018-2019, Mingkun Huang
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-import inspect
-import operator
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Set
 
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
+from typing import List
 
+import torchaudio
 
-from ezspeech.modules.losses.rnnt_numba.rnnt_pytorch import TDTLossNumba
+from ezspeech.modules.losses.rnnt_numba.rnnt import _TDTNumba
 
 
 
 
 class TDTLoss(nn.modules.loss._Loss):
 
-    def __init__(self,blank_idx,reduction,**kwargs):
+    def __init__(self,blank_idx,
+                    durations=None,
+                    reduction='mean',
+                    fastemit_lambda: float = 0.0,
+                    clamp: float = -1,
+                    sigma: float = 0.0,
+                    omega: float = 0.0,):
         """
         RNN-T Loss function based on https://github.com/HawkAaron/warp-transducer.
         Optionally, can utilize a numba implementation of the same loss without having to compile the loss,
@@ -107,27 +85,27 @@ class TDTLoss(nn.modules.loss._Loss):
         if reduction not in [None, 'mean', 'sum', 'mean_batch', 'mean_volume']:
             raise ValueError('`reduction` must be one of [mean, sum, mean_batch, mean_volume]')
 
-        self._blank = blank_idx
+        self.blank = blank_idx
         self.reduction = reduction
-        self._loss = TDTLossNumba(blank=self._blank, **kwargs)
+        self.durations = durations if durations is not None else []
+        self.fastemit_lambda = fastemit_lambda
+        self.clamp = float(clamp) if clamp > 0 else 0.0
+        self.reduction = reduction
+        self._loss = _TDTNumba.apply
+        self.sigma = sigma
+        self.omega = omega
         self._fp16_compat_checked = False
 
-    def reduce(self, losses, target_lengths):
-
-        if isinstance(losses, List):
-            losses = torch.cat(losses, 0)
-            target_lengths = torch.cat(target_lengths, 0)
-
+    def reduce(self, losses, target_lengths,batch_size):
+        sum_loss=sum(losses)
         if self.reduction == 'mean_batch':
-            losses = losses.mean()  # global batch size average
+            losses = sum_loss/batch_size  # global batch size average
         elif self.reduction == 'mean':
-            losses = torch.div(losses, target_lengths).mean()
+            losses = sum_loss/len(target_lengths)
         elif self.reduction == 'sum':
-            losses = losses.sum()
-        elif self.reduction == 'mean_volume':
-            losses = losses.sum() / target_lengths.sum()  # same as above but longer samples weigh more
-
+            losses = sum_loss
         return losses
+
 
     def forward(self, log_probs, targets, input_lengths, target_lengths):
         # Cast to int 64
@@ -157,19 +135,24 @@ class TDTLoss(nn.modules.loss._Loss):
         if targets.shape[1] != max_targets_len:
             targets = targets.narrow(dim=1, start=0, length=max_targets_len).contiguous()
 
-        # Temporarily override loss reduction
-        loss_reduction = self._loss.reduction
-        self._loss.reduction = None
 
+        label_acts, duration_acts = torch.split(
+            log_probs, [log_probs.shape[-1] - len(self.durations), len(self.durations)], dim=-1
+        )
+        label_acts = label_acts.contiguous()
+        duration_acts = torch.nn.functional.log_softmax(duration_acts, dim=-1).contiguous()
         # Compute RNNT loss
-        loss = self._loss(acts=log_probs, labels=targets, act_lens=input_lengths, label_lens=target_lengths)
-
-        # Loss reduction can be dynamic, so reset it after call
-        self._loss.reduction = loss_reduction
-
-        # reduce here using our own reduction function
-        if self.reduction is not None:
-            loss = self.reduce(loss, target_lengths)
+        loss = self._loss(label_acts,
+            duration_acts,
+            targets,
+            input_lengths,
+            target_lengths,
+            self.blank,
+            self.durations,
+            self.fastemit_lambda,
+            self.clamp,
+            self.sigma,
+            self.omega)
 
         # del new variables that may have been created
         del (
@@ -178,5 +161,38 @@ class TDTLoss(nn.modules.loss._Loss):
             input_lengths,
             target_lengths,
         )
+        return loss[0]
 
+
+class RNNTLossTorchAudio(torch.nn.modules.loss._Loss):
+
+    def __init__(self, blank_idx, reduction):
+        super().__init__()
+        self.blank_idx = blank_idx
+
+        self.reduction = reduction
+
+    def forward(self, log_probs, targets, input_lengths, target_lengths):
+        # CPU patch for FP16
+
+        loss = torchaudio.functional.rnnt_loss(
+            logits=log_probs.to(torch.float32),
+            targets=targets.to(torch.int32),
+            logit_lengths=input_lengths.to(torch.int32),
+            target_lengths=target_lengths.to(torch.int32),
+            blank=self.blank_idx,
+            reduction="sum",
+        )
+        
         return loss
+    def reduce(self, losses, target_lengths,batch_size):
+        
+        sum_loss=sum(losses)
+        if self.reduction == 'mean_batch':
+            losses = sum_loss/batch_size  # global batch size average
+        elif self.reduction == 'mean':
+            losses = sum_loss/len(target_lengths)
+        elif self.reduction == 'sum':
+            losses = sum_loss
+        
+        return losses

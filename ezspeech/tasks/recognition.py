@@ -149,8 +149,8 @@ from torch.utils.data import DataLoader
 
 from ezspeech.modules.dataset.dataset import collate_asr_data
 from ezspeech.optims.scheduler import NoamAnnealing
-from nemo.collections.asr.parts.submodules.rnnt_decoding import RNNTDecoding, RNNTDecodingConfig
-from nemo.collections.asr.metrics.wer import WER
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_decoding import  v
+from ezspeech.modules.metric.wer import WER
 class SpeechRecognitionTask(LightningModule):
     def __init__(self, dataset: DictConfig, model: DictConfig):
         super(SpeechRecognitionTask, self).__init__()
@@ -162,7 +162,7 @@ class SpeechRecognitionTask(LightningModule):
 
         self.predictor = instantiate(model.predictor)
         self.joint = instantiate(model.joint)
-        self.rnnt_loss= instantiate(model.loss.tdt_loss)
+        self.rnnt_loss= instantiate(model.loss.rnnt_loss)
         self.joint.set_loss(self.rnnt_loss)
         self.ctc_loss= instantiate(model.loss.ctc_loss)
 
@@ -180,7 +180,7 @@ class SpeechRecognitionTask(LightningModule):
             decoding=self.decoding,
             batch_dim_index=0,
             use_cer=False,
-            log_prediction=True,
+            log_prediction=False,
             dist_sync_on_step=True,
         )
         self.joint.set_wer(self.wer)
@@ -217,13 +217,13 @@ class SpeechRecognitionTask(LightningModule):
         inputs, input_lengths, targets, target_lengths= batch
         # print("inputs", inputs.shape)
         # print("____________")
-        loss,ctc_loss,rnnt_loss = self._shared_step(
+        loss,ctc_loss,rnnt_loss,wer = self._shared_step(
             inputs, input_lengths, targets, target_lengths
         )
         self.log("train_ctc_loss", ctc_loss, sync_dist=True,prog_bar=True)
         self.log("train_rnnt_loss", rnnt_loss, sync_dist=True,prog_bar=True)
         self.log("train_loss", loss, sync_dist=True,prog_bar=True)
-
+        self.log("train_wer", wer, sync_dist=True,prog_bar=True)
         return loss
 
     def validation_step(
@@ -232,14 +232,14 @@ class SpeechRecognitionTask(LightningModule):
 
         inputs, input_lengths, targets, target_lengths= batch
 
-        loss,ctc_loss,rnnt_loss= self._shared_step(
+        loss,ctc_loss,rnnt_loss,wer= self._shared_step(
             inputs, input_lengths, targets, target_lengths
         )
 
         self.log("val_ctc_loss", ctc_loss, sync_dist=True)
         self.log("val_rnnt_loss", rnnt_loss, sync_dist=True)
         self.log("val_loss", loss, sync_dist=True, prog_bar=True)
-
+        self.log("val_wer", wer, sync_dist=True, prog_bar=True)
         return loss
 
     def _shared_step(
@@ -262,18 +262,19 @@ class SpeechRecognitionTask(LightningModule):
                 encoder_lengths=enc_lens,
                 transcripts=targets,
                 transcript_lengths=target_lengths,
-                compute_wer=False,
+                compute_wer=True,
             )
-        
+        if wer==None:
+            wer=0
         ctc_loss=self.ctc_loss(
             log_probs=ctc_logits,
             targets=targets,
             input_lengths=enc_lens,
             target_lengths=target_lengths,
         )
-        loss=ctc_loss+rnnt_loss
+        loss=0.7*ctc_loss+0.3*rnnt_loss
 
-        return loss,ctc_loss,rnnt_loss
+        return loss,ctc_loss,rnnt_loss,wer
 
     def configure_optimizers(self):
         optimizer = AdamW(

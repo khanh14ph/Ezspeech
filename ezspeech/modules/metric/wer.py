@@ -19,6 +19,9 @@ import jiwer
 import torch
 from torchmetrics import Metric
 
+
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_decoding import RNNTDecoding
+
 __all__ = ['word_error_rate', 'word_error_rate_detail', 'WER']
 
 
@@ -260,23 +263,11 @@ class WER(Metric):
         self.batch_dim_index = batch_dim_index
 
         self.decode = None
-        if isinstance(self.decoding, AbstractRNNTDecoding):
+        if isinstance(self.decoding, RNNTDecoding):
             self.decode = lambda predictions, predictions_lengths, predictions_mask, input_ids, targets: self.decoding.rnnt_decoder_predictions_tensor(
                 encoder_output=predictions, encoded_lengths=predictions_lengths
             )
-        elif isinstance(self.decoding, AbstractCTCDecoding):
-            self.decode = lambda predictions, predictions_lengths, predictions_mask, input_ids, targets: self.decoding.ctc_decoder_predictions_tensor(
-                decoder_outputs=predictions,
-                decoder_lengths=predictions_lengths,
-                fold_consecutive=self.fold_consecutive,
-            )
-        elif isinstance(self.decoding, AbstractMultiTaskDecoding):
-            self.decode = lambda predictions, prediction_lengths, predictions_mask, input_ids, targets: self.decoding.decode_predictions_tensor(
-                encoder_hidden_states=predictions,
-                encoder_input_mask=predictions_mask,
-                decoder_input_ids=input_ids,
-                return_hypotheses=False,
-            )
+ 
         else:
             raise TypeError(f"WER metric does not support decoding of type {type(self.decoding)}")
 
@@ -321,9 +312,9 @@ class WER(Metric):
             hypotheses = self.decode(predictions, predictions_lengths, predictions_mask, input_ids, targets)
 
         if self.log_prediction:
-            logging.info("\n")
-            logging.info(f"reference:{references[0]}")
-            logging.info(f"predicted:{hypotheses[0].text}")
+            print("\n")
+            print(f"reference:{references[0]}")
+            print(f"predicted:{hypotheses[0].text}")
 
         for h, r in zip(hypotheses, references):
             if isinstance(h, list):

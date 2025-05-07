@@ -90,9 +90,6 @@ class SpeechRecognitionDataset(Dataset):
         tokens = [self.vocab.index(token) for token in tokens]
 
         tokens = torch.tensor(tokens, dtype=torch.long)
-        frame_length = feature.shape[1] / 0.01
-        if len(tokens) > frame_length:
-            qweqwe
         return feature.t(), tokens, audio_filepath
 
     def __len__(self) -> int:
