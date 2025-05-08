@@ -169,7 +169,6 @@ class SpeechRecognitionTask(LightningModule):
 
         self.vocab=open(dataset.vocab).read().splitlines()
 
-        # Setup WER calculation
     
     def train_dataloader(self) -> DataLoader:
         dataset = instantiate(self.hparams.dataset.train_ds, _recursive_=False)
@@ -205,7 +204,7 @@ class SpeechRecognitionTask(LightningModule):
         # print("inputs", inputs.shape)
         # print("____________")
         loss,ctc_loss,rnnt_loss = self._shared_step(
-            inputs, input_lengths, targets, target_lengths,compute_wer=False
+            inputs, input_lengths, targets, target_lengths
         )
         self.log("train_ctc_loss", ctc_loss, sync_dist=True,prog_bar=True)
         self.log("train_rnnt_loss", rnnt_loss, sync_dist=True,prog_bar=True)
@@ -218,7 +217,7 @@ class SpeechRecognitionTask(LightningModule):
         inputs, input_lengths, targets, target_lengths= batch
 
         loss,ctc_loss,rnnt_loss= self._shared_step(
-            inputs, input_lengths, targets, target_lengths,compute_wer=True
+            inputs, input_lengths, targets, target_lengths
         )
 
         self.log("val_ctc_loss", ctc_loss, sync_dist=True)
@@ -232,7 +231,6 @@ class SpeechRecognitionTask(LightningModule):
         input_lengths: torch.Tensor,
         targets: torch.Tensor,
         target_lengths: torch.Tensor,
-        compute_wer=False,
     ) -> Tuple[torch.Tensor, ...]:
     
         enc_outs,enc_lens = self.encoder(
@@ -247,7 +245,6 @@ class SpeechRecognitionTask(LightningModule):
                 encoder_lengths=enc_lens,
                 transcripts=targets,
                 transcript_lengths=target_lengths,
-                compute_wer=compute_wer,
             )
 
         ctc_loss=self.ctc_loss(

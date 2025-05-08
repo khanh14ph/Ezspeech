@@ -753,7 +753,6 @@ class RNNTJoint(torch.nn.Module):
             raise ValueError("If `fuse_loss_wer` is set, then `fused_batch_size` cannot be None!")
 
         self._loss = None
-        self._wer = None
 
         # Log softmax should be applied explicitly only for CPU
         self.log_softmax = log_softmax
@@ -792,8 +791,7 @@ class RNNTJoint(torch.nn.Module):
         decoder_outputs: Optional[torch.Tensor],
         encoder_lengths: Optional[torch.Tensor] = None,
         transcripts: Optional[torch.Tensor] = None,
-        transcript_lengths: Optional[torch.Tensor] = None,
-        compute_wer: bool = False,
+        transcript_lengths: Optional[torch.Tensor] = None
     ) -> Union[torch.Tensor, List[Optional[torch.Tensor]]]:
         # encoder = (B, T, D)
         # decoder = (B, D, U) if passed, else None
@@ -812,12 +810,7 @@ class RNNTJoint(torch.nn.Module):
 
         else:
             # At least the loss module must be supplied during fused joint
-            if self._loss is None or self._wer is None:
-                raise ValueError("`fuse_loss_wer` flag is set, but `loss` and `wer` modules were not provided! ")
-
-            # If fused joint step is required, fused batch size is required as well
-            if self._fused_batch_size is None:
-                raise ValueError("If `fuse_loss_wer` is set, then `fused_batch_size` cannot be None!")
+           
 
             # When using fused joint step, both encoder and transcript lengths must be provided
             if (encoder_lengths is None) or (transcript_lengths is None):
