@@ -1,254 +1,309 @@
+import math
+from functools import lru_cache
+from typing import List, Tuple
+
 import torch
 import torch.nn as nn
+import torch.nn.attention
 import torch.nn.functional as F
 
-
-class PositionalEncoding(nn.Module):
-
-    """
-    Relative Sinusoidal Positional Encoding for grouped multi-head attention
-    Positional encoding for left context (sin) and right context (cos)
-    Total context = 2 * max_len - group_size
-    """
-
-    def __init__(
-        self,
-        max_len: int,
-        d_model: int,
-        group_size: int,
-    ):
-        super(PositionalEncoding, self).__init__()
-
-        self.max_len = max_len
-        self.group_size = group_size
-
-        # PE
-        pos_encoding = torch.zeros(2 * max_len - group_size % 2, d_model)
-
-        # Positions (max_len - 1, ..., max_len - 1)
-        pos_left = torch.arange(
-            start=max_len - 1,
-            end=group_size % 2 - 1,
-            step=-1,
-            dtype=torch.float,
-        )
-        pos_right = torch.arange(
-            start=0,
-            end=-max_len,
-            step=-1,
-            dtype=torch.float,
-        )
-        pos = torch.cat([pos_left, pos_right], dim=0).unsqueeze(1)
-
-        # Angles
-        steps = torch.arange(0, d_model // 2, dtype=torch.float).unsqueeze(0)
-        angles = pos / 10000 ** (2 * steps / d_model)
-
-        # Rel Sinusoidal PE
-        pos_encoding[:, 0::2] = angles.sin()
-        pos_encoding[:, 1::2] = angles.cos()
-
-        pos_encoding = pos_encoding.unsqueeze(0)
-        self.register_buffer("pos_encoding", pos_encoding, persistent=False)
-
-    def forward(self, batch_size: int, seq_len: int) -> torch.Tensor:
-        # (B, Th + 2*T-G, D)
-        left_context = self.max_len - seq_len + self.group_size // 2
-        right_context = (
-            self.max_len - self.group_size % 2 + seq_len - self.group_size // 2
-        )
-        R = self.pos_encoding[:, left_context:right_context]
-        return R.repeat(batch_size, 1, 1)
-
-
-class MultiHeadSelfAttention(nn.Module):
-
-    """Grouped Multi-Head Self-Attention Layer
-        with Relative Sinusoidal Positional Encodings
+from ezspeech.utils.common import avoid_float16_autocast_context
+INF_VAL = 10000.0
+class MultiHeadAttention(nn.Module):
+    """Multi-Head Attention layer of Transformer.
     Args:
-        d_model: model feature dimension
-        num_heads: number of attention heads
-        group_size: attention group size
-        max_pos_encoding: maximum relative distance between elements
-
+        n_head (int): number of heads
+        n_feat (int): size of the features
+        dropout_rate (float): dropout rate
+        use_bias (bool): whether to remove bias in linear and conv layers
+        use_pytorch_sdpa (bool): use torch sdpa instead of manual attention
+        use_pytorch_sdpa_backends list[str]: list of backend names to use in sdpa. None or empty list means all backends. e.g. ["MATH"]
     """
 
     def __init__(
         self,
-        d_model: int,
-        num_heads: int,
-        group_size: int,
-        max_pos_encoding: int,
+        n_head,
+        n_feat,
+        dropout_rate,
+        max_cache_len=0,
+        use_bias=True,
+        use_pytorch_sdpa=False,
+        use_pytorch_sdpa_backends=None,
     ):
-        super(MultiHeadSelfAttention, self).__init__()
+        """Construct an MultiHeadedAttention object."""
+        super(MultiHeadAttention, self).__init__()
+        self.use_pytorch_sdpa = use_pytorch_sdpa
+        if self.use_pytorch_sdpa and use_pytorch_sdpa_backends:
+            use_pytorch_sdpa_backends = list(
+                map(
+                    lambda backend_name: getattr(torch.nn.attention.SDPBackend, backend_name),
+                    use_pytorch_sdpa_backends,
+                )
+            )
+        self.use_pytorch_sdpa_backends = use_pytorch_sdpa_backends
 
-        # Attention Params
-        self.d_model = d_model
-        self.num_heads = num_heads
-        self.group_size = group_size
-        self.d_head = (group_size * d_model) // num_heads
+        self.cache_drop_size = None
+        self.use_bias = use_bias
+        self.dropout_rate = dropout_rate
+        assert n_feat % n_head == 0
+        # We assume d_v always equals d_k
+        self.d_k = n_feat // n_head
+        self.s_d_k = math.sqrt(self.d_k)
+        self.h = n_head
+        self.linear_q = nn.Linear(n_feat, n_feat, bias=use_bias)
+        self.linear_k = nn.Linear(n_feat, n_feat, bias=use_bias)
+        self.linear_v = nn.Linear(n_feat, n_feat, bias=use_bias)
+        self.linear_out = nn.Linear(n_feat, n_feat, bias=use_bias)
+        self.dropout = nn.Dropout(p=dropout_rate)
 
-        # Linear Layers
-        self.query_layer = nn.Linear(d_model, d_model)
-        self.key_layer = nn.Linear(d_model, d_model)
-        self.value_layer = nn.Linear(d_model, d_model)
-        self.output_layer = nn.Linear(d_model, d_model)
+        self._max_cache_len = max_cache_len
 
-        # Position Embedding Layer
-        self.pos_layer = nn.Linear(d_model, d_model)
-
-        # Global content and positional bias
-        self.u = nn.Parameter(torch.Tensor(d_model))  # Content bias
-        self.v = nn.Parameter(torch.Tensor(d_model))  # Pos bias
-        nn.init.xavier_uniform_(self.u.reshape(num_heads, -1))
-        nn.init.xavier_uniform_(self.v.reshape(num_heads, -1))
-
-        # Grouped Relative Sinusoidal Positional Encodings
-        self.rel_pos_enc = PositionalEncoding(
-            max_pos_encoding,
-            d_model,
-            group_size,
-        )
-
-    def forward(
-        self,
-        Q: torch.Tensor,
-        K: torch.Tensor,
-        V: torch.Tensor,
-        mask: torch.Tensor,
-    ) -> torch.Tensor:
-
-        # Batch size B
-        batch_size = Q.size(0)
-
-        # Linear Layers
-        Q = self.query_layer(Q)
-        K = self.key_layer(K)
-        V = self.value_layer(V)
-
-        # Chunk Padding
-        Q, K, V, mask, padding = self.pad(Q, K, V, mask, self.group_size)
-
-        # Add Bias
-        Qu = Q + self.u
-        Qv = Q + self.v
-
-        # Relative Positional Embeddings (B, Th + 2*T-G, D) / (B, Th + T, D)
-        E = self.pos_layer(self.rel_pos_enc(batch_size, Q.size(1)))
-
-        # (B, T, D) -> (B, H, T//G, d)
-        Qu = Qu.reshape(batch_size, -1, self.num_heads, self.d_head)
-        Qu = Qu.transpose(1, 2)
-        Qv = Qv.reshape(batch_size, -1, self.num_heads, self.d_head)
-        Qv = Qv.transpose(1, 2)
-
-        # (B, Th + T, D) -> (B, H, Th//G + T//G, d)
-        K = K.reshape(batch_size, -1, self.num_heads, self.d_head)
-        K = K.transpose(1, 2)
-        V = V.reshape(batch_size, -1, self.num_heads, self.d_head)
-        V = V.transpose(1, 2)
-
-        # (B, Th + 2*T-G, D) -> (B, H, Th//G + 2*T//G-1, d) or
-        # (B, Th + T, D) -> (B, H, Th//G + T//G, d)
-        E = E.reshape(batch_size, -1, self.num_heads, self.d_head)
-        E = E.transpose(1, 2)
-
-        # attn_scores (B, H, T//G, Th//G + T//G)
-        attn_scores_K = Qu.matmul(K.transpose(2, 3))
-        attn_scores_E = self.rel_to_abs(Qv.matmul(E.transpose(2, 3)))
-        attn_scores = (attn_scores_K + attn_scores_E) / K.shape[-1] ** 0.5
-
-        # Slice Mask (B, 1, T, T) -> (B, 1, T//G, T//G)
-        mask = mask.unsqueeze(1).bool()  # (batch, 1, time1, time2)
-        mask = mask[:, :, :: self.group_size, :: self.group_size]
-
-        # Apply mask
-        min_value = torch.finfo(attn_scores.dtype).min
-        attn_scores = attn_scores.masked_fill(mask, min_value)
-
-        # Att weights (B, H, T//G, Th//G + T//G)
-        attn_w = attn_scores.softmax(dim=-1)
-
-        # Att output (B, H, T//G, d)
-        output = attn_w.matmul(V)
-
-        # Transpose and Reshape (B, H, T//G, d) -> (B, T, D)
-        output = output.transpose(1, 2).reshape(batch_size, -1, self.d_model)
-
-        # Slice Padding
-        output = output[:, : output.size(1) - padding]
-
-        # output linear layer
-        output = self.output_layer(output)
-
-        return output
-
-    def pad(
-        self,
-        Q: torch.Tensor,
-        K: torch.Tensor,
-        V: torch.Tensor,
-        mask: torch.Tensor,
-        chunk_size: int,
-    ):
-
-        # Compute Overflows
-        overflow_Q = Q.size(1) % chunk_size
-        overflow_KV = K.size(1) % chunk_size
-
-        padding_Q = (chunk_size - overflow_Q) % chunk_size
-        padding_KV = (chunk_size - overflow_KV) % chunk_size
-
-        batch_size, seq_len_KV, _ = K.size()
-
-        # Input Padding (B, T, D) -> (B, T + P, D)
-        Q = F.pad(Q, (0, 0, 0, padding_Q), value=0)
-        K = F.pad(K, (0, 0, 0, padding_KV), value=0)
-        V = F.pad(V, (0, 0, 0, padding_KV), value=0)
-
-        # Update Padding Mask
-        mask = mask.int()
-        mask = F.pad(mask, pad=(0, padding_Q, 0, padding_KV), value=1)
-
-        return Q, K, V, mask, padding_Q
-
-    def rel_to_abs(self, attn_scores: torch.Tensor) -> torch.Tensor:
-
-        """Relative to absolute position indexing
+    def forward_qkv(self, query, key, value):
+        """Transforms query, key and value.
         Args:
-            attn_scores: absolute-by-relative indexed attention scores of shape
-                        (B, H, T, Th + 2*T-1) for full context and
-                        (B, H, T, Th + T) for causal context
-        Return:
-            attn_scores: absolute-by-absolute indexed attention scores
-                        of shape (B, H, T, Th + T)
-        References:
-            Attention Augmented Convolutional Networks, Bello et al.
-            https://arxiv.org/abs/1904.09925
+            query (torch.Tensor): (batch, time1, size)
+            key (torch.Tensor): (batch, time2, size)
+            value (torch.Tensor): (batch, time2, size)
+        returns:
+            q (torch.Tensor): (batch, head, time1, size)
+            k (torch.Tensor): (batch, head, time2, size)
+            v (torch.Tensor): (batch, head, time2, size)
         """
+        n_batch = query.size(0)
+        q = self.linear_q(query).view(n_batch, -1, self.h, self.d_k)
+        k = self.linear_k(key).view(n_batch, -1, self.h, self.d_k)
+        v = self.linear_v(value).view(n_batch, -1, self.h, self.d_k)
+        q = q.transpose(1, 2)
+        k = k.transpose(1, 2)
+        v = v.transpose(1, 2)
 
-        # Att Scores (B, H, T, Th + 2*T-1)
-        batch_size, num_heads, seq_length1, seq_length2 = attn_scores.size()
+        return q, k, v
 
-        # Column Padding (B, H, T, Th + 2*T)
-        attn_scores = F.pad(attn_scores, pad=(0, 1), value=0)
+    def forward_attention(self, value, scores, mask):
+        """Compute attention context vector.
+        Args:
+            value (torch.Tensor): (batch, time2, size)
+            scores(torch.Tensor): (batch, time1, time2)
+            mask(torch.Tensor): (batch, time1, time2)
+        returns:
+            value (torch.Tensor): transformed `value` (batch, time2, d_model) weighted by the attention scores
+        """
+        n_batch = value.size(0)
+        if mask is not None:
+            mask = mask.unsqueeze(1)  # (batch, 1, time1, time2)
+            scores = scores.masked_fill(mask, -INF_VAL)
+            attn = torch.softmax(scores, dim=-1).masked_fill(mask, 0.0)  # (batch, head, time1, time2)
+        else:
+            attn = torch.softmax(scores, dim=-1)  # (batch, head, time1, time2)
 
-        # Flatten (B, H, TTh + 2*TT)
-        attn_scores = attn_scores.reshape(batch_size, num_heads, -1)
+        p_attn = self.dropout(attn)
+        x = torch.matmul(p_attn, value)  # (batch, head, time1, d_k)
+        x = x.transpose(1, 2).reshape(n_batch, -1, self.h * self.d_k)  # (batch, time1, d_model)
 
-        # End Padding (B, H, TTh + 2*TT + Th + T - 1)
-        attn_scores = F.pad(
-            attn_scores,
-            pad=(0, seq_length2 - seq_length1),
-            value=0,
+        return self.linear_out(x)  # (batch, time1, d_model)
+
+    def forward(self, query, key, value, mask, pos_emb=None, cache=None):
+        """Compute 'Scaled Dot Product Attention'.
+        Args:
+            query (torch.Tensor): (batch, time1, size)
+            key (torch.Tensor): (batch, time2, size)
+            value(torch.Tensor): (batch, time2, size)
+            mask (torch.Tensor): (batch, time1, time2)
+            cache (torch.Tensor) : (batch, time_cache, size)
+
+        returns:
+            output (torch.Tensor): transformed `value` (batch, time1, d_model) weighted by the query dot key attention
+            cache (torch.Tensor) : (batch, time_cache_next, size)
+        """
+        key, value, query, cache = self.update_cache(key=key, value=value, query=query, cache=cache)
+
+        if torch.is_autocast_enabled():
+            query, key, value = query.to(torch.float32), key.to(torch.float32), value.to(torch.float32)
+
+        # temporary until we solve this more gracefully
+        with avoid_float16_autocast_context():
+            q, k, v = self.forward_qkv(query, key, value)
+
+            if self.use_pytorch_sdpa:
+                n_batch = value.size(0)
+
+                if mask is not None:
+                    mask = ~mask.unsqueeze(1)
+
+                dropout_rate = self.dropout_rate if self.training else 0
+                if self.use_pytorch_sdpa_backends:
+                    with torch.nn.attention.sdpa_kernel(self.use_pytorch_sdpa_backends):
+                        out = torch.nn.functional.scaled_dot_product_attention(
+                            q, k, v, attn_mask=mask, dropout_p=dropout_rate
+                        )
+                else:
+                    out = torch.nn.functional.scaled_dot_product_attention(
+                        q, k, v, attn_mask=mask, dropout_p=dropout_rate
+                    )
+
+                # this IF block can be deleted when https://github.com/pytorch/pytorch/pull/131863 is in the stable version
+                if mask is not None:
+                    all_masked_rows = torch.all(~mask, dim=-1)
+                    all_masked_rows.unsqueeze_(-1)
+                    out = out.masked_fill(all_masked_rows, 0.0)
+
+                out = out.transpose(1, 2).reshape(n_batch, -1, self.h * self.d_k)  # (batch, time1, d_model)
+                out = self.linear_out(out)  # (batch, time1, d_model)
+            else:
+                scores = torch.matmul(q, k.transpose(-2, -1)) / self.s_d_k
+                out = self.forward_attention(v, scores, mask)
+
+        if cache is None:
+            return out
+        else:
+            return out, cache
+
+    def update_cache(self, key, value, query, cache):
+        if cache is not None:
+            key = value = torch.cat([cache, key], dim=1)
+            q_keep_size = query.shape[1] - self.cache_drop_size
+            cache = torch.cat([cache[:, q_keep_size:, :], query[:, :q_keep_size, :]], dim=1)
+        return key, value, query, cache
+class RelPositionMultiHeadAttention(MultiHeadAttention):
+    """Multi-Head Attention layer of Transformer-XL with support of relative positional encoding.
+    Paper: https://arxiv.org/abs/1901.02860
+    Args:
+        n_head (int): number of heads
+        n_feat (int): size of the features
+        dropout_rate (float): dropout rate
+        use_bias (bool): whether to apply bias in linear and conv layers of MultiHeadAttention
+    """
+
+    def __init__(
+        self,
+        n_head,
+        n_feat,
+        dropout_rate,
+        pos_bias_u,
+        pos_bias_v,
+        max_cache_len=0,
+        use_bias=True,
+        use_pytorch_sdpa=False,
+        use_pytorch_sdpa_backends=None,
+    ):
+        """Construct an RelPositionMultiHeadedAttention object."""
+        super().__init__(
+            n_head=n_head,
+            n_feat=n_feat,
+            dropout_rate=dropout_rate,
+            max_cache_len=max_cache_len,
+            use_bias=use_bias,
+            use_pytorch_sdpa=use_pytorch_sdpa,
+            use_pytorch_sdpa_backends=use_pytorch_sdpa_backends,
         )
+        # linear transformation for positional encoding
+        self.linear_pos = nn.Linear(n_feat, n_feat, bias=False)
+        # these two learnable biases are used in matrix c and matrix d
+        # as described in https://arxiv.org/abs/1901.02860 Section 3.3
+        if pos_bias_u is None or pos_bias_v is None:
+            self.pos_bias_u = nn.Parameter(torch.FloatTensor(self.h, self.d_k))
+            self.pos_bias_v = nn.Parameter(torch.FloatTensor(self.h, self.d_k))
+            # nn.init.normal_(self.pos_bias_u, 0.0, 0.02)
+            # nn.init.normal_(self.pos_bias_v, 0.0, 0.02)
+            nn.init.zeros_(self.pos_bias_u)
+            nn.init.zeros_(self.pos_bias_v)
+        else:
+            self.pos_bias_u = pos_bias_u
+            self.pos_bias_v = pos_bias_v
 
-        # Reshape (B, H, T + 1, Th + 2*T-1)
-        attn_scores = attn_scores.reshape(
-            batch_size, num_heads, 1 + seq_length1, seq_length2
-        )
+    def rel_shift(self, x):
+        """Compute relative positional encoding.
+        Args:
+            x (torch.Tensor): (batch, nheads, time, 2*time-1)
+        """
+        b, h, qlen, pos_len = x.size()  # (b, h, t1, t2)
+        # need to add a column of zeros on the left side of last dimension to perform the relative shifting
+        x = torch.nn.functional.pad(x, pad=(1, 0))  # (b, h, t1, t2+1)
+        x = x.view(b, h, -1, qlen)  # (b, h, t2+1, t1)
+        # need to drop the first row
+        x = x[:, :, 1:].view(b, h, qlen, pos_len)  # (b, h, t1, t2)
+        return x
 
-        # Slice (B, H, T, Th + T)
-        attn_scores = attn_scores[:, :, :seq_length1, seq_length1 - 1:]
+    def forward(self, query, key, value, mask, pos_emb, cache=None):
+        """Compute 'Scaled Dot Product Attention' with rel. positional encoding.
+        Args:
+            query (torch.Tensor): (batch, time1, size)
+            key (torch.Tensor): (batch, time2, size)
+            value(torch.Tensor): (batch, time2, size)
+            mask (torch.Tensor): (batch, time1, time2)
+            pos_emb (torch.Tensor) : (batch, time1, size)
+            cache (torch.Tensor) : (batch, time_cache, size)
 
-        return attn_scores
+        Returns:
+            output (torch.Tensor): transformed `value` (batch, time1, d_model) weighted by the query dot key attention
+            cache (torch.Tensor) : (batch, time_cache_next, size)
+        """
+        key, value, query, cache = self.update_cache(key=key, value=value, query=query, cache=cache)
+
+        if torch.is_autocast_enabled():
+            query, key, value = query.to(torch.float32), key.to(torch.float32), value.to(torch.float32)
+
+        # temporary until we solve this more gracefully
+        with avoid_float16_autocast_context():
+            q, k, v = self.forward_qkv(query, key, value)
+            q = q.transpose(1, 2)  # (batch, time1, head, d_k)
+
+            n_batch_pos = pos_emb.size(0)
+            n_batch = value.size(0)
+            p = self.linear_pos(pos_emb).view(n_batch_pos, -1, self.h, self.d_k)
+            p = p.transpose(1, 2)  # (batch, head, time1, d_k)
+
+            # (batch, head, time1, d_k)
+            q_with_bias_u = (q + self.pos_bias_u).transpose(1, 2)
+            # (batch, head, time1, d_k)
+            q_with_bias_v = (q + self.pos_bias_v).transpose(1, 2)
+
+            # compute attention score
+            # first compute matrix a and matrix c
+            # as described in https://arxiv.org/abs/1901.02860 Section 3.3
+            # (batch, head, time1, time2)
+
+            # compute matrix b and matrix d
+            # (batch, head, time1, time2)
+            matrix_bd = torch.matmul(q_with_bias_v, p.transpose(-2, -1))
+            matrix_bd = self.rel_shift(matrix_bd)
+
+            if self.use_pytorch_sdpa:
+                scale_factor = 1 / math.sqrt(q_with_bias_u.size(-1))
+                matrix_bd = matrix_bd[:, :, :, : k.size(-2)] * scale_factor
+
+                if mask is not None:
+                    mask = mask.unsqueeze(1)
+                    matrix_bd.masked_fill_(mask, -INF_VAL)
+
+                dropout_rate = self.dropout_rate if self.training else 0
+                if self.use_pytorch_sdpa_backends:
+                    with torch.nn.attention.sdpa_kernel(self.use_pytorch_sdpa_backends):
+                        out = torch.nn.functional.scaled_dot_product_attention(
+                            q_with_bias_u, k, v, attn_mask=matrix_bd, dropout_p=dropout_rate
+                        )
+                else:
+                    out = torch.nn.functional.scaled_dot_product_attention(
+                        q_with_bias_u, k, v, attn_mask=matrix_bd, dropout_p=dropout_rate
+                    )
+
+                # this IF block can be deleted when https://github.com/pytorch/pytorch/pull/131863 is in the stable version
+                if mask is not None:
+                    all_masked_rows = torch.all(mask, dim=-1)
+                    all_masked_rows.unsqueeze_(-1)
+                    all_masked_rows = all_masked_rows.expand(-1, out.size(1), -1, out.size(-1))
+                    out = out.masked_fill(all_masked_rows, 0.0)
+
+                out = out.transpose(1, 2).reshape(n_batch, -1, self.h * self.d_k)  # (batch, time1, d_model)
+                out = self.linear_out(out)  # (batch, time1, d_model)
+            else:
+                # drops extra elements in the matrix_bd to match the matrix_ac's size
+                matrix_ac = torch.matmul(q_with_bias_u, k.transpose(-2, -1))
+                matrix_bd = matrix_bd[:, :, :, : matrix_ac.size(-1)]
+                scores = (matrix_ac + matrix_bd) / self.s_d_k  # (batch, head, time1, time2)
+                out = self.forward_attention(v, scores, mask)
+
+        if cache is None:
+            return out
+        else:
+            return out, cache

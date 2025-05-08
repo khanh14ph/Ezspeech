@@ -79,17 +79,6 @@ class BeamTDTInfer:
 
         softmax_temperature: Scales the logits of the joint prior to computing log_softmax.
 
-        preserve_alignments: Bool flag which preserves the history of alignments generated during
-            beam decoding (sample). When set to true, the Hypothesis will contain
-            the non-null value for `alignments` in it. Here, `alignments` is a List of List of Tensor (of length V + 1)
-
-            The length of the list corresponds to the Acoustic Length (T).
-            Each value in the list (Ti) is a torch.Tensor (U), representing 1 or more targets from a vocabulary.
-            U is the number of target tokens for the current timestep Ti.
-
-            NOTE: `preserve_alignments` is an invalid argument for any `search_type`
-            other than basic beam search.
-
         ngram_lm_model: str
             The path to the N-gram LM.
         ngram_lm_alpha: float
@@ -112,7 +101,6 @@ class BeamTDTInfer:
         maes_expansion_gamma: float = 2.3,
         maes_expansion_beta: int = 2,
         softmax_temperature: float = 1.0,
-        preserve_alignments: bool = False,
         ngram_lm_model: Optional[str] = None,
         ngram_lm_alpha: float = 0.3,
         max_symbols_per_step: Optional[int] = None,
@@ -134,15 +122,11 @@ class BeamTDTInfer:
         self.score_norm = score_norm
         self.max_candidates = beam_size
         self.softmax_temperature = softmax_temperature
-        self.preserve_alignments = preserve_alignments
 
-        if preserve_alignments:
-            raise ValueError("Alignment preservation has not been implemented.")
+      
         if beam_size < 1:
             raise ValueError("Beam search size cannot be less than 1!")
 
-        if self.preserve_alignments:
-            raise NotImplementedError("Preserving alignments is not implemented.")
 
         if search_type == "default":
             if self.beam_size == 1:
@@ -785,7 +769,6 @@ class BeamBatchedTDTInfer:
         search_type: str = 'malsd_batch',
         score_norm: bool = True,
         max_symbols_per_step: Optional[int] = None,
-        preserve_alignments: bool = False,
         ngram_lm_model: Optional[str | Path] = None,
         ngram_lm_alpha: float = 0.0,
         blank_lm_score_mode: Optional[str | BlankLMScoreMode] = BlankLMScoreMode.NO_SCORE,
@@ -802,7 +785,6 @@ class BeamBatchedTDTInfer:
             blank_index: index of blank symbol
             beam_size: beam size
             max_symbols_per_step: max symbols to emit on each step (to avoid infinite looping)
-            preserve_alignments: if alignments are needed
             ngram_lm_model: path to the NGPU-LM n-gram LM model: .arpa or .nemo formats
             ngram_lm_alpha: weight for the n-gram LM scores
             blank_lm_score_mode: mode for scoring blank symbol with LM
@@ -824,7 +806,6 @@ class BeamBatchedTDTInfer:
         if max_symbols_per_step is not None and max_symbols_per_step <= 0:
             raise ValueError(f"Expected max_symbols_per_step > 0 (or None), got {max_symbols_per_step}")
         self.max_symbols = max_symbols_per_step
-        self.preserve_alignments = preserve_alignments
 
         if search_type == "malsd_batch":
             # Depending on availability of `blank_as_pad` support
@@ -836,7 +817,6 @@ class BeamBatchedTDTInfer:
                 beam_size=self.beam_size,
                 blank_index=self._blank_index,
                 max_symbols_per_step=self.max_symbols,
-                preserve_alignments=preserve_alignments,
                 ngram_lm_model=ngram_lm_model,
                 ngram_lm_alpha=ngram_lm_alpha,
                 blank_lm_score_mode=blank_lm_score_mode,

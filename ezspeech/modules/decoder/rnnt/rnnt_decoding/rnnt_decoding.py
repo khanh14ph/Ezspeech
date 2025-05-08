@@ -12,8 +12,7 @@ from omegaconf import OmegaConf
 from ezspeech.modules.decoder.rnnt.rnnt_decoding import rnnt_beam_decoding, rnnt_greedy_decoding, tdt_beam_decoding
 from ezspeech.modules.decoder.rnnt.rnnt_utils import  Hypothesis,NBestHypotheses
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import BlankLMScoreMode,PruningMode
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.confidence_utils import ConfidenceMixin
-class RNNTDecoding(ConfidenceMixin):
+class RNNTDecoding:
     """
     Used for performing RNN-T auto-regressive decoding of the Decoder+Joint network given the encoder state.
 
@@ -197,9 +196,6 @@ class RNNTDecoding(ConfidenceMixin):
 
         # we need to ensure blank is the last token in the vocab for the case of RNNT and Multi-blank RNNT.
         blank_id = len(vocabulary) + joint.num_extra_outputs
-        supported_punctuation = {
-            char for token in vocabulary for char in token if unicodedata.category(char).startswith('P')
-        }
 
         if hasattr(decoding_cfg, 'model_type') and decoding_cfg.model_type == 'tdt':
             blank_id = len(vocabulary)
@@ -212,42 +208,27 @@ class RNNTDecoding(ConfidenceMixin):
 
         self.cfg = decoding_cfg
         self.blank_id = blank_id
-        self.supported_punctuation = supported_punctuation
         self.num_extra_outputs = joint.num_extra_outputs
-        self.big_blank_durations = self.cfg.get("big_blank_durations", None)
         self.durations = self.cfg.get("durations", None)
         self.compute_hypothesis_token_set = self.cfg.get("compute_hypothesis_token_set", False)
         self.compute_langs = decoding_cfg.get('compute_langs', False)
         self.preserve_alignments = self.cfg.get('preserve_alignments', None)
-        self.joint_fused_batch_size = self.cfg.get('fused_batch_size', None)
         self.compute_timestamps = self.cfg.get('compute_timestamps', None)
         self.tdt_include_token_duration = self.cfg.get('tdt_include_token_duration', False)
         self.word_seperator = self.cfg.get('word_seperator', ' ')
-        self.segment_seperators = self.cfg.get('segment_seperators', ['.', '?', '!'])
-        self.segment_gap_threshold = self.cfg.get('segment_gap_threshold', None)
 
         self._is_tdt = self.durations is not None and self.durations != []  # this means it's a TDT model.
         if self._is_tdt:
             if blank_id == 0:
                 raise ValueError("blank_id must equal len(non_blank_vocabs) for TDT models")
-            if self.big_blank_durations is not None and self.big_blank_durations != []:
-                raise ValueError("duration and big_blank_durations can't both be not None")
+            if self.durations is None:
+                raise ValueError("duration can't not be None")
             if self.cfg.strategy not in ['greedy', 'greedy_batch', 'beam', 'maes', "malsd_batch"]:
                 raise ValueError(
                     "currently only greedy, greedy_batch, beam and maes inference is supported for TDT models"
                 )
 
-        if (
-            self.big_blank_durations is not None and self.big_blank_durations != []
-        ):  # this means it's a multi-blank model.
-            if blank_id == 0:
-                raise ValueError("blank_id must equal len(vocabs) for multi-blank RNN-T models")
-            if self.cfg.strategy not in ['greedy', 'greedy_batch']:
-                raise ValueError(
-                    "currently only greedy and greedy_batch inference is supported for multi-blank models"
-                )
-
-        possible_strategies = ['greedy', 'greedy_batch', 'beam', 'tsd', 'alsd', 'maes', 'malsd_batch', "maes_batch"]
+        possible_strategies = ['greedy', 'greedy_batch', 'beam', 'alsd', 'maes', 'malsd_batch', "maes_batch"]
         if self.cfg.strategy not in possible_strategies:
             raise ValueError(f"Decoding strategy must be one of {possible_strategies}")
 
@@ -259,300 +240,105 @@ class RNNTDecoding(ConfidenceMixin):
             elif self.cfg.strategy in ['beam', 'tsd', 'alsd', 'maes']:
                 self.preserve_alignments = self.cfg.beam.get('preserve_alignments', False)
 
-        # Update compute timestamps
-        if self.compute_timestamps is None:
-            if self.cfg.strategy in ['greedy', 'greedy_batch']:
-                self.compute_timestamps = self.cfg.greedy.get('compute_timestamps', False)
 
-            elif self.cfg.strategy in ['beam', 'tsd', 'alsd', 'maes']:
-                self.compute_timestamps = self.cfg.beam.get('compute_timestamps', False)
-
-        # Test if alignments are being preserved for RNNT
-        if not self._is_tdt and self.compute_timestamps is True and self.preserve_alignments is False:
-            raise ValueError("If `compute_timesteps` flag is set, then `preserve_alignments` flag must also be set.")
-
-        # initialize confidence-related fields
-        self._init_confidence(self.cfg.get('confidence_cfg', None))
-
+        # initialize confidence-related field
         if self._is_tdt:
-            if self.preserve_frame_confidence is True and self.preserve_alignments is False:
-                raise ValueError(
-                    "If `preserve_frame_confidence` flag is set, then `preserve_alignments` flag must also be set."
-                )
             self.tdt_include_token_duration = self.tdt_include_token_duration or self.compute_timestamps
-            self._compute_offsets = self._compute_offsets_tdt
-            self._refine_timestamps = self._refine_timestamps_tdt
 
-        # Confidence estimation is not implemented for these strategies
-        if (
-            not self.preserve_frame_confidence
-            and self.cfg.strategy in ['beam', 'tsd', 'alsd', 'maes']
-            and self.cfg.beam.get('preserve_frame_confidence', False)
-        ):
-            raise NotImplementedError(f"Confidence calculation is not supported for strategy `{self.cfg.strategy}`")
-
+    
         if self.cfg.strategy == 'greedy':
-            if self.big_blank_durations is None or self.big_blank_durations == []:
-                if not self._is_tdt:
-                    self.decoding = rnnt_greedy_decoding.GreedyRNNTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        blank_index=self.blank_id,
-                        max_symbols_per_step=(
-                            self.cfg.greedy.get('max_symbols', None)
-                            or self.cfg.greedy.get('max_symbols_per_step', None)
-                        ),
-                        preserve_alignments=self.preserve_alignments,
-                        preserve_frame_confidence=self.preserve_frame_confidence,
-                        confidence_method_cfg=self.confidence_method_cfg,
-                    )
-                else:
-                    self.decoding = rnnt_greedy_decoding.GreedyTDTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        blank_index=self.blank_id,
-                        durations=self.durations,
-                        max_symbols_per_step=(
-                            self.cfg.greedy.get('max_symbols', None)
-                            or self.cfg.greedy.get('max_symbols_per_step', None)
-                        ),
-                        preserve_alignments=self.preserve_alignments,
-                        preserve_frame_confidence=self.preserve_frame_confidence,
-                        include_duration=self.tdt_include_token_duration,
-                        include_duration_confidence=self.tdt_include_duration_confidence,
-                        confidence_method_cfg=self.confidence_method_cfg,
-                    )
-            else:
-                self.decoding = rnnt_greedy_decoding.GreedyMultiblankRNNTInfer(
+
+                self.decoding = rnnt_greedy_decoding.GreedyTDTInfer(
                     decoder_model=decoder,
                     joint_model=joint,
                     blank_index=self.blank_id,
-                    big_blank_durations=self.big_blank_durations,
+                    durations=self.durations,
                     max_symbols_per_step=(
-                        self.cfg.greedy.get('max_symbols', None) or self.cfg.greedy.get('max_symbols_per_step', None)
+                        self.cfg.greedy.get('max_symbols', None)
+                        or self.cfg.greedy.get('max_symbols_per_step', None)
                     ),
-                    preserve_alignments=self.preserve_alignments,
-                    preserve_frame_confidence=self.preserve_frame_confidence,
-                    confidence_method_cfg=self.confidence_method_cfg,
+                    include_duration=self.tdt_include_token_duration,
                 )
 
         elif self.cfg.strategy == 'greedy_batch':
-            if self.big_blank_durations is None or self.big_blank_durations == []:
-                if not self._is_tdt:
-                    self.decoding = rnnt_greedy_decoding.GreedyBatchedRNNTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        blank_index=self.blank_id,
-                        max_symbols_per_step=(
-                            self.cfg.greedy.get('max_symbols', None)
-                            or self.cfg.greedy.get('max_symbols_per_step', None)
-                        ),
-                        preserve_alignments=self.preserve_alignments,
-                        preserve_frame_confidence=self.preserve_frame_confidence,
-                        confidence_method_cfg=self.confidence_method_cfg,
-                        loop_labels=self.cfg.greedy.get('loop_labels', True),
-                        use_cuda_graph_decoder=self.cfg.greedy.get('use_cuda_graph_decoder', True),
-                        ngram_lm_model=self.cfg.greedy.get('ngram_lm_model', None),
-                        ngram_lm_alpha=self.cfg.greedy.get('ngram_lm_alpha', 0),
-                    )
-                else:
-                    self.decoding = rnnt_greedy_decoding.GreedyBatchedTDTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        blank_index=self.blank_id,
-                        durations=self.durations,
-                        max_symbols_per_step=(
-                            self.cfg.greedy.get('max_symbols', None)
-                            or self.cfg.greedy.get('max_symbols_per_step', None)
-                        ),
-                        preserve_alignments=self.preserve_alignments,
-                        preserve_frame_confidence=self.preserve_frame_confidence,
-                        include_duration=self.tdt_include_token_duration,
-                        include_duration_confidence=self.tdt_include_duration_confidence,
-                        confidence_method_cfg=self.confidence_method_cfg,
-                        use_cuda_graph_decoder=self.cfg.greedy.get('use_cuda_graph_decoder', True),
-                        ngram_lm_model=self.cfg.greedy.get('ngram_lm_model', None),
-                        ngram_lm_alpha=self.cfg.greedy.get('ngram_lm_alpha', 0),
-                    )
-
-            else:
-                self.decoding = rnnt_greedy_decoding.GreedyBatchedMultiblankRNNTInfer(
+                self.decoding = rnnt_greedy_decoding.GreedyBatchedTDTInfer(
                     decoder_model=decoder,
                     joint_model=joint,
                     blank_index=self.blank_id,
-                    big_blank_durations=self.big_blank_durations,
+                    durations=self.durations,
                     max_symbols_per_step=(
-                        self.cfg.greedy.get('max_symbols', None) or self.cfg.greedy.get('max_symbols_per_step', None)
+                        self.cfg.greedy.get('max_symbols', None)
+                        or self.cfg.greedy.get('max_symbols_per_step', None)
                     ),
-                    preserve_alignments=self.preserve_alignments,
-                    preserve_frame_confidence=self.preserve_frame_confidence,
-                    confidence_method_cfg=self.confidence_method_cfg,
+                    include_duration=self.tdt_include_token_duration,
+
+                    use_cuda_graph_decoder=self.cfg.greedy.get('use_cuda_graph_decoder', True),
+                    ngram_lm_model=self.cfg.greedy.get('ngram_lm_model', None),
+                    ngram_lm_alpha=self.cfg.greedy.get('ngram_lm_alpha', 0),
                 )
 
         elif self.cfg.strategy == 'beam':
-            if self.big_blank_durations is None or self.big_blank_durations == []:
-                if not self._is_tdt:
-                    self.decoding = rnnt_beam_decoding.BeamRNNTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        beam_size=self.cfg.beam.beam_size,
-                        return_best_hypothesis=decoding_cfg.beam.get('return_best_hypothesis', True),
-                        search_type='default',
-                        score_norm=self.cfg.beam.get('score_norm', True),
-                        softmax_temperature=self.cfg.beam.get('softmax_temperature', 1.0),
-                        preserve_alignments=self.preserve_alignments,
-                    )
-                else:
-                    self.decoding = tdt_beam_decoding.BeamTDTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        durations=self.durations,
-                        beam_size=self.cfg.beam.beam_size,
-                        return_best_hypothesis=decoding_cfg.beam.get('return_best_hypothesis', True),
-                        search_type='default',
-                        score_norm=self.cfg.beam.get('score_norm', True),
-                        softmax_temperature=self.cfg.beam.get('softmax_temperature', 1.0),
-                        preserve_alignments=self.preserve_alignments,
-                    )
+                self.decoding = tdt_beam_decoding.BeamTDTInfer(
+                    decoder_model=decoder,
+                    joint_model=joint,
+                    durations=self.durations,
+                    beam_size=self.cfg.beam.beam_size,
+                    return_best_hypothesis=decoding_cfg.beam.get('return_best_hypothesis', True),
+                    search_type='default',
+                    score_norm=self.cfg.beam.get('score_norm', True),
+                    softmax_temperature=self.cfg.beam.get('softmax_temperature', 1.0),
+                )
 
-        elif self.cfg.strategy == 'tsd':
-            self.decoding = rnnt_beam_decoding.BeamRNNTInfer(
-                decoder_model=decoder,
-                joint_model=joint,
-                beam_size=self.cfg.beam.beam_size,
-                return_best_hypothesis=decoding_cfg.beam.get('return_best_hypothesis', True),
-                search_type='tsd',
-                score_norm=self.cfg.beam.get('score_norm', True),
-                tsd_max_sym_exp_per_step=self.cfg.beam.get('tsd_max_sym_exp', 10),
-                softmax_temperature=self.cfg.beam.get('softmax_temperature', 1.0),
-                preserve_alignments=self.preserve_alignments,
-            )
+        
 
-        elif self.cfg.strategy == 'alsd':
-            self.decoding = rnnt_beam_decoding.BeamRNNTInfer(
-                decoder_model=decoder,
-                joint_model=joint,
-                beam_size=self.cfg.beam.beam_size,
-                return_best_hypothesis=decoding_cfg.beam.get('return_best_hypothesis', True),
-                search_type='alsd',
-                score_norm=self.cfg.beam.get('score_norm', True),
-                alsd_max_target_len=self.cfg.beam.get('alsd_max_target_len', 2),
-                softmax_temperature=self.cfg.beam.get('softmax_temperature', 1.0),
-                preserve_alignments=self.preserve_alignments,
-            )
+
 
         elif self.cfg.strategy == 'maes':
-            if self.big_blank_durations is None or self.big_blank_durations == []:
-                if not self._is_tdt:
-                    self.decoding = rnnt_beam_decoding.BeamRNNTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        beam_size=self.cfg.beam.beam_size,
-                        return_best_hypothesis=decoding_cfg.beam.get('return_best_hypothesis', True),
-                        search_type='maes',
-                        score_norm=self.cfg.beam.get('score_norm', True),
-                        maes_num_steps=self.cfg.beam.get('maes_num_steps', 2),
-                        maes_prefix_alpha=self.cfg.beam.get('maes_prefix_alpha', 1),
-                        maes_expansion_gamma=self.cfg.beam.get('maes_expansion_gamma', 2.3),
-                        maes_expansion_beta=self.cfg.beam.get('maes_expansion_beta', 2.0),
-                        softmax_temperature=self.cfg.beam.get('softmax_temperature', 1.0),
-                        preserve_alignments=self.preserve_alignments,
-                        ngram_lm_model=self.cfg.beam.get('ngram_lm_model', None),
-                        ngram_lm_alpha=self.cfg.beam.get('ngram_lm_alpha', 0.0),
-                        hat_subtract_ilm=self.cfg.beam.get('hat_subtract_ilm', False),
-                        hat_ilm_weight=self.cfg.beam.get('hat_ilm_weight', 0.0),
-                    )
-                else:
-                    self.decoding = tdt_beam_decoding.BeamTDTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        durations=self.durations,
-                        beam_size=self.cfg.beam.beam_size,
-                        return_best_hypothesis=decoding_cfg.beam.get('return_best_hypothesis', True),
-                        search_type='maes',
-                        score_norm=self.cfg.beam.get('score_norm', True),
-                        maes_num_steps=self.cfg.beam.get('maes_num_steps', 2),
-                        maes_prefix_alpha=self.cfg.beam.get('maes_prefix_alpha', 1),
-                        maes_expansion_gamma=self.cfg.beam.get('maes_expansion_gamma', 2.3),
-                        maes_expansion_beta=self.cfg.beam.get('maes_expansion_beta', 2.0),
-                        softmax_temperature=self.cfg.beam.get('softmax_temperature', 1.0),
-                        preserve_alignments=self.preserve_alignments,
-                        ngram_lm_model=self.cfg.beam.get('ngram_lm_model', None),
-                        ngram_lm_alpha=self.cfg.beam.get('ngram_lm_alpha', 0.3),
-                    )
+
+            self.decoding = tdt_beam_decoding.BeamTDTInfer(
+                decoder_model=decoder,
+                joint_model=joint,
+                durations=self.durations,
+                beam_size=self.cfg.beam.beam_size,
+                return_best_hypothesis=decoding_cfg.beam.get('return_best_hypothesis', True),
+                search_type='maes',
+                score_norm=self.cfg.beam.get('score_norm', True),
+                maes_num_steps=self.cfg.beam.get('maes_num_steps', 2),
+                maes_prefix_alpha=self.cfg.beam.get('maes_prefix_alpha', 1),
+                maes_expansion_gamma=self.cfg.beam.get('maes_expansion_gamma', 2.3),
+                maes_expansion_beta=self.cfg.beam.get('maes_expansion_beta', 2.0),
+                softmax_temperature=self.cfg.beam.get('softmax_temperature', 1.0),
+
+                ngram_lm_model=self.cfg.beam.get('ngram_lm_model', None),
+                ngram_lm_alpha=self.cfg.beam.get('ngram_lm_alpha', 0.3),
+            )
         elif self.cfg.strategy == 'malsd_batch':
-            if self.big_blank_durations is None or self.big_blank_durations == []:
-                if not self._is_tdt:
-                    self.decoding = rnnt_beam_decoding.BeamBatchedRNNTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        blank_index=self.blank_id,
-                        beam_size=self.cfg.beam.beam_size,
-                        search_type='malsd_batch',
-                        max_symbols_per_step=self.cfg.beam.get("max_symbols", 10),
-                        preserve_alignments=self.preserve_alignments,
-                        ngram_lm_model=self.cfg.beam.get('ngram_lm_model', None),
-                        ngram_lm_alpha=self.cfg.beam.get('ngram_lm_alpha', 0.0
-                        ),
-                        blank_lm_score_mode=self.cfg.beam.get(
-                            'blank_lm_score_mode', BlankLMScoreMode.LM_WEIGHTED_FULL
-                        ),
-                        pruning_mode=self.cfg.beam.get('pruning_mode', PruningMode.LATE),
-                        score_norm=self.cfg.beam.get('score_norm', True),
-                        allow_cuda_graphs=self.cfg.beam.get('allow_cuda_graphs', True),
-                        return_best_hypothesis=self.cfg.beam.get('return_best_hypothesis', True),
-                    )
-                else:
-                    self.decoding = tdt_beam_decoding.BeamBatchedTDTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        blank_index=self.blank_id,
-                        durations=self.durations,
-                        beam_size=self.cfg.beam.beam_size,
-                        search_type='malsd_batch',
-                        max_symbols_per_step=self.cfg.beam.get("max_symbols", 10),
-                        preserve_alignments=self.preserve_alignments,
-                        ngram_lm_model=self.cfg.beam.get('ngram_lm_model', None),
-                        ngram_lm_alpha=self.cfg.beam.get('ngram_lm_alpha', 0.0),
-                        blank_lm_score_mode=self.cfg.beam.get(
-                            'blank_lm_score_mode', BlankLMScoreMode.LM_WEIGHTED_FULL
-                        ),
-                        pruning_mode=self.cfg.beam.get('pruning_mode', PruningMode.LATE),
-                        score_norm=self.cfg.beam.get('score_norm', True),
-                        allow_cuda_graphs=self.cfg.beam.get('allow_cuda_graphs', True),
-                        return_best_hypothesis=self.cfg.beam.get('return_best_hypothesis', True),
-                    )
-        elif self.cfg.strategy == 'maes_batch':
-            if self.big_blank_durations is None or self.big_blank_durations == []:
-                if not self._is_tdt:
-                    self.decoding = rnnt_beam_decoding.BeamBatchedRNNTInfer(
-                        decoder_model=decoder,
-                        joint_model=joint,
-                        blank_index=self.blank_id,
-                        beam_size=self.cfg.beam.beam_size,
-                        search_type='maes_batch',
-                        maes_num_steps=self.cfg.beam.get('maes_num_steps', 2),
-                        maes_expansion_beta=self.cfg.beam.get('maes_expansion_beta', 2),
-                        maes_expansion_gamma=self.cfg.beam.get('maes_expansion_gamma', 2.3),
-                        preserve_alignments=self.preserve_alignments,
-                        ngram_lm_model=self.cfg.beam.get('ngram_lm_model', None),
-                        ngram_lm_alpha=self.cfg.beam.get('ngram_lm_alpha', 0.0),
-                        blank_lm_score_mode=self.cfg.beam.get(
-                            'blank_lm_score_mode', BlankLMScoreMode.LM_WEIGHTED_FULL
-                        ),
-                        pruning_mode=self.cfg.beam.get('pruning_mode', PruningMode.LATE),
-                        score_norm=self.cfg.beam.get('score_norm', True),
-                        allow_cuda_graphs=self.cfg.beam.get('allow_cuda_graphs', False),
-                        return_best_hypothesis=self.cfg.beam.get('return_best_hypothesis', True),
-                    )
+            
+            self.decoding = tdt_beam_decoding.BeamBatchedTDTInfer(
+                decoder_model=decoder,
+                joint_model=joint,
+                blank_index=self.blank_id,
+                durations=self.durations,
+                beam_size=self.cfg.beam.beam_size,
+                search_type='malsd_batch',
+                max_symbols_per_step=self.cfg.beam.get("max_symbols", 10),
+                ngram_lm_model=self.cfg.beam.get('ngram_lm_model', None),
+                ngram_lm_alpha=self.cfg.beam.get('ngram_lm_alpha', 0.0),
+                blank_lm_score_mode=self.cfg.beam.get(
+                    'blank_lm_score_mode', BlankLMScoreMode.LM_WEIGHTED_FULL
+                ),
+                pruning_mode=self.cfg.beam.get('pruning_mode', PruningMode.LATE),
+                score_norm=self.cfg.beam.get('score_norm', True),
+                allow_cuda_graphs=self.cfg.beam.get('allow_cuda_graphs', True),
+                return_best_hypothesis=self.cfg.beam.get('return_best_hypothesis', True),
+            )
         else:
             raise ValueError(
                 f"Incorrect decoding strategy supplied. Must be one of {possible_strategies}\n"
                 f"but was provided {self.cfg.strategy}"
             )
 
-        # Update the joint fused batch size or disable it entirely if needed.
-        self.update_joint_fused_batch_size()
+
         
         if isinstance(self.decoding, rnnt_beam_decoding.BeamRNNTInfer) or isinstance(
             self.decoding, tdt_beam_decoding.BeamTDTInfer
@@ -604,12 +390,6 @@ class RNNTDecoding(ConfidenceMixin):
                 n_hyps = nbest_hyp.n_best_hypotheses  # Extract all hypotheses for this sample
                 decoded_hyps = self.decode_hypothesis(n_hyps)  # type: List[str]
 
-                # If computing timestamps
-                if self.compute_timestamps is True:
-                    timestamp_type = self.cfg.get('rnnt_timestamp_type', 'all')
-                    for hyp_idx in range(len(decoded_hyps)):
-                        decoded_hyps[hyp_idx] = self.compute_rnnt_timestamps(decoded_hyps[hyp_idx], timestamp_type)
-
                 hypotheses.append(decoded_hyps[0])  # best hypothesis
                 all_hypotheses.append(decoded_hyps)
 
@@ -630,10 +410,7 @@ class RNNTDecoding(ConfidenceMixin):
 
             if return_hypotheses:
                 # greedy decoding, can get high-level confidence scores
-                if self.preserve_frame_confidence and (
-                    self.preserve_word_confidence or self.preserve_token_confidence
-                ):
-                    hypotheses = self.compute_confidence(hypotheses)
+            
                 return hypotheses
 
             return [Hypothesis(h.score, h.y_sequence, h.text) for h in hypotheses]
@@ -689,97 +466,7 @@ class RNNTDecoding(ConfidenceMixin):
 
         return hypotheses_list
 
-    def compute_confidence(self, hypotheses_list: List[Hypothesis]) -> List[Hypothesis]:
-        """
-        Computes high-level (per-token and/or per-word) confidence scores for a list of hypotheses.
-        Assumes that `frame_confidence` is present in the hypotheses.
 
-        Args:
-            hypotheses_list: List of Hypothesis.
-
-        Returns:
-            A list of hypotheses with high-level confidence scores.
-        """
-        if self._is_tdt:
-            # if self.tdt_include_duration_confidence is True then frame_confidence elements consist of two numbers
-            maybe_pre_aggregate = (
-                (lambda x: self._aggregate_confidence(x)) if self.tdt_include_duration_confidence else (lambda x: x)
-            )
-            for hyp in hypotheses_list:
-                token_confidence = []
-                # trying to recover frame_confidence according to alignments
-                subsequent_blank_confidence = []
-                # going backwards since <blank> tokens are considered belonging to the last non-blank token.
-                for fc, fa in zip(hyp.frame_confidence[::-1], hyp.alignments[::-1]):
-                    # there is only one score per frame most of the time
-                    if len(fa) > 1:
-                        for i, a in reversed(list(enumerate(fa))):
-                            if a[-1] == self.blank_id:
-                                if not self.exclude_blank_from_confidence:
-                                    subsequent_blank_confidence.append(maybe_pre_aggregate(fc[i]))
-                            elif not subsequent_blank_confidence:
-                                token_confidence.append(maybe_pre_aggregate(fc[i]))
-                            else:
-                                token_confidence.append(
-                                    self._aggregate_confidence(
-                                        [maybe_pre_aggregate(fc[i])] + subsequent_blank_confidence
-                                    )
-                                )
-                                subsequent_blank_confidence = []
-                    else:
-                        i, a = 0, fa[0]
-                        if a[-1] == self.blank_id:
-                            if not self.exclude_blank_from_confidence:
-                                subsequent_blank_confidence.append(maybe_pre_aggregate(fc[i]))
-                        elif not subsequent_blank_confidence:
-                            token_confidence.append(maybe_pre_aggregate(fc[i]))
-                        else:
-                            token_confidence.append(
-                                self._aggregate_confidence([maybe_pre_aggregate(fc[i])] + subsequent_blank_confidence)
-                            )
-                            subsequent_blank_confidence = []
-                token_confidence = token_confidence[::-1]
-                hyp.token_confidence = token_confidence
-        else:
-            if self.exclude_blank_from_confidence:
-                for hyp in hypotheses_list:
-                    hyp.token_confidence = hyp.non_blank_frame_confidence
-            else:
-                for hyp in hypotheses_list:
-                    timestep = hyp.timestamp.tolist() if isinstance(hyp.timestamp, torch.Tensor) else hyp.timestamp
-                    offset = 0
-                    token_confidence = []
-                    if len(timestep) > 0:
-                        for ts, te in zip(timestep, timestep[1:] + [len(hyp.frame_confidence)]):
-                            if ts != te:
-                                # <blank> tokens are considered to belong to the last non-blank token, if any.
-                                token_confidence.append(
-                                    self._aggregate_confidence(
-                                        [hyp.frame_confidence[ts][offset]]
-                                        + [fc[0] for fc in hyp.frame_confidence[ts + 1 : te]]
-                                    )
-                                )
-                                offset = 0
-                            else:
-                                token_confidence.append(hyp.frame_confidence[ts][offset])
-                                offset += 1
-                    hyp.token_confidence = token_confidence
-        if self.preserve_word_confidence:
-            for hyp in hypotheses_list:
-                hyp.word_confidence = self._aggregate_token_confidence(hyp)
-        return hypotheses_list
-
-    def _aggregate_token_confidence(self, hypothesis: Hypothesis) -> List[float]:
-        """
-        Aggregate token confidence to a word-level confidence.
-
-        Args:
-            hypothesis: Hypothesis
-
-        Returns:
-            A list of word-level confidence scores.
-        """
-        return self._aggregate_token_confidence_chars(hypothesis.words, hypothesis.token_confidence)
 
     def decode_tokens_to_str(self, tokens: List[int]) -> str:
         """
@@ -808,543 +495,9 @@ class RNNTDecoding(ConfidenceMixin):
         token_list = [self.labels_map[c] for c in tokens if c < self.blank_id - self.num_extra_outputs]
         return token_list
 
-    def decode_tokens_to_lang(self, tokens: List[int]) -> str:
-        """
-        Compute the most likely language ID (LID) string given the tokens.
 
-        Args:
-            tokens: List of int representing the token ids.
 
-        Returns:
-            A decoded LID string.
-        """
-        lang = self.tokenizer.ids_to_lang(tokens)
-        return lang
 
-    def decode_ids_to_langs(self, tokens: List[int]) -> List[str]:
-        """
-        Decode a token id list into language ID (LID) list.
 
-        Args:
-            tokens: List of int representing the token ids.
 
-        Returns:
-            A list of decoded LIDS.
-        """
-        lang_list = self.tokenizer.ids_to_text_and_langs(tokens)
-        return lang_list
-
-    def update_joint_fused_batch_size(self):
-        """ "
-        Updates the fused batch size for the joint module if applicable.
-
-        If `joint_fused_batch_size` is set, verifies that the joint module has
-        the required `set_fused_batch_size` and `set_fuse_loss_wer` functions.
-        If present, updates the batch size; otherwise, logs a warning.
-
-        If `joint_fused_batch_size` is <= 0, disables fused batch processing.
-        """
-        if self.joint_fused_batch_size is None:
-            # do nothing and let the Joint itself handle setting up of the fused batch
-            return
-
-        if not hasattr(self.decoding.joint, 'set_fused_batch_size'):
-            logging.warning(
-                "The joint module does not have `set_fused_batch_size(int)` as a setter function.\n"
-                "Ignoring update of joint fused batch size."
-            )
-            return
-
-        if not hasattr(self.decoding.joint, 'set_fuse_loss_wer'):
-            logging.warning(
-                "The joint module does not have `set_fuse_loss_wer(bool, RNNTLoss, RNNTWER)` "
-                "as a setter function.\n"
-                "Ignoring update of joint fused batch size."
-            )
-            return
-
-        if self.joint_fused_batch_size > 0:
-            self.decoding.joint.set_fused_batch_size(self.joint_fused_batch_size)
-        else:
-            logging.info("Joint fused batch size <= 0; Will temporarily disable fused batch step in the Joint.")
-            self.decoding.joint.set_fuse_loss_wer(False)
-
-    def compute_rnnt_timestamps(self, hypothesis: Hypothesis, timestamp_type: str = "all"):
-        """
-        Computes character, word, and segment timestamps for an RNN-T hypothesis.
-
-        This function generates timestamps for characters, words, and segments within
-        a hypothesis sequence. The type of timestamps computed depends on `timestamp_type`,
-        which can be 'char', 'word', 'segment', or 'all'.
-
-        Args:
-            hypothesis (Hypothesis): Hypothesis.
-            timestamp_type (str): Type of timestamps to compute. Options are 'char', 'word', 'segment', or 'all'.
-                                Defaults to 'all'.
-
-        Returns:
-            Hypothesis: The updated hypothesis with computed timestamps for characters, words, and/or segments.
-        """
-        assert timestamp_type in ['char', 'word', 'segment', 'all']
-
-        # Unpack the temporary storage
-        decoded_prediction, alignments, token_repetitions = hypothesis.text
-
-        # Retrieve offsets
-        char_offsets = word_offsets = None
-        char_offsets = self._compute_offsets(hypothesis, token_repetitions, self.blank_id)
-
-        # finally, set the flattened decoded predictions to text field for later text decoding
-        hypothesis.text = decoded_prediction
-
-        # Assert number of offsets and hypothesis tokens are 1:1 match.
-        num_flattened_tokens = 0
-        for t in range(len(char_offsets)):
-            # Count all tokens except for RNNT BLANK token emitted to designate "End of timestep"
-            num_flattened_tokens += len([c for c in char_offsets[t]['char'] if c != self.blank_id])
-
-        if num_flattened_tokens != len(hypothesis.text):
-            raise ValueError(
-                f"`char_offsets`: {char_offsets} and `processed_tokens`: {hypothesis.text}"
-                " have to be of the same length, but are: "
-                f"`len(offsets)`: {num_flattened_tokens} and `len(processed_tokens)`:"
-                f" {len(hypothesis.text)}"
-            )
-
-        encoded_char_offsets = copy.deepcopy(char_offsets)
-
-        # Correctly process the token ids to chars/subwords.
-        for i, offsets in enumerate(char_offsets):
-            decoded_chars = []
-            for char in offsets['char']:
-                if char != self.blank_id:  # ignore the RNNT Blank token
-                    decoded_chars.append(self.decode_tokens_to_str([int(char)]))
-            char_offsets[i]["char"] = decoded_chars
-
-        encoded_char_offsets, char_offsets = self._refine_timestamps(
-            encoded_char_offsets, char_offsets, self.supported_punctuation
-        )
-
-        # detect char vs subword models
-        lens = []
-        for v in char_offsets:
-            tokens = v["char"]
-            # each token may be either 1 unicode token or multiple unicode token
-            # for character based models, only 1 token is used
-            # for subword, more than one token can be used.
-            # Computing max, then summing up total lens is a test to check for char vs subword
-            # For char models, len(lens) == sum(lens)
-            # but this is violated for subword models.
-            max_len = max(len(c) for c in tokens)
-            lens.append(max_len)
-
-        # array of one or more chars implies subword based model with multiple char emitted per TxU step (via subword)
-        if sum(lens) > len(lens):
-            text_type = 'subword'
-        else:
-            # full array of ones implies character based model with 1 char emitted per TxU step
-            text_type = 'char'
-
-        # retrieve word offsets from character offsets
-        word_offsets = None
-        if timestamp_type in ['word', 'segment', 'all']:
-            if text_type == 'char':
-                word_offsets = self._get_word_offsets_chars(
-                    char_offsets,
-                    word_delimiter_char=self.word_seperator,
-                    supported_punctuation=self.supported_punctuation,
-                )
-            else:
-                # utilize the copy of char offsets with the correct integer ids for tokens
-                # so as to avoid tokenize -> detokenize -> compare -> merge steps.
-                word_offsets = self._get_word_offsets_subwords_sentencepiece(
-                    encoded_char_offsets,
-                    hypothesis,
-                    decode_ids_to_tokens=self.decode_ids_to_tokens,
-                    decode_tokens_to_str=self.decode_tokens_to_str,
-                    rnnt_token=self.blank_id,
-                    supported_punctuation=self.supported_punctuation,
-                )
-
-        segment_offsets = None
-        if timestamp_type in ['segment', 'all']:
-            segment_offsets = self._get_segment_offsets(
-                word_offsets,
-                segment_delimiter_tokens=self.segment_seperators,
-                supported_punctuation=self.supported_punctuation,
-                segment_gap_threshold=self.segment_gap_threshold,
-            )
-
-        # attach results
-        if len(hypothesis.timestamp) > 0:
-            timestep_info = hypothesis.timestamp
-        else:
-            timestep_info = []
-
-        # Setup defaults
-        hypothesis.timestamp = {"timestep": timestep_info}
-
-        # Add char / subword time stamps
-        if char_offsets is not None and timestamp_type in ['char', 'all']:
-            hypothesis.timestamp['char'] = char_offsets
-
-        # Add word time stamps
-        if word_offsets is not None and timestamp_type in ['word', 'all']:
-            hypothesis.timestamp['word'] = word_offsets
-
-        # Add segment time stamps
-        if segment_offsets is not None and timestamp_type in ['segment', 'all']:
-            hypothesis.timestamp['segment'] = segment_offsets
-
-        # Convert the flattened token indices to text
-        hypothesis.text = self.decode_tokens_to_str(hypothesis.text)
-
-        # collapse leading spaces before . , ? for PC models
-        hypothesis.text = re.sub(r'(\s+)([\.\,\?])', r'\2', hypothesis.text)
-
-        if self.compute_hypothesis_token_set:
-            hypothesis.tokens = self.decode_ids_to_tokens(decoded_prediction)
-
-        return hypothesis
-
-    @staticmethod
-    def _compute_offsets(
-        hypothesis: Hypothesis, token_repetitions: List[int], rnnt_token: int
-    ) -> List[Dict[str, Union[str, int]]]:
-        """
-        Utility method that calculates the indidual time indices where a token starts and ends.
-
-        Args:
-            hypothesis: A Hypothesis object that contains `text` field that holds the character / subword token
-                emitted at every time step after rnnt collapse.
-            token_repetitions: A list of ints representing the number of repetitions of each emitted token.
-            rnnt_token: The integer of the rnnt blank token used during rnnt collapse.
-
-        Returns:
-            List of dictionaries with token information and timestamps.
-        """
-        start_index = 0
-        # If the exact timestep information is available, utilize the 1st non-rnnt blank token timestep
-        # as the start index.
-        if hypothesis.timestamp is not None and len(hypothesis.timestamp) > 0:
-            first_timestep = hypothesis.timestamp[0]
-            first_timestep = first_timestep if isinstance(first_timestep, int) else first_timestep.item()
-            start_index = max(0, first_timestep - 1)
-
-        # Construct the start and end indices brackets
-        end_indices = np.asarray(token_repetitions).cumsum()
-        start_indices = np.concatenate(([start_index], end_indices[:-1]))
-
-        # Process the TxU dangling alignment tensor, containing pairs of (logits, label)
-        alignment_labels = [al_logits_labels for al_logits_labels in hypothesis.text[1]]
-        for t in range(len(alignment_labels)):
-            for u in range(len(alignment_labels[t])):
-                alignment_labels[t][u] = alignment_labels[t][u][1]  # pick label from (logit, label) tuple
-
-        # Merge the results per token into a list of dictionaries
-        offsets = [
-            {"char": a, "start_offset": s, "end_offset": e}
-            for a, s, e in zip(alignment_labels, start_indices, end_indices)
-        ]
-
-        # Filter out RNNT token (blank at [t][0] position). This is because blank can only occur at end of a
-        # time step for RNNT, so if 0th token is blank, then that timestep is skipped.
-        offsets = list(filter(lambda offsets: offsets["char"][0] != rnnt_token, offsets))
-        return offsets
-
-    @staticmethod
-    def _compute_offsets_tdt(hypothesis: Hypothesis, *args) -> List[Dict[str, Union[str, int]]]:
-        """
-        Utility method that calculates the indidual time indices where a token starts and ends.
-
-        Args:
-            hypothesis: A Hypothesis object that contains `text` field that holds the character / subword token
-                emitted at a specific time step considering predicted durations of the previous tokens.
-
-        Returns:
-            List of dictionaries with token information and timestamps.
-        """
-        if isinstance(hypothesis.timestamp, torch.Tensor):
-            hypothesis.token_duration = hypothesis.token_duration.cpu().tolist()
-
-        if isinstance(hypothesis.timestamp, torch.Tensor):
-            hypothesis.timestamp = hypothesis.timestamp.cpu().tolist()
-
-        # Merge the results per token into a list of dictionaries
-        offsets = [
-            {"char": [t], "start_offset": s, "end_offset": s + d}
-            for t, s, d in zip(hypothesis.text[0], hypothesis.timestamp, hypothesis.token_duration)
-        ]
-        return offsets
-
-    @staticmethod
-    def _refine_timestamps(
-        encoded_char_offsets: List[Dict[str, Union[str, int]]],
-        char_offsets: List[Dict[str, Union[str, int]]],
-        supported_punctuation: Optional[Set] = None,
-    ) -> List[Dict[str, Union[str, int]]]:
-        # no refinement for rnnt
-        return encoded_char_offsets, char_offsets
-
-    @staticmethod
-    def _refine_timestamps_tdt(
-        encoded_char_offsets: List[Dict[str, Union[str, int]]],
-        char_offsets: List[Dict[str, Union[str, int]]],
-        supported_punctuation: Optional[Set] = None,
-    ) -> List[Dict[str, Union[str, int]]]:
-        if not supported_punctuation:
-            return encoded_char_offsets, char_offsets
-
-        for i, offset in enumerate(char_offsets):
-            # Check if token is a punctuation mark
-            # If so, set its start and end offset as start and end of the previous token
-            # This is done because there was observed a behaviour, when punctuation marks are
-            # predicted long after preceding token (i.e. after silence)
-            if offset['char'][0] in supported_punctuation and i > 0:
-                encoded_char_offsets[i]['start_offset'] = offset['start_offset'] = char_offsets[i - 1]['end_offset']
-                encoded_char_offsets[i]['end_offset'] = offset['end_offset'] = offset['start_offset']
-
-        return encoded_char_offsets, char_offsets
-
-    @staticmethod
-    def _get_word_offsets_chars(
-        offsets: Dict[str, Union[str, float]],
-        word_delimiter_char: str = " ",
-        supported_punctuation: Optional[Set] = None,
-    ) -> Dict[str, Union[str, float]]:
-        """
-        Utility method which constructs word time stamps out of character time stamps.
-
-        References:
-            This code is a port of the Hugging Face code for word time stamp construction.
-
-        Args:
-            offsets: A list of dictionaries, each containing "char", "start_offset" and "end_offset".
-            word_delimiter_char: Character token that represents the word delimiter. By default, " ".
-            supported_punctuation: Set of supported punctuation marks.
-
-        Returns:
-            A list of dictionaries containing the word offsets. Each item contains "word", "start_offset" and
-            "end_offset".
-        """
-        word_offsets = []
-
-        last_state = "SPACE"
-        word = ""
-        start_offset = 0
-        end_offset = 0
-        for i, offset in enumerate(offsets):
-            chars = offset["char"]
-            for char in chars:
-                state = "SPACE" if char == word_delimiter_char else "WORD"
-
-                if state == last_state:
-                    # If we are in the same state as before, we simply repeat what we've done before
-                    end_offset = offset["end_offset"]
-                    word += char
-                else:
-                    next_puntuation = (
-                        (supported_punctuation and offsets[i + 1]['char'][0] in supported_punctuation)
-                        if i < len(offsets) - 1
-                        else False
-                    )
-                    # Switching state
-                    if state == "SPACE" and not next_puntuation:
-                        # Finishing a word
-                        word_offsets.append({"word": word, "start_offset": start_offset, "end_offset": end_offset})
-                    elif state == "SPACE" and next_puntuation:
-                        continue
-                    else:
-                        # Starting a new word
-                        start_offset = offset["start_offset"]
-                        end_offset = offset["end_offset"]
-                        word = char
-
-                last_state = state
-
-        if last_state == "WORD":
-            word_offsets.append({"word": word, "start_offset": start_offset, "end_offset": end_offset})
-
-        return word_offsets
-
-    @staticmethod
-    def _get_word_offsets_subwords_sentencepiece(
-        offsets: Dict[str, Union[str, float]],
-        hypothesis: Hypothesis,
-        decode_ids_to_tokens: Callable[[List[int]], str],
-        decode_tokens_to_str: Callable[[List[int]], str],
-        rnnt_token: int,
-        supported_punctuation: Optional[Set] = None,
-    ) -> Dict[str, Union[str, float]]:
-        """
-        Utility method which constructs word time stamps out of sub-word time stamps.
-
-        **Note**: Only supports Sentencepiece based tokenizers !
-
-        Args:
-            offsets: A list of dictionaries, each containing "char", "start_offset" and "end_offset".
-            hypothesis: Hypothesis object that contains `text` field, where each token is a sub-word id
-                after rnnt collapse.
-            decode_ids_to_tokens: A Callable function that accepts a list of integers and maps it to a sub-word.
-            decode_tokens_to_str: A Callable function that accepts a list of integers and maps it to text / str.
-            rnnt_token: The integer ID of the RNNT blank token.
-            supported_punctuation: Set of supported punctuation marks.
-
-        Returns:
-            A list of dictionaries containing the word offsets. Each item contains "word", "start_offset" and
-            "end_offset".
-        """
-        word_offsets = []
-        built_word = ""
-        previous_token_index = 0
-        # For every offset token
-        for i, offset in enumerate(offsets):
-            # For every subword token in offset token list (ignoring the RNNT Blank token if it exists)
-            for char in offset['char']:
-                if char != rnnt_token:
-                    char = int(char)
-
-                    # Compute the sub-word text representation, and the decoded text (stripped of sub-word markers).
-                    token = decode_ids_to_tokens([char])[0]
-                    token_text = decode_tokens_to_str([char])
-
-                    # It is a supported punctuation mark, which needs to be added to the built word regardless of its identifier.
-                    if supported_punctuation and token_text in supported_punctuation:
-                        built_word += token_text.strip()
-                    # It is a sub-word token, or contains an identifier at the beginning such as _ or ## that was stripped
-                    # after forcing partial text conversion of the token.
-                    elif token != token_text:
-                        # If there is partially or fully built word, append to word offsets.
-                        # Note: This is "old" subword, that occurs *after* current sub-word has started.
-                        if built_word:
-                            word_offsets.append(
-                                {
-                                    "word": built_word.strip(),
-                                    "start_offset": offsets[previous_token_index]["start_offset"],
-                                    "end_offset": offsets[i - 1]["end_offset"],
-                                }
-                            )
-
-                        # Prepare new built_word
-                        built_word = ""
-                        built_word += token_text
-                        previous_token_index = i
-                    else:
-                        # If the token does not contain any sub-word start mark, then the sub-word has not completed yet
-                        # Append to current built word.
-                        built_word += token_text.strip()
-
-        # Inject the start offset of the first token to word offsets
-        # This is because we always skip the delay the injection of the first sub-word due to the loop
-        # condition and check whether built token is ready or not.
-        # Therefore without this forced injection, the start_offset appears as off by 1.
-        # This should only be done when these arrays contain more than one element.
-        if offsets and word_offsets:
-            word_offsets[0]["start_offset"] = offsets[0]["start_offset"]
-
-        # If there is any built word left, inject it into the final word offset.
-        # The start offset of this token is the start time of the next token to process.
-        # The end offset of this token is the end time of the last token from offsets.
-        # Note that as we group tokens into words, we need to keep track of
-        # the index of the first token in each word within the full char_offsets list.
-        # This lets us retrieve the correct start_offset for that word.
-        if built_word:
-            # start from the previous token index as this hasn't been committed to word_offsets yet
-            # if we still have content in built_token
-            start_offset = offsets[previous_token_index]["start_offset"]
-            word_offsets.append(
-                {
-                    "word": built_word.strip(),
-                    "start_offset": start_offset,
-                    "end_offset": offsets[-1]["end_offset"],
-                }
-            )
-        return word_offsets
-
-    @staticmethod
-    def _get_segment_offsets(
-        offsets: Dict[str, Union[str, float]],
-        segment_delimiter_tokens: List[str],
-        supported_punctuation: Optional[Set] = None,
-        segment_gap_threshold: Optional[int] = None,
-    ) -> Dict[str, Union[str, float]]:
-        """
-        Utility method which constructs segment time stamps out of word time stamps.
-
-        Args:
-            offsets: A list of dictionaries, each containing "word", "start_offset" and "end_offset".
-            segment_delimiter_tokens: List containing tokens representing the seperator(s) between segments.
-            supported_punctuation: Set containing punctuation marks in the vocabulary.
-            segment_gap_threshold: Number of frames between 2 consecutive words necessary to form segments out of plain
-            text.
-
-        Returns:
-            A list of dictionaries containing the segment offsets. Each item contains "segment", "start_offset" and
-            "end_offset".
-        """
-        if (
-            supported_punctuation
-            and not set(segment_delimiter_tokens).intersection(supported_punctuation)
-            and not segment_gap_threshold
-        ):
-            logging.warning(
-                f"Specified segment seperators are not in supported punctuation {supported_punctuation}. "
-                "If the seperators are not punctuation marks, ignore this warning. "
-                "Otherwise, specify 'segment_gap_threshold' parameter in decoding config to form segments.",
-                mode=logging_mode.ONCE,
-            )
-
-        segment_offsets = []
-        segment_words = []
-        previous_word_index = 0
-
-        # For every offset word
-        for i, offset in enumerate(offsets):
-
-            word = offset['word']
-            # check if thr word ends with any delimeter token or the word itself is a delimeter
-            if segment_gap_threshold and segment_words:
-                gap_between_words = offset['start_offset'] - offsets[i - 1]['end_offset']
-
-                if gap_between_words >= segment_gap_threshold:
-                    segment_offsets.append(
-                        {
-                            "segment": ' '.join(segment_words),
-                            "start_offset": offsets[previous_word_index]["start_offset"],
-                            "end_offset": offsets[i - 1]["end_offset"],
-                        }
-                    )
-
-                    segment_words = [word]
-                    previous_word_index = i
-                    continue
-
-            elif word and (word[-1] in segment_delimiter_tokens or word in segment_delimiter_tokens):
-                segment_words.append(word)
-                if segment_words:
-                    segment_offsets.append(
-                        {
-                            "segment": ' '.join(segment_words),
-                            "start_offset": offsets[previous_word_index]["start_offset"],
-                            "end_offset": offset["end_offset"],
-                        }
-                    )
-
-                segment_words = []
-                previous_word_index = i + 1
-                continue
-
-            segment_words.append(word)
-
-        if segment_words:
-            start_offset = offsets[previous_word_index]["start_offset"]
-            segment_offsets.append(
-                {
-                    "segment": ' '.join(segment_words),
-                    "start_offset": start_offset,
-                    "end_offset": offsets[-1]["end_offset"],
-                }
-            )
-        segment_words.clear()
-
-        return segment_offsets
+    

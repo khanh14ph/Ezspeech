@@ -896,48 +896,17 @@ class RNNTJoint(torch.nn.Module):
                     losses = None
 
                 # Update WER for sub batch
-                if compute_wer:
-                    sub_enc = sub_enc.transpose(1, 2)  # [B, T, D] -> [B, D, T]
-                    sub_enc = sub_enc.detach()
-                    sub_transcripts = sub_transcripts.detach()
+                
 
-                    # Update WER on each process without syncing
-                    if self.training:
-                        original_sync = self.wer._to_sync
-                        self.wer._to_sync = False
-
-                    self.wer.update(
-                        predictions=sub_enc,
-                        predictions_lengths=sub_enc_lens,
-                        targets=sub_transcripts,
-                        targets_lengths=sub_transcript_lens,
-                    )
-                    # Sync and all_reduce on all processes, compute global WER
-                    wer, wer_num, wer_denom = self.wer.compute()
-                    self.wer.reset()
-
-                    if self.training:
-                        self.wer._to_sync = original_sync
-
-                    wers.append(wer)
-                    wer_nums.append(wer_num)
-                    wer_denoms.append(wer_denom)
+                    
 
                 del sub_enc, sub_transcripts, sub_enc_lens, sub_transcript_lens
 
             losses = self.loss.reduce(losses, target_lengths,batch_size)
 
             # Collect sub batch wer results
-            if compute_wer:
-                wer = sum(wers) / len(wers)
-                wer_num = sum(wer_nums)
-                wer_denom = sum(wer_denoms)
-            else:
-                wer = None
-                wer_num = None
-                wer_denom = None
 
-            return losses, wer, wer_num, wer_denom
+            return losses
     def project_prednet(self, prednet_output: torch.Tensor) -> torch.Tensor:
         """
         Project the Prediction Network (Decoder) output to the joint hidden dimension.
@@ -1068,7 +1037,6 @@ class RNNTJoint(torch.nn.Module):
                     res = (res / self.temperature).log_softmax(dim=-1)
                 else:
                     res = res.log_softmax(dim=-1)
-
         return res
 
     def _joint_net_modules(self, num_classes, pred_n_hidden, enc_n_hidden, joint_n_hidden, activation, dropout):

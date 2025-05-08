@@ -1,12 +1,10 @@
 from typing import Tuple, List, Union, Optional
 from omegaconf import DictConfig
-from tokenizers import Tokenizer
 
 import torch
 import torchaudio
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
-import sentencepiece as spm
 import torchaudio.transforms as T
 
 from ezspeech.modules.dataset.utils.text import tokenize

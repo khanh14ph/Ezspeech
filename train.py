@@ -10,7 +10,7 @@ pl.seed_everything(42, workers=True)
 torch.set_float32_matmul_precision("medium")
 
 
-@hydra.main(version_base=None, config_path="config", config_name="asr_rnnt")
+@hydra.main(version_base=None, config_path="config", config_name="asr1")
 def main(config: DictConfig):
     task = instantiate(config.task, _recursive_=False)
     if config.task.model.get("pretrained_weights") is not None:

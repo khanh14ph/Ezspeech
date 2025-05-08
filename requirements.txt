@@ -9,3 +9,4 @@ transformers[torch]
 datasets
 jiwer
 orjson
+num2words

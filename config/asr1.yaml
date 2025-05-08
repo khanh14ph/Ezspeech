@@ -56,7 +56,7 @@ task:
 
       vocab: *vocab
     loaders:
-      batch_size: 8
+      batch_size: 2
       num_workers: 8
       pin_memory: false
 
@@ -70,18 +70,30 @@ task:
 
 
     encoder:
-      _target_: ezspeech.modules.encoder.squeezeformer.SqueezeFormerEncoder
-      input_dim: 128
+      _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
+      feat_in: 128
+      n_layers: 12
       d_model: *d_model
-      num_layers: 12
       subsampling_factor: 4
-      subsampling_num_filters: 256
-      subsampling_kernel_size: 3
-      attn_num_heads: 8
-      attn_group_size: 3
-      attn_max_pos_encoding: 10000
-      conv_kernel_size: 31
+      subsampling_conv_channels: 256
+
+      ff_expansion_factor: 4
+      self_attention_model: rel_pos
+      n_heads: 8
+      att_context_size: [-1, -1]
+      att_context_style: regular
+      untie_biases: true
+      pos_emb_max_len: 5000
+      conv_kernel_size: 9
+      conv_norm_type: batch_norm
+      conv_context_size: null
       dropout: 0.1
+      dropout_pre_encoder: 0.1
+      dropout_emb: 0.0
+      dropout_att: 0.1
+      stochastic_depth_drop_prob: 0.0
+      stochastic_depth_mode: linear
+      stochastic_depth_start_layer: 1
     decoder:
       _target_: ezspeech.modules.decoder.decoder.CTCDecoder
       input_dim: *d_model
@@ -118,7 +130,7 @@ task:
       # However, to preserve memory, this ratio can be 1:8 or even 1:16.
       # Extreme case of 1:B (i.e. fused_batch_size=1) should be avoided as training speed would be very slow.
       fuse_loss_wer: true
-      fused_batch_size: 2
+      fused_batch_size: 1
 
       jointnet:
         encoder_hidden: *d_model
@@ -170,8 +182,8 @@ task:
         beam_size: 2
         return_best_hypothesis: False
         score_norm: true
-        tsd_max_sym_exp: 50  # for Time Synchronous Decoding
         alsd_max_target_len: 2.0  # for Alignment-Length Synchronous Decoding
+      word_seperator: "|"
     optimizer:
       lr: 1
       betas: [0.9, 0.999]
@@ -208,16 +220,16 @@ loggers:
     _target_: pytorch_lightning.loggers.TensorBoardLogger
     save_dir: ../lightning_logs/oov
     name: null
-    version: testcode
+    version: testcode1
 
     default_hp_metric: false
 
 trainer:
-  max_epochs: 100
+  max_epochs: 200
   strategy: ddp
   accelerator: gpu
-  devices: [2]
+  devices: [1]
   accumulate_grad_batches: 1
   # detect_anomaly: True
-  precision: 16
-  val_check_interval: 0.1
+  # precision: 16
+  val_check_interval: 0.5

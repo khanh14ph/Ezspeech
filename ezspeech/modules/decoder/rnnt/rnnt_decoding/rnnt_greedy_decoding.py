@@ -79,22 +79,7 @@ class _GreedyRNNTInfer(ConfidenceMethodMixin):
         blank_index: int index of the blank token. Can be 0 or len(vocabulary).
         max_symbols_per_step: Optional int. The maximum number of symbols that can be added
             to a sequence in a single time step; if set to None then there is
-            no limit.
-        preserve_alignments: Bool flag which preserves the history of alignments generated during
-            greedy decoding (sample / batched). When set to true, the Hypothesis will contain
-            the non-null value for `alignments` in it. Here, `alignments` is a List of List of
-            Tuple(Tensor (of length V + 1), Tensor(scalar, label after argmax)).
-
-            The length of the list corresponds to the Acoustic Length (T).
-            Each value in the list (Ti) is a torch.Tensor (U), representing 1 or more targets from a vocabulary.
-            U is the number of target tokens for the current timestep Ti.
-        preserve_frame_confidence: Bool flag which preserves the history of per-frame confidence scores generated
-            during greedy decoding (sample / batched). When set to true, the Hypothesis will contain
-            the non-null value for `frame_confidence` in it. Here, `frame_confidence` is a List of List of floats.
-
-            The length of the list corresponds to the Acoustic Length (T).
-            Each value in the list (Ti) is a torch.Tensor (U), representing 1 or more confidence scores.
-            U is the number of target tokens for the current timestep Ti.
+            no limit
         confidence_method_cfg: A dict-like object which contains the method name and settings to compute per-frame
             confidence scores.
 
@@ -136,8 +121,6 @@ class _GreedyRNNTInfer(ConfidenceMethodMixin):
         joint_model: RNNTJoint,
         blank_index: int,
         max_symbols_per_step: Optional[int] = None,
-        preserve_alignments: bool = False,
-        preserve_frame_confidence: bool = False,
         confidence_method_cfg: Optional[DictConfig] = None,
     ):
         super().__init__()
@@ -150,8 +133,6 @@ class _GreedyRNNTInfer(ConfidenceMethodMixin):
         if max_symbols_per_step is not None and max_symbols_per_step <= 0:
             raise ValueError(f"Expected max_symbols_per_step > 0 (or None), got {max_symbols_per_step}")
         self.max_symbols = max_symbols_per_step
-        self.preserve_alignments = preserve_alignments
-        self.preserve_frame_confidence = preserve_frame_confidence
 
         # set confidence calculation method
         self._init_confidence_method(confidence_method_cfg)
@@ -249,8 +230,6 @@ class GreedyBatchedRNNTInferConfig:
     """Greedy Batched RNNT Infer Config"""
 
     max_symbols_per_step: Optional[int] = 10
-    preserve_alignments: bool = False
-    preserve_frame_confidence: bool = False
     tdt_include_token_duration: bool = False
     tdt_include_duration_confidence: bool = False
     confidence_method_cfg: Optional[ConfidenceMethodConfig] = field(default_factory=lambda: ConfidenceMethodConfig())
@@ -279,19 +258,6 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
         max_symbols_per_step: Optional int. The maximum number of symbols that can be added
             to a sequence in a single time step; if set to None then there is
             no limit.
-        preserve_alignments: Bool flag which preserves the history of alignments generated during
-            greedy decoding (sample / batched). When set to true, the Hypothesis will contain
-            the non-null value for `alignments` in it. Here, `alignments` is a List of List of
-            Tuple(Tensor (of length V + 1 + num-big-blanks), Tensor(scalar, label after argmax)).
-            The length of the list corresponds to the Acoustic Length (T).
-            Each value in the list (Ti) is a torch.Tensor (U), representing 1 or more targets from a vocabulary.
-            U is the number of target tokens for the current timestep Ti.
-        preserve_frame_confidence: Bool flag which preserves the history of per-frame confidence scores generated
-            during greedy decoding (sample / batched). When set to true, the Hypothesis will contain
-            the non-null value for `frame_confidence` in it. Here, `frame_confidence` is a List of List of floats.
-            The length of the list corresponds to the Acoustic Length (T).
-            Each value in the list (Ti) is a torch.Tensor (U), representing 1 or more confidence scores.
-            U is the number of target tokens for the current timestep Ti.
         include_duration: Bool flag, which determines whether predicted durations for each token
             need to be included in the Hypothesis object. Defaults to False.
         include_duration_confidence: Bool flag indicating that the duration confidence scores are to be calculated and
@@ -338,8 +304,7 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
         blank_index: int,
         durations: list,
         max_symbols_per_step: Optional[int] = None,
-        preserve_alignments: bool = False,
-        preserve_frame_confidence: bool = False,
+     
         include_duration: bool = False,
         include_duration_confidence: bool = False,
         confidence_method_cfg: Optional[DictConfig] = None,
@@ -349,8 +314,6 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
             joint_model=joint_model,
             blank_index=blank_index,
             max_symbols_per_step=max_symbols_per_step,
-            preserve_alignments=preserve_alignments,
-            preserve_frame_confidence=preserve_frame_confidence,
             confidence_method_cfg=confidence_method_cfg,
         )
         self.durations = durations
@@ -424,12 +387,7 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
                 hypothesis.dec_state = self.decoder.batch_concat_states([partial_hypotheses.dec_state])
                 hypothesis.dec_state = _states_to_device(hypothesis.dec_state, x.device)
 
-        if self.preserve_alignments:
-            # Alignments is a 2-dimensional dangling list representing T x U
-            hypothesis.alignments = [[]]
 
-        if self.preserve_frame_confidence:
-            hypothesis.frame_confidence = [[]]
 
         time_idx = 0
         while time_idx < out_len:
@@ -455,9 +413,6 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
                 # If preserving per-frame confidence, log_normalize must be true
                 logits = self._joint_step(f, g, log_normalize=False)
                 logp = logits[0, 0, 0, : -len(self.durations)]
-                if self.preserve_frame_confidence:
-                    logp = torch.log_softmax(logp, -1)
-
                 duration_logp = torch.log_softmax(logits[0, 0, 0, -len(self.durations) :], dim=-1)
                 del g
 
@@ -474,17 +429,9 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
 
                 skip = self.durations[d_k]
 
-                if self.preserve_alignments:
-                    # insert logprobs into last timestep
-                    hypothesis.alignments[-1].append((logp.to('cpu'), torch.tensor(k, dtype=torch.int32)))
+          
 
-                if self.preserve_frame_confidence:
-                    # insert confidence into last timestep
-                    hypothesis.frame_confidence[-1].append(
-                        (self._get_confidence_tensor(logp), self._get_confidence_tensor(duration_logp))
-                        if self.include_duration_confidence
-                        else self._get_confidence_tensor(logp)
-                    )
+            
 
                 del logp
 
@@ -510,25 +457,11 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
             if skip == 0:
                 skip = 1
 
-            if self.preserve_alignments:
-                # convert Ti-th logits into a torch array
-                hypothesis.alignments.append([])  # blank buffer for next timestep
-
-            if self.preserve_frame_confidence:
-                hypothesis.frame_confidence.append([])  # blank buffer for next timestep
 
             if symbols_added == self.max_symbols:
                 time_idx += 1
 
-        # Remove trailing empty list of Alignments
-        if self.preserve_alignments:
-            if len(hypothesis.alignments[-1]) == 0:
-                del hypothesis.alignments[-1]
-
-        # Remove trailing empty list of per-frame confidence
-        if self.preserve_frame_confidence:
-            if len(hypothesis.frame_confidence[-1]) == 0:
-                del hypothesis.frame_confidence[-1]
+      
 
         # Unpack the hidden states
         hypothesis.dec_state = self.decoder.batch_select_state(hypothesis.dec_state, 0)

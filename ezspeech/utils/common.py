@@ -12,6 +12,7 @@ import orjson
 import torch.nn.functional as F
 from torch.special import gammaln
 
+from contextlib import  nullcontext
 
 def save_dataset(x: List[dict], filepath: str):
     with open(filepath, "w", encoding="utf8") as outfile:
@@ -89,6 +90,22 @@ def csv2json(csv_path,jsonl_path,sep=",",replace_columns=None):
 
     df=list(df.T.to_dict().values())
     save_dataset(df,jsonl_path)   
+def avoid_float16_autocast_context():
+    """
+    If the current autocast context is float16, cast it to bfloat16
+    if available (unless we're in jit) or float32
+    """
+
+    if torch.is_autocast_enabled() and torch.get_autocast_gpu_dtype() == torch.float16:
+        if torch.jit.is_scripting() or torch.jit.is_tracing():
+            return torch.amp.autocast('cuda', dtype=torch.float32)
+
+        if torch.cuda.is_bf16_supported():
+            return torch.amp.autocast('cuda', dtype=torch.bfloat16)
+        else:
+            return torch.amp.autocast('cuda', dtype=torch.float32)
+    else:
+        return nullcontext()
 
 if __name__ == "__main__":
     csv2json("/home4/khanhnd/vivos/test.tsv","/home4/khanhnd/Ezspeech/data/test.jsonl",sep="\t")
