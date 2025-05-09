@@ -90,7 +90,11 @@ class Hypothesis:
         """
         non_blank_frame_confidence = []
         # self.timestamp can be a dict for RNNT
-        timestamp = self.timestamp['timestep'] if isinstance(self.timestamp, dict) else self.timestamp
+        timestamp = (
+            self.timestamp["timestep"]
+            if isinstance(self.timestamp, dict)
+            else self.timestamp
+        )
         if len(timestamp) != 0 and self.frame_confidence is not None:
             if any(isinstance(i, list) for i in self.frame_confidence):  # rnnt
                 t_prev = -1
@@ -103,7 +107,9 @@ class Hypothesis:
                         offset += 1
                     non_blank_frame_confidence.append(self.frame_confidence[t][offset])
             else:  # ctc
-                non_blank_frame_confidence = [self.frame_confidence[t] for t in timestamp]
+                non_blank_frame_confidence = [
+                    self.frame_confidence[t] for t in timestamp
+                ]
         return non_blank_frame_confidence
 
     @property
@@ -114,14 +120,12 @@ class Hypothesis:
             List with words (str).
         """
         return [] if self.text is None else self.text.split()
-    
+
 
 class NBestHypotheses:
     """List of N best hypotheses"""
 
     n_best_hypotheses: Optional[List[Hypothesis]]
-
-
 
 
 def is_prefix(x: List[int], pref: List[int]) -> bool:
@@ -147,10 +151,6 @@ def is_prefix(x: List[int], pref: List[int]) -> bool:
     return True
 
 
-
-
-
-
 class ConfidenceMethodConstants:
     NAMES = ("max_prob", "entropy")
     ENTROPY_TYPES = ("gibbs", "tsallis", "renyi")
@@ -161,8 +161,15 @@ class ConfidenceMethodConstants:
         return (
             cls.__name__
             + ": "
-            + str({"NAMES": cls.NAMES, "ENTROPY_TYPES": cls.ENTROPY_TYPES, "ENTROPY_NORMS": cls.ENTROPY_NORMS})
+            + str(
+                {
+                    "NAMES": cls.NAMES,
+                    "ENTROPY_TYPES": cls.ENTROPY_TYPES,
+                    "ENTROPY_NORMS": cls.ENTROPY_NORMS,
+                }
+            )
         )
+
 
 class ConfidenceMethodConfig:
     """A Config which contains the method name and settings to compute per-frame confidence scores.

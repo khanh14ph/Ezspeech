@@ -66,5 +66,3 @@ class CTCDecoder(nn.Module):
         ctc_outs = self.linear2(ctc_outs)
         ctc_outs = ctc_outs.log_softmax(2)
         return ctc_outs
-
-

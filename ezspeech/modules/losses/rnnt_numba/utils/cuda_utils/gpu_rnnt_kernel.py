@@ -40,7 +40,15 @@ INF = 10000.0
 
 @cuda.jit(device=True, inline=True)
 def logp(
-    denom: torch.Tensor, acts: torch.Tensor, maxT: int, maxU: int, alphabet_size: int, mb: int, t: int, u: int, v: int
+    denom: torch.Tensor,
+    acts: torch.Tensor,
+    maxT: int,
+    maxU: int,
+    alphabet_size: int,
+    mb: int,
+    t: int,
+    u: int,
+    v: int,
 ):
     """
     Compute the sum of log probability from the activation tensor and its denominator.
@@ -65,7 +73,16 @@ def logp(
 
 
 @cuda.jit(device=True, inline=True)
-def logp_duration(acts: torch.Tensor, maxT: int, maxU: int, num_durations: int, mb: int, t: int, u: int, v: int):
+def logp_duration(
+    acts: torch.Tensor,
+    maxT: int,
+    maxU: int,
+    num_durations: int,
+    mb: int,
+    t: int,
+    u: int,
+    v: int,
+):
     col = (mb * maxT + t) * maxU + u
     return acts[col * num_durations + v]
 
@@ -119,7 +136,9 @@ def compute_alphas_kernel(
     T = xlen[b]  # select AM length of current sample
     U = ylen[b] + 1  # select target length of current sample, +1 for the blank token
 
-    labels: torch.Tensor = mlabels[b]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
+    labels: torch.Tensor = mlabels[
+        b
+    ]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
     offset = b * maxT * maxU  # pointer indexing offset
 
     # alphas += offset # pointer offset, ignored since we explicitly add offset
@@ -139,9 +158,9 @@ def compute_alphas_kernel(
         if u == 0:
             # for t in range(1, T) step to initialize alphas[b, t, 0]
             if t > 0 and t < T:
-                alphas[offset + t * maxU + u] = alphas[offset + (t - 1) * maxU + u] + logp(
-                    denom, acts, maxT, maxU, alphabet_size, b, t - 1, 0, blank_
-                )
+                alphas[offset + t * maxU + u] = alphas[
+                    offset + (t - 1) * maxU + u
+                ] + logp(denom, acts, maxT, maxU, alphabet_size, b, t - 1, 0, blank_)
         elif u < U:
             # for u in range(1, U) step to initialize alphas[b, 0, u]
             if t == 0:
@@ -221,14 +240,18 @@ def compute_betas_kernel(
     T = xlen[b]  # select AM length of current sample
     U = ylen[b] + 1  # select target length of current sample, +1 for the blank token
 
-    labels: torch.Tensor = mlabels[b]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
+    labels: torch.Tensor = mlabels[
+        b
+    ]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
     offset = b * maxT * maxU  # pointer indexing offset
 
     # betas += offset # pointer offset, ignored since we explicitly add offset
 
     # Initilize beta[b, t=T-1, u=U-1] for all b in B with log_probs[b, t=T-1, u=U-1, blank]
     if u == 0:
-        betas[offset + (T - 1) * maxU + U - 1] = logp(denom, acts, maxT, maxU, alphabet_size, b, T - 1, U - 1, blank_)
+        betas[offset + (T - 1) * maxU + U - 1] = logp(
+            denom, acts, maxT, maxU, alphabet_size, b, T - 1, U - 1, blank_
+        )
 
     # sync until all betas are initialized
     cuda.syncthreads()
@@ -241,15 +264,15 @@ def compute_betas_kernel(
         if u == (U - 1):
             # for t in reversed(range(T - 1)) step to initialize betas[b, t, U-1]
             if t >= 0 and t < (T - 1):
-                betas[offset + t * maxU + U - 1] = betas[offset + (t + 1) * maxU + U - 1] + logp(
-                    denom, acts, maxT, maxU, alphabet_size, b, t, U - 1, blank_
-                )
+                betas[offset + t * maxU + U - 1] = betas[
+                    offset + (t + 1) * maxU + U - 1
+                ] + logp(denom, acts, maxT, maxU, alphabet_size, b, t, U - 1, blank_)
         elif u < U:
             if t == T - 1:
                 # for u in reversed(range(U - 1)) step to initialize betas[b, T-1, u]
-                betas[offset + (T - 1) * maxU + u] = betas[offset + (T - 1) * maxU + u + 1] + logp(
-                    denom, acts, maxT, maxU, alphabet_size, b, T - 1, u, labels[u]
-                )
+                betas[offset + (T - 1) * maxU + u] = betas[
+                    offset + (T - 1) * maxU + u + 1
+                ] + logp(denom, acts, maxT, maxU, alphabet_size, b, T - 1, u, labels[u])
             elif (t >= 0) and (t < T - 1):
                 # for t in reversed(range(T - 1)) for u in reversed(range(U - 1)) step to compute betas[b, t, u]
                 no_emit = betas[offset + (t + 1) * maxU + u] + logp(
@@ -363,7 +386,9 @@ def compute_grad_kernel(
             if fastemit_lambda > 0.0 and u < U - 1:
                 fastemit_grad = fastemit_lambda * math.exp(
                     alphas[col]  # alphas(t, u)
-                    + (denom[col] + acts[col * alphabet_size + labels[u]])  # y_hat(t, u)
+                    + (
+                        denom[col] + acts[col * alphabet_size + labels[u]]
+                    )  # y_hat(t, u)
                     + betas[col + 1]  # betas(t, u+1)
                     + logpk  # log Pr(k|t, u)
                     - logll[mb]  # total log likelihood for normalization
@@ -390,7 +415,13 @@ def compute_grad_kernel(
             if (u < U - 1) and (idx == labels[u]):
                 # exp(log(1 + fastemit_lambda) + ...) is numerically more stable than
                 # multiplying (1.0 + fastemit_lambda) with result.
-                grad -= math.exp(math.log1p(fastemit_lambda) + alphas[col] + logpk - logll[mb] + betas[col + 1])
+                grad -= math.exp(
+                    math.log1p(fastemit_lambda)
+                    + alphas[col]
+                    + logpk
+                    - logll[mb]
+                    + betas[col + 1]
+                )
 
             # update grads[b, t, u, v] = grad
             grads[col * alphabet_size + idx] = grad
@@ -462,7 +493,9 @@ def compute_multiblank_alphas_kernel(
     T = xlen[b]  # select AM length of current sample
     U = ylen[b] + 1  # select target length of current sample, +1 for the blank token
 
-    labels: torch.Tensor = mlabels[b]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
+    labels: torch.Tensor = mlabels[
+        b
+    ]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
     offset = b * maxT * maxU  # pointer indexing offset
 
     # Initilize alpha[b, t=0, u=0] for all b in B
@@ -495,7 +528,15 @@ def compute_multiblank_alphas_kernel(
                             alphas[offset + t * maxU + u],
                             alphas[offset + (t - big_blank_duration[i]) * maxU + u]
                             + logp(
-                                denom, acts, maxT, maxU, alphabet_size, b, t - big_blank_duration[i], 0, blank_ - 1 - i
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t - big_blank_duration[i],
+                                0,
+                                blank_ - 1 - i,
                             )
                             - sigma,
                         )
@@ -505,7 +546,17 @@ def compute_multiblank_alphas_kernel(
             if t == 0:
                 alphas[offset + u] = (
                     alphas[offset + u - 1]
-                    + logp(denom, acts, maxT, maxU, alphabet_size, b, 0, u - 1, labels[u - 1])
+                    + logp(
+                        denom,
+                        acts,
+                        maxT,
+                        maxU,
+                        alphabet_size,
+                        b,
+                        0,
+                        u - 1,
+                        labels[u - 1],
+                    )
                     - sigma
                 )
 
@@ -518,7 +569,17 @@ def compute_multiblank_alphas_kernel(
                 )
                 emit = (
                     alphas[offset + t * maxU + u - 1]
-                    + logp(denom, acts, maxT, maxU, alphabet_size, b, t, u - 1, labels[u - 1])
+                    + logp(
+                        denom,
+                        acts,
+                        maxT,
+                        maxU,
+                        alphabet_size,
+                        b,
+                        t,
+                        u - 1,
+                        labels[u - 1],
+                    )
                     - sigma
                 )
 
@@ -533,7 +594,15 @@ def compute_multiblank_alphas_kernel(
                         big_blank_no_emit = (
                             alphas[offset + (t - big_blank_duration[i]) * maxU + u]
                             + logp(
-                                denom, acts, maxT, maxU, alphabet_size, b, t - big_blank_duration[i], u, blank_ - 1 - i
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t - big_blank_duration[i],
+                                u,
+                                blank_ - 1 - i,
                             )
                             - sigma
                         )
@@ -558,7 +627,17 @@ def compute_multiblank_alphas_kernel(
             if T >= big_blank_duration[i]:
                 big_blank_loglike = (
                     alphas[offset + (T - big_blank_duration[i]) * maxU + U - 1]
-                    + logp(denom, acts, maxT, maxU, alphabet_size, b, T - big_blank_duration[i], U - 1, blank_ - 1 - i)
+                    + logp(
+                        denom,
+                        acts,
+                        maxT,
+                        maxU,
+                        alphabet_size,
+                        b,
+                        T - big_blank_duration[i],
+                        U - 1,
+                        blank_ - 1 - i,
+                    )
                     - sigma
                 )
                 loglike = rnnt_helper.log_sum_exp(loglike, big_blank_loglike)
@@ -621,7 +700,9 @@ def compute_multiblank_betas_kernel(
     T = xlen[b]  # select AM length of current sample
     U = ylen[b] + 1  # select target length of current sample, +1 for the blank token
 
-    labels: torch.Tensor = mlabels[b]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
+    labels: torch.Tensor = mlabels[
+        b
+    ]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
     offset = b * maxT * maxU  # pointer indexing offset
 
     # Note: just like the alphas, because of the logit under-normalization, everytime
@@ -630,7 +711,8 @@ def compute_multiblank_betas_kernel(
     # Initilize beta[b, t=T-1, u=U-1] for all b in B with log_probs[b, t=T-1, u=U-1, blank]
     if u == 0:
         betas[offset + (T - 1) * maxU + U - 1] = (
-            logp(denom, acts, maxT, maxU, alphabet_size, b, T - 1, U - 1, blank_) - sigma
+            logp(denom, acts, maxT, maxU, alphabet_size, b, T - 1, U - 1, blank_)
+            - sigma
         )
 
     # sync until all betas are initialized
@@ -660,7 +742,17 @@ def compute_multiblank_betas_kernel(
                         betas[offset + t * maxU + U - 1] = rnnt_helper.log_sum_exp(
                             betas[offset + t * maxU + U - 1],
                             betas[offset + (t + big_blank_duration[i]) * maxU + U - 1]
-                            + logp(denom, acts, maxT, maxU, alphabet_size, b, t, U - 1, blank_ - 1 - i)
+                            + logp(
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t,
+                                U - 1,
+                                blank_ - 1 - i,
+                            )
                             - sigma,
                         )
                     elif t + big_blank_duration[i] == T and big_blank_duration[i] != 1:
@@ -668,7 +760,18 @@ def compute_multiblank_betas_kernel(
                         # p(big-blank | T - duration, U - 1) / exp(sigma)
                         betas[offset + t * maxU + U - 1] = rnnt_helper.log_sum_exp(
                             betas[offset + t * maxU + U - 1],
-                            logp(denom, acts, maxT, maxU, alphabet_size, b, t, U - 1, blank_ - 1 - i) - sigma,
+                            logp(
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t,
+                                U - 1,
+                                blank_ - 1 - i,
+                            )
+                            - sigma,
                         )
 
         elif u < U:
@@ -676,7 +779,9 @@ def compute_multiblank_betas_kernel(
                 # for u in reversed(range(U - 1)) step to initialize betas[b, T-1, u]
                 betas[offset + (T - 1) * maxU + u] = (
                     betas[offset + (T - 1) * maxU + u + 1]
-                    + logp(denom, acts, maxT, maxU, alphabet_size, b, T - 1, u, labels[u])
+                    + logp(
+                        denom, acts, maxT, maxU, alphabet_size, b, T - 1, u, labels[u]
+                    )
                     - sigma
                 )
             elif (t >= 0) and (t < T - 1):
@@ -700,7 +805,17 @@ def compute_multiblank_betas_kernel(
                         # beta[t + duration, u] * p(big-blank | t, u) / exp(sigma)
                         big_blank_no_emit = (
                             betas[offset + (t + big_blank_duration[i]) * maxU + u]
-                            + logp(denom, acts, maxT, maxU, alphabet_size, b, t, u, blank_ - 1 - i)
+                            + logp(
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t,
+                                u,
+                                blank_ - 1 - i,
+                            )
                             - sigma
                         )
                         betas[offset + t * maxU + u] = rnnt_helper.log_sum_exp(
@@ -843,13 +958,19 @@ def compute_multiblank_grad_kernel(
                 # to change the if conditions to match the duration of the big-blank.
                 # grad[b, T-duration, U-1, v=big-blank] -= exp(alphas[b, t, u) + logpk - sigma - logll[b])
                 for i in range(num_big_blanks):
-                    if (idx == blank_ - 1 - i) and (t == T - big_blank_duration[i]) and (u == U - 1):
+                    if (
+                        (idx == blank_ - 1 - i)
+                        and (t == T - big_blank_duration[i])
+                        and (u == U - 1)
+                    ):
                         grad -= math.exp(alphas[col] + logpk - sigma - logll[mb])
 
             # grad of blank across t < T;
             # grad[b, t<T-1, u, v=blank] -= exp(alphas[b, t, u] + logpk - sigma - logll[b] betas[b, t + 1, u])
             if (idx == blank_) and (t < T - 1):
-                grad -= math.exp(alphas[col] + logpk - sigma - logll[mb] + betas[col + maxU])
+                grad -= math.exp(
+                    alphas[col] + logpk - sigma - logll[mb] + betas[col + maxU]
+                )
             else:
                 # This is another difference between multi-blank and RNN-T gradients.
                 # Now we consider gradients for big-blanks.
@@ -857,7 +978,11 @@ def compute_multiblank_grad_kernel(
                 for i in range(num_big_blanks):
                     if (idx == blank_ - 1 - i) and (t < T - big_blank_duration[i]):
                         grad -= math.exp(
-                            alphas[col] + logpk - sigma - logll[mb] + betas[col + big_blank_duration[i] * maxU]
+                            alphas[col]
+                            + logpk
+                            - sigma
+                            - logll[mb]
+                            + betas[col + big_blank_duration[i] * maxU]
                         )
 
             # grad of correct token across u < U;
@@ -867,7 +992,12 @@ def compute_multiblank_grad_kernel(
                 # exp(log(1 + fastemit_lambda) + ...) is numerically more stable than
                 # multiplying (1.0 + fastemit_lambda) with result.
                 grad -= math.exp(
-                    math.log1p(fastemit_lambda) + alphas[col] + logpk - sigma - logll[mb] + betas[col + 1]
+                    math.log1p(fastemit_lambda)
+                    + alphas[col]
+                    + logpk
+                    - sigma
+                    - logll[mb]
+                    + betas[col + 1]
                 )
 
             # update grads[b, t, u, v] = grad
@@ -939,7 +1069,9 @@ def compute_tdt_alphas_kernel(
     T = xlen[b]  # select AM length of current sample
     U = ylen[b] + 1  # select target length of current sample, +1 for the blank token
 
-    labels: torch.Tensor = mlabels[b]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
+    labels: torch.Tensor = mlabels[
+        b
+    ]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
     offset = b * maxT * maxU  # pointer indexing offset
 
     # alphas += offset # pointer offset, ignored since we explicitly add offset
@@ -962,18 +1094,37 @@ def compute_tdt_alphas_kernel(
                 alphas[offset + t * maxU + u] = -INF
 
                 for i in range(num_durations):
-                    if durations[i] == 0:  # skip 0 since blank emission has to advance by at least one
+                    if (
+                        durations[i] == 0
+                    ):  # skip 0 since blank emission has to advance by at least one
                         continue
                     if t >= durations[i]:
                         alphas[offset + t * maxU + u] = rnnt_helper.log_sum_exp(
                             alphas[offset + t * maxU + u],  # the current alpha value
-                            alphas[offset + (t - durations[i]) * maxU + u]  # alpha(t - duration, u)
+                            alphas[
+                                offset + (t - durations[i]) * maxU + u
+                            ]  # alpha(t - duration, u)
                             + logp(
-                                denom, acts, maxT, maxU, alphabet_size, b, t - durations[i], u, blank_
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t - durations[i],
+                                u,
+                                blank_,
                             )  # logp of blank emission
                             - sigma  #  logit under-normalization
                             + logp_duration(
-                                duration_acts, maxT, maxU, num_durations, b, t - durations[i], u, i
+                                duration_acts,
+                                maxT,
+                                maxU,
+                                num_durations,
+                                b,
+                                t - durations[i],
+                                u,
+                                i,
                             ),  # logp of duration
                         )
                     else:
@@ -987,7 +1138,15 @@ def compute_tdt_alphas_kernel(
                     alphas[offset + u] = (
                         alphas[offset + u - 1]  # alpha(t, u - 1)
                         + logp(
-                            denom, acts, maxT, maxU, alphabet_size, b, t, u - 1, labels[u - 1]
+                            denom,
+                            acts,
+                            maxT,
+                            maxU,
+                            alphabet_size,
+                            b,
+                            t,
+                            u - 1,
+                            labels[u - 1],
                         )  # logp of token emission
                         - sigma  # logit under-normalization
                         + logp_duration(
@@ -1006,13 +1165,30 @@ def compute_tdt_alphas_kernel(
                     if t >= durations[i]:
                         no_emit = rnnt_helper.log_sum_exp(
                             no_emit,  # current score
-                            alphas[offset + (t - durations[i]) * maxU + u]  # alpha(t - duration, u)
+                            alphas[
+                                offset + (t - durations[i]) * maxU + u
+                            ]  # alpha(t - duration, u)
                             + logp(
-                                denom, acts, maxT, maxU, alphabet_size, b, t - durations[i], u, blank_
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t - durations[i],
+                                u,
+                                blank_,
                             )  # logp of blank emission
                             - sigma  #  logit under-normalization
                             + logp_duration(
-                                duration_acts, maxT, maxU, num_durations, b, t - durations[i], u, i
+                                duration_acts,
+                                maxT,
+                                maxU,
+                                num_durations,
+                                b,
+                                t - durations[i],
+                                u,
+                                i,
                             ),  # logp of duration
                         )
                     else:
@@ -1023,13 +1199,30 @@ def compute_tdt_alphas_kernel(
                     if t >= durations[i]:
                         emit = rnnt_helper.log_sum_exp(
                             emit,  # current score
-                            alphas[offset + (t - durations[i]) * maxU + u - 1]  # alpha(t - duration, u - 1)
+                            alphas[
+                                offset + (t - durations[i]) * maxU + u - 1
+                            ]  # alpha(t - duration, u - 1)
                             + logp(
-                                denom, acts, maxT, maxU, alphabet_size, b, t - durations[i], u - 1, labels[u - 1]
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t - durations[i],
+                                u - 1,
+                                labels[u - 1],
                             )  # logp of non-blank emission
                             - sigma  #  logit under-normalization
                             + logp_duration(
-                                duration_acts, maxT, maxU, num_durations, b, t - durations[i], u - 1, i
+                                duration_acts,
+                                maxT,
+                                maxU,
+                                num_durations,
+                                b,
+                                t - durations[i],
+                                u - 1,
+                                i,
                             ),  # logp of duration
                         )
                     else:
@@ -1054,17 +1247,40 @@ def compute_tdt_alphas_kernel(
             if durations[i] == 1:
                 loglike = (
                     alphas[offset + (T - 1) * maxU + U - 1]
-                    + logp(denom, acts, maxT, maxU, alphabet_size, b, T - 1, U - 1, blank_)
+                    + logp(
+                        denom, acts, maxT, maxU, alphabet_size, b, T - 1, U - 1, blank_
+                    )
                     - sigma
-                    + logp_duration(duration_acts, maxT, maxU, num_durations, b, T - 1, U - 1, i)
+                    + logp_duration(
+                        duration_acts, maxT, maxU, num_durations, b, T - 1, U - 1, i
+                    )
                 )
                 continue
             if T >= durations[i]:
                 big_blank_loglike = (
                     alphas[offset + (T - durations[i]) * maxU + U - 1]
-                    + logp(denom, acts, maxT, maxU, alphabet_size, b, T - durations[i], U - 1, blank_)
+                    + logp(
+                        denom,
+                        acts,
+                        maxT,
+                        maxU,
+                        alphabet_size,
+                        b,
+                        T - durations[i],
+                        U - 1,
+                        blank_,
+                    )
                     - sigma
-                    + logp_duration(duration_acts, maxT, maxU, num_durations, b, T - durations[i], U - 1, i)
+                    + logp_duration(
+                        duration_acts,
+                        maxT,
+                        maxU,
+                        num_durations,
+                        b,
+                        T - durations[i],
+                        U - 1,
+                        i,
+                    )
                 )
                 loglike = rnnt_helper.log_sum_exp(loglike, big_blank_loglike)
             else:
@@ -1127,7 +1343,9 @@ def compute_tdt_betas_kernel(
     T = xlen[b]  # select AM length of current sample
     U = ylen[b] + 1  # select target length of current sample, +1 for the blank token
 
-    labels: torch.Tensor = mlabels[b]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
+    labels: torch.Tensor = mlabels[
+        b
+    ]  # mb label start point, equivalent to mlabels + b * (maxU - 1)
     offset = b * maxT * maxU  # pointer indexing offset
 
     # betas += offset # pointer offset, ignored since we explicitly add offset
@@ -1138,13 +1356,17 @@ def compute_tdt_betas_kernel(
             betas[offset + (T - 1) * maxU + U - 1] = (
                 logp(denom, acts, maxT, maxU, alphabet_size, b, T - 1, U - 1, blank_)
                 - sigma
-                + logp_duration(duration_acts, maxT, maxU, num_durations, b, T - 1, U - 1, 0)
+                + logp_duration(
+                    duration_acts, maxT, maxU, num_durations, b, T - 1, U - 1, 0
+                )
             )
         elif durations[1] == 1:
             betas[offset + (T - 1) * maxU + U - 1] = (
                 logp(denom, acts, maxT, maxU, alphabet_size, b, T - 1, U - 1, blank_)
                 - sigma
-                + logp_duration(duration_acts, maxT, maxU, num_durations, b, T - 1, U - 1, 1)
+                + logp_duration(
+                    duration_acts, maxT, maxU, num_durations, b, T - 1, U - 1, 1
+                )
             )
 
     # sync until all betas are initialized
@@ -1171,7 +1393,17 @@ def compute_tdt_betas_kernel(
                             betas[
                                 offset + (t + durations[i]) * maxU + U - 1
                             ]  # beta[t, U - 1] depends on the value beta[t + duration, U - 1] here.
-                            + logp(denom, acts, maxT, maxU, alphabet_size, b, t, U - 1, blank_)  # log prob of blank
+                            + logp(
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t,
+                                U - 1,
+                                blank_,
+                            )  # log prob of blank
                             + logp_duration(
                                 duration_acts, maxT, maxU, num_durations, b, t, U - 1, i
                             )  # log prob of duration (durations[i])
@@ -1182,7 +1414,17 @@ def compute_tdt_betas_kernel(
                             betas[offset + t * maxU + U - 1],
                             # here we have one fewer term than the "if" block above. This could be seen as having "0" here since
                             # beta[t + duration, U - 1] isn't defined because t + duration is out of bound.
-                            logp(denom, acts, maxT, maxU, alphabet_size, b, t, U - 1, blank_)  # log prob of blank
+                            logp(
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t,
+                                U - 1,
+                                blank_,
+                            )  # log prob of blank
                             + logp_duration(
                                 duration_acts, maxT, maxU, num_durations, b, t, U - 1, i
                             )  # log prob of duration (durations[i])
@@ -1195,7 +1437,17 @@ def compute_tdt_betas_kernel(
                 if durations[0] == 0:
                     betas[offset + (T - 1) * maxU + u] = (
                         betas[offset + (T - 1) * maxU + u + 1]
-                        + logp(denom, acts, maxT, maxU, alphabet_size, b, T - 1, u, labels[u])  # non-blank log prob
+                        + logp(
+                            denom,
+                            acts,
+                            maxT,
+                            maxU,
+                            alphabet_size,
+                            b,
+                            T - 1,
+                            u,
+                            labels[u],
+                        )  # non-blank log prob
                         + logp_duration(
                             duration_acts, maxT, maxU, num_durations, b, T - 1, u, 0
                         )  # log prob of duration 0
@@ -1214,8 +1466,12 @@ def compute_tdt_betas_kernel(
                         no_emit = rnnt_helper.log_sum_exp(
                             no_emit,
                             betas[offset + (t + durations[i]) * maxU + u]
-                            + logp(denom, acts, maxT, maxU, alphabet_size, b, t, u, blank_)
-                            + logp_duration(duration_acts, maxT, maxU, num_durations, b, t, u, i)
+                            + logp(
+                                denom, acts, maxT, maxU, alphabet_size, b, t, u, blank_
+                            )
+                            + logp_duration(
+                                duration_acts, maxT, maxU, num_durations, b, t, u, i
+                            )
                             - sigma,
                         )
 
@@ -1225,8 +1481,20 @@ def compute_tdt_betas_kernel(
                         emit = rnnt_helper.log_sum_exp(
                             emit,
                             betas[offset + (t + durations[i]) * maxU + u + 1]
-                            + logp(denom, acts, maxT, maxU, alphabet_size, b, t, u, labels[u])
-                            + logp_duration(duration_acts, maxT, maxU, num_durations, b, t, u, i)
+                            + logp(
+                                denom,
+                                acts,
+                                maxT,
+                                maxU,
+                                alphabet_size,
+                                b,
+                                t,
+                                u,
+                                labels[u],
+                            )
+                            + logp_duration(
+                                duration_acts, maxT, maxU, num_durations, b, t, u, i
+                            )
                             - sigma,
                         )
 
@@ -1329,12 +1597,24 @@ def compute_tdt_grad_kernel(
             grad = 0.0
             if t + durations[idx] < T and u < U - 1:  # for label
                 logpk_label = denom[col] + acts[col * alphabet_size + labels[u]] - sigma
-                grad -= math.exp(alphas[col] + betas[col + 1 + durations[idx] * maxU] + logpk_label - logll[mb])
+                grad -= math.exp(
+                    alphas[col]
+                    + betas[col + 1 + durations[idx] * maxU]
+                    + logpk_label
+                    - logll[mb]
+                )
 
             if t + durations[idx] < T and durations[idx] > 0:  # for blank in the middle
-                grad -= math.exp(alphas[col] + betas[col + durations[idx] * maxU] + logpk_blank - logll[mb])
+                grad -= math.exp(
+                    alphas[col]
+                    + betas[col + durations[idx] * maxU]
+                    + logpk_blank
+                    - logll[mb]
+                )
 
-            if t + durations[idx] == T and u == U - 1 and durations[idx] > 0:  # for blank as the last symbol
+            if (
+                t + durations[idx] == T and u == U - 1 and durations[idx] > 0
+            ):  # for blank as the last symbol
                 grad -= math.exp(alphas[col] + logpk_blank - logll[mb])
 
             grad = grad * math.exp(duration_acts[col * num_durations + idx])
@@ -1366,8 +1646,12 @@ def compute_tdt_grad_kernel(
                     if t + durations[i] < T:
                         fastemit_grad += fastemit_lambda * math.exp(
                             alphas[col]  # alphas(t, u)
-                            + (denom[col] + acts[col * alphabet_size + labels[u]])  # log prob of token emission
-                            + duration_acts[col * num_durations + i]  # duration log-prob
+                            + (
+                                denom[col] + acts[col * alphabet_size + labels[u]]
+                            )  # log prob of token emission
+                            + duration_acts[
+                                col * num_durations + i
+                            ]  # duration log-prob
                             + betas[col + 1 + durations[i] * maxU]  # betas(t, u+1)
                             + logpk  # log Pr(k|t, u)
                             - sigma  # for logit under-normalization
@@ -1387,7 +1671,11 @@ def compute_tdt_grad_kernel(
                         continue
                     if t == T - durations[i]:
                         grad -= math.exp(
-                            alphas[col] + logpk - sigma - logll[mb] + duration_acts[col * num_durations + i]
+                            alphas[col]
+                            + logpk
+                            - sigma
+                            - logll[mb]
+                            + duration_acts[col * num_durations + i]
                         )
 
             # grad of blank across t < T;

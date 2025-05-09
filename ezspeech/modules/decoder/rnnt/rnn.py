@@ -1,9 +1,9 @@
-
 import math
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+
 
 class LSTMDropout(torch.nn.Module):
     def __init__(
@@ -48,13 +48,17 @@ class LSTMDropout(torch.nn.Module):
         super(LSTMDropout, self).__init__()
 
         self.lstm = torch.nn.LSTM(
-            input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, proj_size=proj_size
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            dropout=dropout,
+            proj_size=proj_size,
         )
 
         if t_max is not None:
             # apply chrono init
             for name, v in self.lstm.named_parameters():
-                if 'bias' in name:
+                if "bias" in name:
                     p = getattr(self.lstm, name)
                     n = p.nelement()
                     hidden_size = n // 4
@@ -73,12 +77,14 @@ class LSTMDropout(torch.nn.Module):
                     bias.data[hidden_size : 2 * hidden_size].fill_(forget_gate_bias)
                 if "bias_hh" in name:
                     bias = getattr(self.lstm, name)
-                    bias.data[hidden_size : 2 * hidden_size] *= float(hidden_hidden_bias_scale)
+                    bias.data[hidden_size : 2 * hidden_size] *= float(
+                        hidden_hidden_bias_scale
+                    )
 
         self.dropout = torch.nn.Dropout(dropout) if dropout else None
 
         for name, v in self.named_parameters():
-            if 'weight' in name or 'bias' in name:
+            if "weight" in name or "bias" in name:
                 v.data *= float(weights_init_scale)
 
     def forward(
@@ -90,6 +96,8 @@ class LSTMDropout(torch.nn.Module):
             x = self.dropout(x)
 
         return x, h
+
+
 class BNRNNSum(torch.nn.Module):
     """RNN wrapper with optional batch norm.
     Instantiates an RNN. If it is an LSTM it initialises the forget gate
@@ -140,7 +148,9 @@ class BNRNNSum(torch.nn.Module):
             input_size = hidden_size
 
     def forward(
-        self, x: torch.Tensor, hx: Optional[List[Tuple[torch.Tensor, torch.Tensor]]] = None
+        self,
+        x: torch.Tensor,
+        hx: Optional[List[Tuple[torch.Tensor, torch.Tensor]]] = None,
     ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         hx = self._parse_hidden_state(hx)
 
@@ -177,8 +187,8 @@ class BNRNNSum(torch.nn.Module):
 
             if h_0.shape[0] != self.rnn_layers:
                 raise ValueError(
-                    'Provided initial state value `h_0` must be of shape : '
-                    '[num_layers * num_directions, batch, hidden_size]'
+                    "Provided initial state value `h_0` must be of shape : "
+                    "[num_layers * num_directions, batch, hidden_size]"
                 )
 
             return [(h_0[i], c_0[i]) for i in range(h_0.shape[0])]
@@ -187,6 +197,7 @@ class BNRNNSum(torch.nn.Module):
         for layer in self.layers:
             if isinstance(layer, (torch.nn.LSTM, torch.nn.GRU, torch.nn.RNN)):
                 layer._flatten_parameters()
+
 
 def ln_lstm(
     input_size: int,
@@ -201,7 +212,7 @@ def ln_lstm(
     """Returns a ScriptModule that mimics a PyTorch native LSTM."""
     # The following are not implemented.
     if dropout is not None and dropout != 0.0:
-        raise ValueError('`dropout` not supported with LayerNormLSTM')
+        raise ValueError("`dropout` not supported with LayerNormLSTM")
 
     if t_max is not None:
         logging.warning("LayerNormLSTM does not support chrono init via `t_max`")
@@ -216,7 +227,12 @@ def ln_lstm(
         num_layers,
         LSTMLayer,
         first_layer_args=[LayerNormLSTMCell, input_size, hidden_size, forget_gate_bias],
-        other_layer_args=[LayerNormLSTMCell, hidden_size, hidden_size, forget_gate_bias],
+        other_layer_args=[
+            LayerNormLSTMCell,
+            hidden_size,
+            hidden_size,
+            forget_gate_bias,
+        ],
     )
 
 
@@ -234,6 +250,7 @@ class LSTMLayer(torch.nn.Module):
             out, state = self.cell(inputs[i], state)
             outputs += [out]
         return torch.stack(outputs), state
+
 
 def rnn(
     input_size: int,
@@ -329,6 +346,8 @@ def rnn(
                 hidden_hidden_bias_scale=hidden_hidden_bias_scale,
             )
         )
+
+
 def label_collate(labels, device=None):
     """Collates the label inputs for the rnn-t prediction network.
     If `labels` is already in torch.Tensor form this is a no-op.

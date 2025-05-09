@@ -1,4 +1,3 @@
-
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -7,12 +6,24 @@ import torch
 from tqdm import tqdm
 
 from ezspeech.modules.decoder.rnnt.rnnt import RNNTDecoder, RNNTJoint
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_greedy_decoding import pack_hypotheses
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_greedy_decoding import (
+    pack_hypotheses,
+)
+
 # from nemo.collections.asr.parts.submodules.tdt_malsd_batched_computer import ModifiedALSDBatchedTDTComputer
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import BlankLMScoreMode, PruningMode
-from ezspeech.modules.decoder.rnnt.rnnt_utils import Hypothesis, NBestHypotheses, is_prefix
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import (
+    BlankLMScoreMode,
+    PruningMode,
+)
+from ezspeech.modules.decoder.rnnt.rnnt_utils import (
+    Hypothesis,
+    NBestHypotheses,
+    is_prefix,
+)
 
 import kenlm
+
+
 class BeamTDTInfer:
     """
     Beam search implementation for Token-andDuration Transducer (TDT) models.
@@ -85,15 +96,13 @@ class BeamTDTInfer:
             Alpha weight of N-gram LM.
     """
 
-
-
     def __init__(
         self,
         decoder_model: RNNTDecoder,
         joint_model: RNNTJoint,
         durations: list,
         beam_size: int,
-        search_type: str = 'default',
+        search_type: str = "default",
         score_norm: bool = True,
         return_best_hypothesis: bool = True,
         maes_num_steps: int = 2,
@@ -123,10 +132,8 @@ class BeamTDTInfer:
         self.max_candidates = beam_size
         self.softmax_temperature = softmax_temperature
 
-      
         if beam_size < 1:
             raise ValueError("Beam search size cannot be less than 1!")
-
 
         if search_type == "default":
             if self.beam_size == 1:
@@ -136,16 +143,23 @@ class BeamTDTInfer:
                 )
             self.search_algorithm = self.default_beam_search
         elif search_type == "tsd":
-            raise NotImplementedError("`tsd` (Time Synchronous Decoding) has not been implemented.")
+            raise NotImplementedError(
+                "`tsd` (Time Synchronous Decoding) has not been implemented."
+            )
         elif search_type == "alsd":
-            raise NotImplementedError("`alsd` (Alignment Length Synchronous Decoding) has not been implemented.")
+            raise NotImplementedError(
+                "`alsd` (Alignment Length Synchronous Decoding) has not been implemented."
+            )
         elif search_type == "nsc":
-            raise NotImplementedError("`nsc` (Constrained Beam Search) has not been implemented.")
+            raise NotImplementedError(
+                "`nsc` (Constrained Beam Search) has not been implemented."
+            )
         elif search_type == "maes":
             self.search_algorithm = self.modified_adaptive_expansion_search
         else:
             raise NotImplementedError(
-                f"The search type ({search_type}) supplied is not supported!\n" f"Please use one of : (default, maes)"
+                f"The search type ({search_type}) supplied is not supported!\n"
+                f"Please use one of : (default, maes)"
             )
 
         if max_symbols_per_step is not None:
@@ -169,7 +183,7 @@ class BeamTDTInfer:
                 """
             )
 
-        if self.search_type == 'maes':
+        if self.search_type == "maes":
             self.maes_num_steps = int(maes_num_steps)
             self.maes_prefix_alpha = int(maes_prefix_alpha)
             self.maes_expansion_beta = int(maes_expansion_beta)
@@ -199,12 +213,13 @@ class BeamTDTInfer:
 
         if ngram_lm_model:
             if search_type != "maes":
-                raise ValueError("For decoding with language model `maes` decoding strategy must be chosen.")
-
+                raise ValueError(
+                    "For decoding with language model `maes` decoding strategy must be chosen."
+                )
 
             self.ngram_lm = kenlm.Model(ngram_lm_model)
             self.ngram_lm_alpha = ngram_lm_alpha
-          
+
         else:
             self.ngram_lm = None
 
@@ -239,9 +254,9 @@ class BeamTDTInfer:
             hypotheses = []
             with tqdm(
                 range(encoder_output.size(0)),
-                desc='Beam search progress:',
+                desc="Beam search progress:",
                 total=encoder_output.size(0),
-                unit='sample',
+                unit="sample",
             ) as idx_gen:
 
                 _p = next(self.joint.parameters())
@@ -249,14 +264,20 @@ class BeamTDTInfer:
 
                 # Decode every sample in the batch independently.
                 for batch_idx in idx_gen:
-                    inseq = encoder_output[batch_idx : batch_idx + 1, : encoded_lengths[batch_idx], :]  # [1, T, D]
+                    inseq = encoder_output[
+                        batch_idx : batch_idx + 1, : encoded_lengths[batch_idx], :
+                    ]  # [1, T, D]
                     logitlen = encoded_lengths[batch_idx]
 
                     if inseq.dtype != dtype:
                         inseq = inseq.to(dtype=dtype)
 
                     # Extract partial hypothesis if exists
-                    partial_hypothesis = partial_hypotheses[batch_idx] if partial_hypotheses is not None else None
+                    partial_hypothesis = (
+                        partial_hypotheses[batch_idx]
+                        if partial_hypotheses is not None
+                        else None
+                    )
 
                     # Execute the specific search strategy
                     nbest_hyps = self.search_algorithm(
@@ -295,7 +316,9 @@ class BeamTDTInfer:
             nbest_hyps: N-best decoding results
         """
         if partial_hypotheses is not None:
-            raise NotImplementedError("Support for `partial_hypotheses` is not implemented.")
+            raise NotImplementedError(
+                "Support for `partial_hypotheses` is not implemented."
+            )
 
         beam = min(self.beam_size, self.vocab_size)
         beam_k = min(beam, (self.vocab_size - 1))
@@ -308,14 +331,23 @@ class BeamTDTInfer:
 
         # Initialize hypothesis array with blank hypothesis.
         start_hyp = Hypothesis(
-            score=0.0, y_sequence=[self.blank], dec_state=decoder_state, timestamp=[-1], length=0, last_frame=0
+            score=0.0,
+            y_sequence=[self.blank],
+            dec_state=decoder_state,
+            timestamp=[-1],
+            length=0,
+            last_frame=0,
         )
         kept_hyps = [start_hyp]
 
         for time_idx in range(int(encoded_lengths)):
             # Retrieve hypotheses for current and future frames
-            hyps = [hyp for hyp in kept_hyps if hyp.last_frame == time_idx]  # hypotheses for current frame
-            kept_hyps = [hyp for hyp in kept_hyps if hyp.last_frame > time_idx]  # hypothesis for future frames
+            hyps = [
+                hyp for hyp in kept_hyps if hyp.last_frame == time_idx
+            ]  # hypotheses for current frame
+            kept_hyps = [
+                hyp for hyp in kept_hyps if hyp.last_frame > time_idx
+            ]  # hypothesis for future frames
 
             # Loop over hypotheses of current frame
             while len(hyps) > 0:
@@ -323,37 +355,58 @@ class BeamTDTInfer:
                 hyps.remove(max_hyp)
 
                 # Update decoder state and get probability distribution over vocabulary and durations.
-                encoder_output = encoder_outputs[:, time_idx : time_idx + 1, :]  # [1, 1, D]
-                decoder_output, decoder_state, _ = self.decoder.score_hypothesis(max_hyp, cache)  # [1, 1, D]
+                encoder_output = encoder_outputs[
+                    :, time_idx : time_idx + 1, :
+                ]  # [1, 1, D]
+                decoder_output, decoder_state, _ = self.decoder.score_hypothesis(
+                    max_hyp, cache
+                )  # [1, 1, D]
                 logits = (
-                    self.joint.joint(encoder_output, decoder_output) / self.softmax_temperature
+                    self.joint.joint(encoder_output, decoder_output)
+                    / self.softmax_temperature
                 )  # [1, 1, 1, V + NUM_DURATIONS + 1]
-                logp = torch.log_softmax(logits[0, 0, 0, : -len(self.durations)], dim=-1)  # [V + 1]
-                durations_logp = torch.log_softmax(logits[0, 0, 0, -len(self.durations) :], dim=-1)  # [NUM_DURATIONS]
+                logp = torch.log_softmax(
+                    logits[0, 0, 0, : -len(self.durations)], dim=-1
+                )  # [V + 1]
+                durations_logp = torch.log_softmax(
+                    logits[0, 0, 0, -len(self.durations) :], dim=-1
+                )  # [NUM_DURATIONS]
 
                 # Proccess non-blank tokens
                 # Retrieve the top `beam_k` most probable tokens and the top `duration_beam_k` most probable durations.
                 # Then, select the top `beam_k` pairs of (token, duration) based on the highest combined probabilities.
                 # Note that indices are obtained in the flattened array.
-                logp_topks, logp_topk_idxs = logp[:-1].topk(beam_k, dim=-1)  # topk of tokens without blank token
-                durations_logp_topks, durations_logp_topk_idxs = durations_logp.topk(durations_beam_k, dim=-1)
+                logp_topks, logp_topk_idxs = logp[:-1].topk(
+                    beam_k, dim=-1
+                )  # topk of tokens without blank token
+                durations_logp_topks, durations_logp_topk_idxs = durations_logp.topk(
+                    durations_beam_k, dim=-1
+                )
                 total_logp_topks, total_logp_topk_idxs = (
-                    torch.cartesian_prod(durations_logp_topks, logp_topks).sum(dim=-1).topk(beam_k, dim=-1)
+                    torch.cartesian_prod(durations_logp_topks, logp_topks)
+                    .sum(dim=-1)
+                    .topk(beam_k, dim=-1)
                 )
 
                 # Loop over pairs of (token, duration) with highest combined log prob
-                for total_logp_topk, total_logp_topk_idx in zip(total_logp_topks, total_logp_topk_idxs):
+                for total_logp_topk, total_logp_topk_idx in zip(
+                    total_logp_topks, total_logp_topk_idxs
+                ):
                     # Restore indices from flattened array indices
                     token_idx = int(logp_topk_idxs[total_logp_topk_idx % beam_k])
-                    duration_idx = int(durations_logp_topk_idxs[total_logp_topk_idx // beam_k])
+                    duration_idx = int(
+                        durations_logp_topk_idxs[total_logp_topk_idx // beam_k]
+                    )
 
                     duration = self.durations[duration_idx]
                     # Construct hypothesis for non-blank token
                     new_hyp = Hypothesis(
                         score=float(max_hyp.score + total_logp_topk),  # update score
-                        y_sequence=max_hyp.y_sequence + [token_idx],  # update hypothesis sequence
+                        y_sequence=max_hyp.y_sequence
+                        + [token_idx],  # update hypothesis sequence
                         dec_state=decoder_state,  # update decoder state
-                        timestamp=max_hyp.timestamp + [time_idx + duration],  # update timesteps
+                        timestamp=max_hyp.timestamp
+                        + [time_idx + duration],  # update timesteps
                         length=encoded_lengths,
                         last_frame=max_hyp.last_frame + duration,
                     )  # update frame idx where last token appeared
@@ -377,7 +430,11 @@ class BeamTDTInfer:
 
                     duration = self.durations[duration_idx]
                     new_hyp = Hypothesis(
-                        score=float(max_hyp.score + logp[self.blank] + durations_logp[duration_idx]),  # update score
+                        score=float(
+                            max_hyp.score
+                            + logp[self.blank]
+                            + durations_logp[duration_idx]
+                        ),  # update score
                         y_sequence=max_hyp.y_sequence[:],  # no need to update sequence
                         dec_state=max_hyp.dec_state,  # no need to update decoder state
                         timestamp=max_hyp.timestamp[:],  # no need to update timesteps
@@ -406,7 +463,9 @@ class BeamTDTInfer:
                 else:
                     # If there are no hypotheses in a current frame,
                     # keep only `beam` best hypotheses for the next search generation.
-                    kept_hyps = sorted(kept_hyps, key=lambda x: x.score, reverse=True)[:beam]
+                    kept_hyps = sorted(kept_hyps, key=lambda x: x.score, reverse=True)[
+                        :beam
+                    ]
         return self.sort_nbest(kept_hyps)
 
     def modified_adaptive_expansion_search(
@@ -429,7 +488,9 @@ class BeamTDTInfer:
             nbest_hyps: N-best decoding results
         """
         if partial_hypotheses is not None:
-            raise NotImplementedError("Support for `partial_hypotheses` is not implemented.")
+            raise NotImplementedError(
+                "Support for `partial_hypotheses` is not implemented."
+            )
 
         beam = min(self.beam_size, self.vocab_size)
         beam_state = self.decoder.initialize_state(
@@ -451,7 +512,9 @@ class BeamTDTInfer:
         cache = {}
 
         # Decode a batch of beam states and scores
-        beam_decoder_output, beam_state = self.decoder.batch_score_hypothesis(init_tokens, cache)
+        beam_decoder_output, beam_state = self.decoder.batch_score_hypothesis(
+            init_tokens, cache
+        )
         state = beam_state[0]
 
         # Initialize first hypothesis for the beam (blank) for kept hypotheses
@@ -481,7 +544,9 @@ class BeamTDTInfer:
             if len(hyps) == 0:
                 continue
 
-            beam_encoder_output = encoder_outputs[:, time_idx : time_idx + 1]  # [1, 1, D]
+            beam_encoder_output = encoder_outputs[
+                :, time_idx : time_idx + 1
+            ]  # [1, 1, D]
             # Perform prefix search to update hypothesis scores.
             if self.zero_duration_idx is not None:
                 hyps = self.prefix_search(
@@ -491,23 +556,38 @@ class BeamTDTInfer:
                 )
 
             list_b = []  # List that contains the blank token emissions
-            list_nb = []  # List that contains the non-zero duration non-blank token emissions
+            list_nb = (
+                []
+            )  # List that contains the non-zero duration non-blank token emissions
             # Repeat for number of mAES steps
             for n in range(self.maes_num_steps):
                 # Pack the decoder logits for all current hypotheses
-                beam_decoder_output = torch.stack([h.dec_out[-1] for h in hyps])  # [H, 1, D]
+                beam_decoder_output = torch.stack(
+                    [h.dec_out[-1] for h in hyps]
+                )  # [H, 1, D]
 
                 # Extract the log probabilities
-                beam_logits = self.joint.joint(beam_encoder_output, beam_decoder_output) / self.softmax_temperature
-                beam_logp = torch.log_softmax(beam_logits[:, 0, 0, : -len(self.durations)], dim=-1)
-                beam_duration_logp = torch.log_softmax(beam_logits[:, 0, 0, -len(self.durations) :], dim=-1)
+                beam_logits = (
+                    self.joint.joint(beam_encoder_output, beam_decoder_output)
+                    / self.softmax_temperature
+                )
+                beam_logp = torch.log_softmax(
+                    beam_logits[:, 0, 0, : -len(self.durations)], dim=-1
+                )
+                beam_duration_logp = torch.log_softmax(
+                    beam_logits[:, 0, 0, -len(self.durations) :], dim=-1
+                )
 
                 # Retrieve the top `max_candidades` most probable tokens.
                 # Then, select the top `max_candidates` pairs of (token, duration)
                 # based on the highest combined probabilities.
                 # Note that indices are obtained in flattened array.
-                beam_logp_topks, beam_idx_topks = beam_logp.topk(self.max_candidates, dim=-1)
-                beam_total_logp = (beam_duration_logp[:, :, None] + beam_logp_topks[:, None, :]).view(
+                beam_logp_topks, beam_idx_topks = beam_logp.topk(
+                    self.max_candidates, dim=-1
+                )
+                beam_total_logp = (
+                    beam_duration_logp[:, :, None] + beam_logp_topks[:, None, :]
+                ).view(
                     len(hyps), -1
                 )  # [B, MAX_CANDIDATES*DURATION_BEAM]
                 beam_total_logp_topks, beam_total_logp_topk_idxs = beam_total_logp.topk(
@@ -515,16 +595,26 @@ class BeamTDTInfer:
                 )  # [B, MAX_CANDIDATES]
 
                 # Prune hypothesis to obtain k expansions
-                beam_best_expansion_scores = beam_total_logp_topks.max(dim=-1, keepdim=True).values
-                beam_masks = beam_total_logp_topks >= beam_best_expansion_scores - self.maes_expansion_gamma
+                beam_best_expansion_scores = beam_total_logp_topks.max(
+                    dim=-1, keepdim=True
+                ).values
+                beam_masks = (
+                    beam_total_logp_topks
+                    >= beam_best_expansion_scores - self.maes_expansion_gamma
+                )
                 beam_kexpansions_idxs = [
-                    sum_logp_topk_idxs[mask] for sum_logp_topk_idxs, mask in zip(beam_total_logp_topk_idxs, beam_masks)
+                    sum_logp_topk_idxs[mask]
+                    for sum_logp_topk_idxs, mask in zip(
+                        beam_total_logp_topk_idxs, beam_masks
+                    )
                 ]
 
                 list_exp = []  # List that contains the hypothesis expansion
                 list_nb_exp = []  # List that contains the hypothesis expansion
                 for hyp_idx, hyp in enumerate(hyps):  # For all hypothesis
-                    for idx in beam_kexpansions_idxs[hyp_idx]:  # For all expansions within this hypothesis
+                    for idx in beam_kexpansions_idxs[
+                        hyp_idx
+                    ]:  # For all expansions within this hypothesis
                         # Restore indices in logp and durations_logp arrays from flattened indices.
                         k = int(beam_idx_topks[hyp_idx][idx % self.max_candidates])
                         duration = self.durations[int(idx // self.max_candidates)]
@@ -555,7 +645,9 @@ class BeamTDTInfer:
                             new_hyp.timestamp.append(time_idx + duration)
 
                             if self.ngram_lm:
-                                lm_score, new_hyp.ngram_lm_state = self.compute_ngram_score(hyp.ngram_lm_state, int(k))
+                                lm_score, new_hyp.ngram_lm_state = (
+                                    self.compute_ngram_score(hyp.ngram_lm_state, int(k))
+                                )
                                 new_hyp.score += self.ngram_lm_alpha * lm_score
 
                             # If token duration is 0 adding to expansions list
@@ -568,9 +660,11 @@ class BeamTDTInfer:
                 hyps_to_update = list_nb_exp + list_exp
                 if len(hyps_to_update) > 0:
                     # Decode a batch of beam states and scores
-                    beam_decoder_output, beam_state = self.decoder.batch_score_hypothesis(
-                        hyps_to_update,
-                        cache,
+                    beam_decoder_output, beam_state = (
+                        self.decoder.batch_score_hypothesis(
+                            hyps_to_update,
+                            cache,
+                        )
                     )
                     for hyp_idx, hyp in enumerate(hyps_to_update):
                         # Preserve the decoder logits for the current beam
@@ -583,7 +677,9 @@ class BeamTDTInfer:
                 if not list_exp:
                     kept_hyps = kept_hyps + list_b + list_nb
                     kept_hyps = self.merge_duplicate_hypotheses(kept_hyps)
-                    kept_hyps = sorted(kept_hyps, key=lambda x: x.score, reverse=True)[:beam]
+                    kept_hyps = sorted(kept_hyps, key=lambda x: x.score, reverse=True)[
+                        :beam
+                    ]
 
                     break
                 else:
@@ -594,14 +690,21 @@ class BeamTDTInfer:
                     else:
                         # If this is the last mAES step add probabilities of the blank token to the end.
                         # Extract the log probabilities
-                        beam_decoder_output = torch.stack([h.dec_out[-1] for h in list_exp])  # [H, 1, D]
+                        beam_decoder_output = torch.stack(
+                            [h.dec_out[-1] for h in list_exp]
+                        )  # [H, 1, D]
                         beam_logits = (
-                            self.joint.joint(beam_encoder_output, beam_decoder_output) / self.softmax_temperature
+                            self.joint.joint(beam_encoder_output, beam_decoder_output)
+                            / self.softmax_temperature
                         )
-                        beam_logp = torch.log_softmax(beam_logits[:, 0, 0, : -len(self.durations)], dim=-1)
+                        beam_logp = torch.log_softmax(
+                            beam_logits[:, 0, 0, : -len(self.durations)], dim=-1
+                        )
 
                         # Get most probable durations
-                        beam_duration_logp = torch.log_softmax(beam_logits[:, 0, 0, -len(self.durations) :], dim=-1)
+                        beam_duration_logp = torch.log_softmax(
+                            beam_logits[:, 0, 0, -len(self.durations) :], dim=-1
+                        )
                         _, beam_max_duration_idx = torch.max(beam_duration_logp, dim=-1)
 
                         # For all expansions, add the score for the blank label
@@ -612,7 +715,8 @@ class BeamTDTInfer:
                                 duration_idx = self.min_non_zero_duration_idx
 
                             total_logp = float(
-                                beam_logp[hyp_idx, self.blank] + beam_duration_logp[hyp_idx, duration_idx]
+                                beam_logp[hyp_idx, self.blank]
+                                + beam_duration_logp[hyp_idx, duration_idx]
                             )
                             hyp.score += total_logp
                             hyp.last_frame += self.durations[duration_idx]
@@ -620,7 +724,9 @@ class BeamTDTInfer:
                         # Finally, update the kept hypothesis of sorted top Beam candidates
                         kept_hyps = kept_hyps + list_b + list_exp + list_nb
                         kept_hyps = self.merge_duplicate_hypotheses(kept_hyps)
-                        kept_hyps = sorted(kept_hyps, key=lambda x: x.score, reverse=True)[:beam]
+                        kept_hyps = sorted(
+                            kept_hyps, key=lambda x: x.score, reverse=True
+                        )[:beam]
 
         # Sort the hypothesis with best scores
         return self.sort_nbest(kept_hyps)
@@ -644,7 +750,11 @@ class BeamTDTInfer:
             hyp_key = (tuple(hyp.y_sequence), int(hyp.last_frame))
             if hyp_key in kept_hyps:
                 kept_hyp = kept_hyps[hyp_key]
-                kept_hyp.score = float(torch.logaddexp(torch.tensor(kept_hyp.score), torch.tensor(hyp.score)))
+                kept_hyp.score = float(
+                    torch.logaddexp(
+                        torch.tensor(kept_hyp.score), torch.tensor(hyp.score)
+                    )
+                )
             else:
                 kept_hyps[hyp_key] = hyp
         return list(kept_hyps.values())
@@ -662,7 +772,10 @@ class BeamTDTInfer:
     #         self.token_offset = DEFAULT_TOKEN_OFFSET
 
     def prefix_search(
-        self, hypotheses: List[Hypothesis], encoder_output: torch.Tensor, prefix_alpha: int
+        self,
+        hypotheses: List[Hypothesis],
+        encoder_output: torch.Tensor,
+        prefix_alpha: int,
     ) -> List[Hypothesis]:
         """
         Performs a prefix search and updates the scores of the hypotheses in place.
@@ -691,26 +804,45 @@ class BeamTDTInfer:
                     # Compute the score of the first token
                     # that follows the prefix hypothesis tokens in current hypothesis.
                     # Use the decoder output, which is stored in the prefix hypothesis.
-                    logits = self.joint.joint(encoder_output, pref_hyp.dec_out[-1]) / self.softmax_temperature
-                    logp = torch.log_softmax(logits[0, 0, 0, : -len(self.durations)], dim=-1)
-                    duration_logp = torch.log_softmax(logits[0, 0, 0, -len(self.durations) :], dim=-1)
+                    logits = (
+                        self.joint.joint(encoder_output, pref_hyp.dec_out[-1])
+                        / self.softmax_temperature
+                    )
+                    logp = torch.log_softmax(
+                        logits[0, 0, 0, : -len(self.durations)], dim=-1
+                    )
+                    duration_logp = torch.log_softmax(
+                        logits[0, 0, 0, -len(self.durations) :], dim=-1
+                    )
                     curr_score = pref_hyp.score + float(
-                        logp[curr_hyp.y_sequence[pref_hyp_length]] + duration_logp[self.zero_duration_idx]
+                        logp[curr_hyp.y_sequence[pref_hyp_length]]
+                        + duration_logp[self.zero_duration_idx]
                     )
 
                     if self.ngram_lm:
                         lm_score, next_state = self.compute_ngram_score(
-                            pref_hyp.ngram_lm_state, int(curr_hyp.y_sequence[pref_hyp_length])
+                            pref_hyp.ngram_lm_state,
+                            int(curr_hyp.y_sequence[pref_hyp_length]),
                         )
                         curr_score += self.ngram_lm_alpha * lm_score
 
                     for k in range(pref_hyp_length, (curr_hyp_length - 1)):
                         # Compute the score of the next token.
                         # Approximate decoder output with the one that is stored in current hypothesis.
-                        logits = self.joint.joint(encoder_output, curr_hyp.dec_out[k]) / self.softmax_temperature
-                        logp = torch.log_softmax(logits[0, 0, 0, : -len(self.durations)], dim=-1)
-                        duration_logp = torch.log_softmax(logits[0, 0, 0, -len(self.durations) :], dim=-1)
-                        curr_score += float(logp[curr_hyp.y_sequence[k + 1]] + duration_logp[self.zero_duration_idx])
+                        logits = (
+                            self.joint.joint(encoder_output, curr_hyp.dec_out[k])
+                            / self.softmax_temperature
+                        )
+                        logp = torch.log_softmax(
+                            logits[0, 0, 0, : -len(self.durations)], dim=-1
+                        )
+                        duration_logp = torch.log_softmax(
+                            logits[0, 0, 0, -len(self.durations) :], dim=-1
+                        )
+                        curr_score += float(
+                            logp[curr_hyp.y_sequence[k + 1]]
+                            + duration_logp[self.zero_duration_idx]
+                        )
 
                         if self.ngram_lm:
                             lm_score, next_state = self.compute_ngram_score(
@@ -722,7 +854,9 @@ class BeamTDTInfer:
                     curr_hyp.score = np.logaddexp(curr_hyp.score, curr_score)
         return hypotheses
 
-    def compute_ngram_score(self, current_lm_state: "kenlm.State", label: int) -> Tuple[float, "kenlm.State"]:
+    def compute_ngram_score(
+        self, current_lm_state: "kenlm.State", label: int
+    ) -> Tuple[float, "kenlm.State"]:
         """
         Computes the score for KenLM Ngram language model.
 
@@ -757,8 +891,10 @@ class BeamTDTInfer:
             return sorted(hyps, key=lambda x: x.score / len(x.y_sequence), reverse=True)
         else:
             return sorted(hyps, key=lambda x: x.score, reverse=True)
+
+
 class BeamBatchedTDTInfer:
-  
+
     def __init__(
         self,
         decoder_model: RNNTDecoder,
@@ -766,12 +902,14 @@ class BeamBatchedTDTInfer:
         durations: list,
         blank_index: int,
         beam_size: int,
-        search_type: str = 'malsd_batch',
+        search_type: str = "malsd_batch",
         score_norm: bool = True,
         max_symbols_per_step: Optional[int] = None,
         ngram_lm_model: Optional[str | Path] = None,
         ngram_lm_alpha: float = 0.0,
-        blank_lm_score_mode: Optional[str | BlankLMScoreMode] = BlankLMScoreMode.NO_SCORE,
+        blank_lm_score_mode: Optional[
+            str | BlankLMScoreMode
+        ] = BlankLMScoreMode.NO_SCORE,
         pruning_mode: Optional[str | PruningMode] = PruningMode.EARLY,
         allow_cuda_graphs: Optional[bool] = True,
         return_best_hypothesis: Optional[str] = True,
@@ -804,7 +942,9 @@ class BeamBatchedTDTInfer:
         self.score_norm = score_norm
 
         if max_symbols_per_step is not None and max_symbols_per_step <= 0:
-            raise ValueError(f"Expected max_symbols_per_step > 0 (or None), got {max_symbols_per_step}")
+            raise ValueError(
+                f"Expected max_symbols_per_step > 0 (or None), got {max_symbols_per_step}"
+            )
         self.max_symbols = max_symbols_per_step
 
         if search_type == "malsd_batch":
@@ -825,7 +965,6 @@ class BeamBatchedTDTInfer:
             )
         else:
             raise Exception(f"Decoding strategy {search_type} nor implemented.")
-
 
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
@@ -867,9 +1006,13 @@ class BeamBatchedTDTInfer:
             # Ensures the correct number of hypotheses (batch_size) for CUDA Graphs compatibility
             batch_size = encoder_output.shape[0]
             if self.return_best_hypothesis:
-                hyps = batched_beam_hyps.to_hyps_list(score_norm=self.score_norm)[:batch_size]
+                hyps = batched_beam_hyps.to_hyps_list(score_norm=self.score_norm)[
+                    :batch_size
+                ]
             else:
-                hyps = batched_beam_hyps.to_nbest_hyps_list(score_norm=self.score_norm)[:batch_size]
+                hyps = batched_beam_hyps.to_nbest_hyps_list(score_norm=self.score_norm)[
+                    :batch_size
+                ]
 
         self.decoder.train(decoder_training_state)
         self.joint.train(joint_training_state)

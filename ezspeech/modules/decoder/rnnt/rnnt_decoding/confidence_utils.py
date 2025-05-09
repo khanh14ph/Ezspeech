@@ -34,7 +34,13 @@ class ConfidenceMethodConstants:
         return (
             cls.__name__
             + ": "
-            + str({"NAMES": cls.NAMES, "ENTROPY_TYPES": cls.ENTROPY_TYPES, "ENTROPY_NORMS": cls.ENTROPY_NORMS})
+            + str(
+                {
+                    "NAMES": cls.NAMES,
+                    "ENTROPY_TYPES": cls.ENTROPY_TYPES,
+                    "ENTROPY_NORMS": cls.ENTROPY_NORMS,
+                }
+            )
         )
 
 
@@ -178,7 +184,9 @@ class ConfidenceConfig:
     exclude_blank: bool = True
     aggregation: str = "min"
     tdt_include_duration: bool = False
-    method_cfg: ConfidenceMethodConfig = field(default_factory=lambda: ConfidenceMethodConfig())
+    method_cfg: ConfidenceMethodConfig = field(
+        default_factory=lambda: ConfidenceMethodConfig()
+    )
 
     def __post_init__(self):
         # OmegaConf.structured ensures that post_init check is always executed
@@ -218,15 +226,21 @@ def get_confidence_measure_bank():
     # too big for a lambda
     def entropy_tsallis_exp(x, v, t):
         exp_neg_max_ent = math.exp((1 - math.pow(v, 1 - t)) / (1 - t))
-        return (((1 - neg_entropy_alpha(x, t)) / (1 - t)).exp() - exp_neg_max_ent) / (1 - exp_neg_max_ent)
+        return (((1 - neg_entropy_alpha(x, t)) / (1 - t)).exp() - exp_neg_max_ent) / (
+            1 - exp_neg_max_ent
+        )
 
     def entropy_gibbs_exp(x, v, t):
         exp_neg_max_ent = math.pow(v, -t * math.pow(v, 1 - t))
-        return ((neg_entropy_alpha_gibbs(x, t) * t).exp() - exp_neg_max_ent) / (1 - exp_neg_max_ent)
+        return ((neg_entropy_alpha_gibbs(x, t) * t).exp() - exp_neg_max_ent) / (
+            1 - exp_neg_max_ent
+        )
 
     # use Gibbs entropies for Tsallis and Rényi with t == 1.0
     entropy_gibbs_lin_baseline = lambda x, v: 1 + neg_entropy_gibbs(x) / math.log(v)
-    entropy_gibbs_exp_baseline = lambda x, v: (neg_entropy_gibbs(x).exp() * v - 1) / (v - 1)
+    entropy_gibbs_exp_baseline = lambda x, v: (neg_entropy_gibbs(x).exp() * v - 1) / (
+        v - 1
+    )
     # fill the measure bank
     confidence_measure_bank = {}
     # Maximum probability measure is implemented without alpha
@@ -244,16 +258,22 @@ def get_confidence_measure_bank():
         entropy_gibbs_exp_baseline(x, v) if t == 1.0 else entropy_gibbs_exp(x, v, t)
     )
     confidence_measure_bank["entropy_tsallis_lin"] = lambda x, v, t: (
-        entropy_gibbs_lin_baseline(x, v) if t == 1.0 else 1 + (1 - neg_entropy_alpha(x, t)) / (math.pow(v, 1 - t) - 1)
+        entropy_gibbs_lin_baseline(x, v)
+        if t == 1.0
+        else 1 + (1 - neg_entropy_alpha(x, t)) / (math.pow(v, 1 - t) - 1)
     )
     confidence_measure_bank["entropy_tsallis_exp"] = lambda x, v, t: (
         entropy_gibbs_exp_baseline(x, v) if t == 1.0 else entropy_tsallis_exp(x, v, t)
     )
     confidence_measure_bank["entropy_renyi_lin"] = lambda x, v, t: (
-        entropy_gibbs_lin_baseline(x, v) if t == 1.0 else 1 + neg_entropy_alpha(x, t).log2() / (t - 1) / math.log(v, 2)
+        entropy_gibbs_lin_baseline(x, v)
+        if t == 1.0
+        else 1 + neg_entropy_alpha(x, t).log2() / (t - 1) / math.log(v, 2)
     )
     confidence_measure_bank["entropy_renyi_exp"] = lambda x, v, t: (
-        entropy_gibbs_exp_baseline(x, v) if t == 1.0 else (neg_entropy_alpha(x, t).pow(1 / (t - 1)) * v - 1) / (v - 1)
+        entropy_gibbs_exp_baseline(x, v)
+        if t == 1.0
+        else (neg_entropy_alpha(x, t).pow(1 / (t - 1)) * v - 1) / (v - 1)
     )
     return confidence_measure_bank
 
@@ -270,7 +290,11 @@ def get_confidence_aggregation_bank():
     Returns:
         dictionary with functions.
     """
-    confidence_aggregation_bank = {"mean": lambda x: sum(x) / len(x), "min": min, "max": max}
+    confidence_aggregation_bank = {
+        "mean": lambda x: sum(x) / len(x),
+        "min": min,
+        "max": max,
+    }
     # python 3.7 and earlier do not have math.prod
     if hasattr(math, "prod"):
         confidence_aggregation_bank["prod"] = math.prod
@@ -288,7 +312,9 @@ class ConfidenceMethodMixin(ABC):
     It initializes per-frame confidence method.
     """
 
-    def _init_confidence_method(self, confidence_method_cfg: Optional[DictConfig] = None):
+    def _init_confidence_method(
+        self, confidence_method_cfg: Optional[DictConfig] = None
+    ):
         """Initialize per-frame confidence method from config."""
         # OmegaConf.structured ensures that post_init check is always executed
         confidence_method_cfg = OmegaConf.structured(
@@ -300,7 +326,9 @@ class ConfidenceMethodMixin(ABC):
         # set confidence calculation method
         if not hasattr(self, "num_tokens"):
             # we suppose that self.blank_id == len(vocabulary)
-            self.num_tokens = (self.blank_id if hasattr(self, "blank_id") else self._blank_index) + 1
+            self.num_tokens = (
+                self.blank_id if hasattr(self, "blank_id") else self._blank_index
+            ) + 1
         self.alpha = confidence_method_cfg.alpha
 
         # init confidence measure bank
@@ -312,14 +340,22 @@ class ConfidenceMethodMixin(ABC):
         if confidence_method_cfg.name == "max_prob":
             measure_name = "max_prob"
         elif confidence_method_cfg.name == "entropy":
-            measure_name = '_'.join(
-                [confidence_method_cfg.name, confidence_method_cfg.entropy_type, confidence_method_cfg.entropy_norm]
+            measure_name = "_".join(
+                [
+                    confidence_method_cfg.name,
+                    confidence_method_cfg.entropy_type,
+                    confidence_method_cfg.entropy_norm,
+                ]
             )
         else:
-            raise ValueError(f"Unsupported `confidence_method_cfg.name`: `{confidence_method_cfg.name}`")
+            raise ValueError(
+                f"Unsupported `confidence_method_cfg.name`: `{confidence_method_cfg.name}`"
+            )
         if measure_name not in self.confidence_measure_bank:
             raise ValueError(f"Unsupported measure setup: `{measure_name}`")
-        measure = partial(self.confidence_measure_bank[measure_name], v=self.num_tokens, t=self.alpha)
+        measure = partial(
+            self.confidence_measure_bank[measure_name], v=self.num_tokens, t=self.alpha
+        )
 
         self._confidence_measure = measure
 
@@ -342,42 +378,60 @@ class ConfidenceMixin(ABC):
         """Initialize confidence-related fields and confidence aggregation function from config."""
         # OmegaConf.structured ensures that post_init check is always executed
         confidence_cfg = OmegaConf.structured(
-            ConfidenceConfig() if confidence_cfg is None else ConfidenceConfig(**confidence_cfg)
+            ConfidenceConfig()
+            if confidence_cfg is None
+            else ConfidenceConfig(**confidence_cfg)
         )
         self.confidence_method_cfg = confidence_cfg.method_cfg
 
         # extract the config
-        self.preserve_word_confidence = confidence_cfg.get('preserve_word_confidence', False)
+        self.preserve_word_confidence = confidence_cfg.get(
+            "preserve_word_confidence", False
+        )
         # set preserve_frame_confidence and preserve_token_confidence to True
         # if preserve_word_confidence is True
         self.preserve_token_confidence = (
-            confidence_cfg.get('preserve_token_confidence', False) | self.preserve_word_confidence
+            confidence_cfg.get("preserve_token_confidence", False)
+            | self.preserve_word_confidence
         )
         # set preserve_frame_confidence to True if preserve_token_confidence is True
         self.preserve_frame_confidence = (
-            confidence_cfg.get('preserve_frame_confidence', False) | self.preserve_token_confidence
+            confidence_cfg.get("preserve_frame_confidence", False)
+            | self.preserve_token_confidence
         )
-        self.exclude_blank_from_confidence = confidence_cfg.get('exclude_blank', True)
-        self.tdt_include_duration_confidence = confidence_cfg.get('tdt_include_duration', False)
-        self.word_confidence_aggregation = confidence_cfg.get('aggregation', "min")
+        self.exclude_blank_from_confidence = confidence_cfg.get("exclude_blank", True)
+        self.tdt_include_duration_confidence = confidence_cfg.get(
+            "tdt_include_duration", False
+        )
+        self.word_confidence_aggregation = confidence_cfg.get("aggregation", "min")
 
         # define aggregation functions
         self.confidence_aggregation_bank = get_confidence_aggregation_bank()
-        self._aggregate_confidence = self.confidence_aggregation_bank[self.word_confidence_aggregation]
+        self._aggregate_confidence = self.confidence_aggregation_bank[
+            self.word_confidence_aggregation
+        ]
 
         # Update preserve frame confidence
-        if self.cfg.strategy in ['greedy', 'greedy_batch']:
+        if self.cfg.strategy in ["greedy", "greedy_batch"]:
             if not self.preserve_frame_confidence:
-                self.preserve_frame_confidence = self.cfg.greedy.get('preserve_frame_confidence', False)
+                self.preserve_frame_confidence = self.cfg.greedy.get(
+                    "preserve_frame_confidence", False
+                )
                 # OmegaConf.structured ensures that post_init check is always executed
-                confidence_method_cfg = OmegaConf.structured(self.cfg.greedy).get('confidence_method_cfg', None)
+                confidence_method_cfg = OmegaConf.structured(self.cfg.greedy).get(
+                    "confidence_method_cfg", None
+                )
                 self.confidence_method_cfg = (
                     OmegaConf.structured(ConfidenceMethodConfig())
                     if confidence_method_cfg is None
-                    else OmegaConf.structured(ConfidenceMethodConfig(**confidence_method_cfg))
+                    else OmegaConf.structured(
+                        ConfidenceMethodConfig(**confidence_method_cfg)
+                    )
                 )
             if not self.tdt_include_duration_confidence:
-                self.tdt_include_duration_confidence = self.cfg.greedy.get('tdt_include_duration_confidence', False)
+                self.tdt_include_duration_confidence = self.cfg.greedy.get(
+                    "tdt_include_duration_confidence", False
+                )
 
     @abstractmethod
     def compute_confidence(self, hypotheses_list: List[Hypothesis]) -> List[Hypothesis]:
@@ -404,7 +458,9 @@ class ConfidenceMixin(ABC):
         """
         raise NotImplementedError()
 
-    def _aggregate_token_confidence_chars(self, words: List[str], token_confidence: List[float]) -> List[float]:
+    def _aggregate_token_confidence_chars(
+        self, words: List[str], token_confidence: List[float]
+    ) -> List[float]:
         """Implementation of token confidence aggregation for character-based models.
 
         Args:
@@ -418,7 +474,9 @@ class ConfidenceMixin(ABC):
         i = 0
         for word in words:
             word_len = len(word)
-            word_confidence.append(self._aggregate_confidence(token_confidence[i : i + word_len]))
+            word_confidence.append(
+                self._aggregate_confidence(token_confidence[i : i + word_len])
+            )
             # we assume that there is exactly one space token between words and exclude it from word confidence
             i += word_len + 1
         return word_confidence
@@ -453,12 +511,16 @@ class ConfidenceMixin(ABC):
                     # do not add confidence for `▁` if the current token starts with `▁`
                     # to match the result of `tokenizer.ids_to_text`
                     if not prev_underline:
-                        word_confidence.append(self._aggregate_confidence(token_confidence[j:i]))
+                        word_confidence.append(
+                            self._aggregate_confidence(token_confidence[j:i])
+                        )
                     j = i
-                prev_unk = token == '<unk>'
-                prev_underline = token == '▁'
+                prev_unk = token == "<unk>"
+                prev_underline = token == "▁"
             if not prev_underline:
-                word_confidence.append(self._aggregate_confidence(token_confidence[j : len(token_ids)]))
+                word_confidence.append(
+                    self._aggregate_confidence(token_confidence[j : len(token_ids)])
+                )
         if len(words) != len(word_confidence):
             raise RuntimeError(
                 f"""Something went wrong with word-level confidence aggregation.\n

@@ -20,6 +20,7 @@ from ezspeech.utils.common import (
 
 # from ezspeech.modules.conformer import SumaryMixing_ConformerLayer
 
+
 class SqueezeformerBlock(nn.Module):
     def __init__(
         self,
@@ -88,6 +89,7 @@ class SqueezeformerBlock(nn.Module):
         xs = self.norm_ffn2(xs)
 
         return xs
+
 
 class SqueezeFormerEncoder(nn.Module):
     def __init__(

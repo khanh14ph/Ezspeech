@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Set
 
@@ -14,15 +13,19 @@ from ezspeech.modules.losses.rnnt_numba.rnnt import _TDTNumba
 
 print()
 
+
 class TDTLoss(nn.modules.loss._Loss):
 
-    def __init__(self,blank_idx,
-                    durations=None,
-                    reduction='mean',
-                    fastemit_lambda: float = 0.0,
-                    clamp: float = -1,
-                    sigma: float = 0.0,
-                    omega: float = 0.0,):
+    def __init__(
+        self,
+        blank_idx,
+        durations=None,
+        reduction="mean",
+        fastemit_lambda: float = 0.0,
+        clamp: float = -1,
+        sigma: float = 0.0,
+        omega: float = 0.0,
+    ):
         """
         RNN-T Loss function based on https://github.com/HawkAaron/warp-transducer.
         Optionally, can utilize a numba implementation of the same loss without having to compile the loss,
@@ -67,7 +70,7 @@ class TDTLoss(nn.modules.loss._Loss):
                                  standard blank, and the standard blank is the last symbol in the vocab)
                 TDT: num_classes = V. Note, V here does not include any of the "duration outputs".
 
-            reduction: Type of reduction to perform on loss. Possible values are 
+            reduction: Type of reduction to perform on loss. Possible values are
                 `mean_batch`, 'mean_volume`, `mean`, `sum` or None.
                 `None` will return a torch vector comprising the individual loss values of the batch.
                 `mean_batch` will average the losses in the batch
@@ -82,8 +85,10 @@ class TDTLoss(nn.modules.loss._Loss):
         """
         super(TDTLoss, self).__init__()
 
-        if reduction not in [None, 'mean', 'sum', 'mean_batch', 'mean_volume']:
-            raise ValueError('`reduction` must be one of [mean, sum, mean_batch, mean_volume]')
+        if reduction not in [None, "mean", "sum", "mean_batch", "mean_volume"]:
+            raise ValueError(
+                "`reduction` must be one of [mean, sum, mean_batch, mean_volume]"
+            )
 
         self.blank = blank_idx
         self.reduction = reduction
@@ -96,16 +101,15 @@ class TDTLoss(nn.modules.loss._Loss):
         self.omega = omega
         self._fp16_compat_checked = False
 
-    def reduce(self, losses, target_lengths,batch_size):
-        sum_loss=sum(losses)
-        if self.reduction == 'mean_batch':
-            losses = sum_loss/batch_size  # global batch size average
-        elif self.reduction == 'mean':
-            losses = sum_loss/len(target_lengths)
-        elif self.reduction == 'sum':
+    def reduce(self, losses, target_lengths, batch_size):
+        sum_loss = sum(losses)
+        if self.reduction == "mean_batch":
+            losses = sum_loss / batch_size  # global batch size average
+        elif self.reduction == "mean":
+            losses = sum_loss / len(target_lengths)
+        elif self.reduction == "sum":
             losses = sum_loss
         return losses
-
 
     def forward(self, log_probs, targets, input_lengths, target_lengths):
         # Cast to int 64
@@ -117,7 +121,6 @@ class TDTLoss(nn.modules.loss._Loss):
         max_targets_len = target_lengths.max()
 
         # Force cast joint to float32
-        
 
         # Ensure that shape mismatch does not occur due to padding
         # Due to padding and subsequent downsampling, it may be possible that
@@ -125,7 +128,9 @@ class TDTLoss(nn.modules.loss._Loss):
         # of the log_probs tensor, therefore we increment the input_lengths by the difference.
         # This difference is generally small.
         if log_probs.shape[1] != max_logit_len:
-            log_probs = log_probs.narrow(dim=1, start=0, length=max_logit_len).contiguous()
+            log_probs = log_probs.narrow(
+                dim=1, start=0, length=max_logit_len
+            ).contiguous()
 
         # Reduce transcript length to correct alignment if additional padding was applied.
         # Transcript: [B, L] -> [B, L']; If L' < L
@@ -133,16 +138,22 @@ class TDTLoss(nn.modules.loss._Loss):
             targets = targets.contiguous()
 
         if targets.shape[1] != max_targets_len:
-            targets = targets.narrow(dim=1, start=0, length=max_targets_len).contiguous()
-
+            targets = targets.narrow(
+                dim=1, start=0, length=max_targets_len
+            ).contiguous()
 
         label_acts, duration_acts = torch.split(
-            log_probs, [log_probs.shape[-1] - len(self.durations), len(self.durations)], dim=-1
+            log_probs,
+            [log_probs.shape[-1] - len(self.durations), len(self.durations)],
+            dim=-1,
         )
         label_acts = label_acts.contiguous()
-        duration_acts = torch.nn.functional.log_softmax(duration_acts, dim=-1).contiguous()
+        duration_acts = torch.nn.functional.log_softmax(
+            duration_acts, dim=-1
+        ).contiguous()
         # Compute RNNT loss
-        loss = self._loss(label_acts,
+        loss = self._loss(
+            label_acts,
             duration_acts,
             targets,
             input_lengths,
@@ -152,7 +163,8 @@ class TDTLoss(nn.modules.loss._Loss):
             self.fastemit_lambda,
             self.clamp,
             self.sigma,
-            self.omega)
+            self.omega,
+        )
 
         # del new variables that may have been created
         del (
@@ -183,16 +195,17 @@ class RNNTLossTorchAudio(torch.nn.modules.loss._Loss):
             blank=self.blank_idx,
             reduction="sum",
         )
-        
+
         return loss
-    def reduce(self, losses, target_lengths,batch_size):
-        
-        sum_loss=sum(losses)
-        if self.reduction == 'mean_batch':
-            losses = sum_loss/batch_size  # global batch size average
-        elif self.reduction == 'mean':
-            losses = sum_loss/len(target_lengths)
-        elif self.reduction == 'sum':
+
+    def reduce(self, losses, target_lengths, batch_size):
+
+        sum_loss = sum(losses)
+        if self.reduction == "mean_batch":
+            losses = sum_loss / batch_size  # global batch size average
+        elif self.reduction == "mean":
+            losses = sum_loss / len(target_lengths)
+        elif self.reduction == "sum":
             losses = sum_loss
-        
+
         return losses

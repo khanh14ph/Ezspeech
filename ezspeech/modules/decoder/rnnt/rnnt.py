@@ -3,8 +3,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 from omegaconf import DictConfig
 
-from ezspeech.modules.decoder.rnnt import  rnnt_utils
+from ezspeech.modules.decoder.rnnt import rnnt_utils
 from ezspeech.modules.decoder.rnnt import rnn
+
+
 class RNNTDecoder(torch.nn.Module):
     """A Recurrent Neural Network Transducer Decoder / Prediction Network (RNN-T Prediction Network).
     An RNN-T Decoder/Prediction network, comprised of a stateful LSTM model.
@@ -73,19 +75,18 @@ class RNNTDecoder(torch.nn.Module):
     ):
         # Required arguments
         super().__init__()
-        self.pred_hidden = prednet['pred_hidden']
+        self.pred_hidden = prednet["pred_hidden"]
         self.pred_rnn_layers = prednet["pred_rnn_layers"]
         self.blank_idx = vocab_size
-        self.blank_as_pad=blank_as_pad
+        self.blank_as_pad = blank_as_pad
         # Initialize the model (blank token increases vocab size by 1)
 
-
         # Optional arguments
-        forget_gate_bias = prednet.get('forget_gate_bias', 1.0)
-        t_max = prednet.get('t_max', None)
-        weights_init_scale = prednet.get('weights_init_scale', 1.0)
-        hidden_hidden_bias_scale = prednet.get('hidden_hidden_bias_scale', 0.0)
-        dropout = prednet.get('dropout', 0.0)
+        forget_gate_bias = prednet.get("forget_gate_bias", 1.0)
+        t_max = prednet.get("t_max", None)
+        weights_init_scale = prednet.get("weights_init_scale", 1.0)
+        hidden_hidden_bias_scale = prednet.get("hidden_hidden_bias_scale", 0.0)
+        dropout = prednet.get("dropout", 0.0)
         self.random_state_sampling = random_state_sampling
 
         self.prediction = self._predict_modules(
@@ -223,7 +224,6 @@ class RNNTDecoder(torch.nn.Module):
 
         del y, start, state
 
-
         return g, hid
 
     def _predict_modules(
@@ -257,7 +257,9 @@ class RNNTDecoder(torch.nn.Module):
             rnn_hidden_size: the hidden size of the RNN, if not specified, pred_n_hidden would be used
         """
         if self.blank_as_pad:
-            embed = torch.nn.Embedding(vocab_size + 1, pred_n_hidden, padding_idx=self.blank_idx)
+            embed = torch.nn.Embedding(
+                vocab_size + 1, pred_n_hidden, padding_idx=self.blank_idx
+            )
         else:
             embed = torch.nn.Embedding(vocab_size, pred_n_hidden)
 
@@ -266,7 +268,9 @@ class RNNTDecoder(torch.nn.Module):
                 "embed": embed,
                 "dec_rnn": rnn.rnn(
                     input_size=pred_n_hidden,
-                    hidden_size=rnn_hidden_size if rnn_hidden_size > 0 else pred_n_hidden,
+                    hidden_size=(
+                        rnn_hidden_size if rnn_hidden_size > 0 else pred_n_hidden
+                    ),
                     num_layers=pred_rnn_layers,
                     norm=norm,
                     forget_gate_bias=forget_gate_bias,
@@ -300,14 +304,38 @@ class RNNTDecoder(torch.nn.Module):
         batch = y.size(0)
         if self.random_state_sampling and self.training:
             state = (
-                torch.randn(self.pred_rnn_layers, batch, self.pred_hidden, dtype=y.dtype, device=y.device),
-                torch.randn(self.pred_rnn_layers, batch, self.pred_hidden, dtype=y.dtype, device=y.device),
+                torch.randn(
+                    self.pred_rnn_layers,
+                    batch,
+                    self.pred_hidden,
+                    dtype=y.dtype,
+                    device=y.device,
+                ),
+                torch.randn(
+                    self.pred_rnn_layers,
+                    batch,
+                    self.pred_hidden,
+                    dtype=y.dtype,
+                    device=y.device,
+                ),
             )
 
         else:
             state = (
-                torch.zeros(self.pred_rnn_layers, batch, self.pred_hidden, dtype=y.dtype, device=y.device),
-                torch.zeros(self.pred_rnn_layers, batch, self.pred_hidden, dtype=y.dtype, device=y.device),
+                torch.zeros(
+                    self.pred_rnn_layers,
+                    batch,
+                    self.pred_hidden,
+                    dtype=y.dtype,
+                    device=y.device,
+                ),
+                torch.zeros(
+                    self.pred_rnn_layers,
+                    batch,
+                    self.pred_hidden,
+                    dtype=y.dtype,
+                    device=y.device,
+                ),
             )
         return state
 
@@ -335,13 +363,21 @@ class RNNTDecoder(torch.nn.Module):
             device = _p.device
 
         # parse "blank" tokens in hypothesis
-        if len(hypothesis.y_sequence) > 0 and hypothesis.y_sequence[-1] == self.blank_idx:
+        if (
+            len(hypothesis.y_sequence) > 0
+            and hypothesis.y_sequence[-1] == self.blank_idx
+        ):
             blank_state = True
         else:
             blank_state = False
 
         # Convert last token of hypothesis to torch.Tensor
-        target = torch.full([1, 1], fill_value=hypothesis.y_sequence[-1], device=device, dtype=torch.long)
+        target = torch.full(
+            [1, 1],
+            fill_value=hypothesis.y_sequence[-1],
+            device=device,
+            dtype=torch.long,
+        )
         lm_token = target[:, -1]  # [1]
 
         # Convert current hypothesis into a tuple to preserve in cache
@@ -352,7 +388,9 @@ class RNNTDecoder(torch.nn.Module):
         else:
             # Obtain score for target token and new states
             if blank_state:
-                y, new_state = self.predict(None, state=None, add_sos=False, batch_size=1)  # [1, 1, H]
+                y, new_state = self.predict(
+                    None, state=None, add_sos=False, batch_size=1
+                )  # [1, 1, H]
 
             else:
                 y, new_state = self.predict(
@@ -407,8 +445,12 @@ class RNNTDecoder(torch.nn.Module):
             batch = len(to_process)
 
             # convert list of tokens to torch.Tensor, then reshape.
-            tokens = torch.tensor(tokens, device=device, dtype=torch.long).view(batch, -1)
-            dec_states = self.batch_initialize_states([d_state for _, d_state in to_process])
+            tokens = torch.tensor(tokens, device=device, dtype=torch.long).view(
+                batch, -1
+            )
+            dec_states = self.batch_initialize_states(
+                [d_state for _, d_state in to_process]
+            )
 
             dec_out, dec_states = self.predict(
                 tokens, state=dec_states, add_sos=False, batch_size=batch
@@ -423,13 +465,20 @@ class RNNTDecoder(torch.nn.Module):
 
                     # Cache [1, H] scores of the current y_j, and its corresponding state
                     final[final_idx] = (dec_out[processed_idx], new_state)
-                    cache[to_process[processed_idx][0]] = (dec_out[processed_idx], new_state)
+                    cache[to_process[processed_idx][0]] = (
+                        dec_out[processed_idx],
+                        new_state,
+                    )
 
                     processed_idx += 1
 
-        return [dec_out for dec_out, _ in final], [dec_states for _, dec_states in final]
+        return [dec_out for dec_out, _ in final], [
+            dec_states for _, dec_states in final
+        ]
 
-    def batch_initialize_states(self, decoder_states: List[List[torch.Tensor]]) -> List[torch.Tensor]:
+    def batch_initialize_states(
+        self, decoder_states: List[List[torch.Tensor]]
+    ) -> List[torch.Tensor]:
         """
         Creates a stacked decoder states to be passed to prediction network
 
@@ -447,12 +496,16 @@ class RNNTDecoder(torch.nn.Module):
         """
         # stack decoder states into tensor of shape [B x layers x L x H]
         # permute to the target shape [layers x L x B x H]
-        stacked_states = torch.stack([torch.stack(decoder_state) for decoder_state in decoder_states])
+        stacked_states = torch.stack(
+            [torch.stack(decoder_state) for decoder_state in decoder_states]
+        )
         permuted_states = stacked_states.permute(1, 2, 0, 3)
 
         return list(permuted_states.contiguous())
 
-    def batch_select_state(self, batch_states: List[torch.Tensor], idx: int) -> List[List[torch.Tensor]]:
+    def batch_select_state(
+        self, batch_states: List[torch.Tensor], idx: int
+    ) -> List[List[torch.Tensor]]:
         """Get decoder state from batch of states, for given id.
 
         Args:
@@ -508,20 +561,32 @@ class RNNTDecoder(torch.nn.Module):
         if dst_states is not None:
             # Perform in-place gathering into dst_states
             torch.gather(
-                src_states[0].view(beam_shape), dim=2, index=indices_expanded, out=dst_states[0].view(beam_shape)
+                src_states[0].view(beam_shape),
+                dim=2,
+                index=indices_expanded,
+                out=dst_states[0].view(beam_shape),
             )
             torch.gather(
-                src_states[1].view(beam_shape), dim=2, index=indices_expanded, out=dst_states[1].view(beam_shape)
+                src_states[1].view(beam_shape),
+                dim=2,
+                index=indices_expanded,
+                out=dst_states[1].view(beam_shape),
             )
             return dst_states
 
         # Gather and reshape into the output format
         return (
-            torch.gather(src_states[0].view(beam_shape), dim=2, index=indices_expanded).view(flat_shape),
-            torch.gather(src_states[1].view(beam_shape), dim=2, index=indices_expanded).view(flat_shape),
+            torch.gather(
+                src_states[0].view(beam_shape), dim=2, index=indices_expanded
+            ).view(flat_shape),
+            torch.gather(
+                src_states[1].view(beam_shape), dim=2, index=indices_expanded
+            ).view(flat_shape),
         )
 
-    def batch_concat_states(self, batch_states: List[List[torch.Tensor]]) -> List[torch.Tensor]:
+    def batch_concat_states(
+        self, batch_states: List[List[torch.Tensor]]
+    ) -> List[torch.Tensor]:
         """Concatenate a batch of decoder state to a packed state.
 
         Args:
@@ -576,8 +641,18 @@ class RNNTDecoder(torch.nn.Module):
 
         other = other_src_states if other_src_states is not None else dst_states
         dtype = dst_states[0].dtype
-        torch.where(mask.unsqueeze(0).unsqueeze(-1), src_states[0].to(dtype), other[0].to(dtype), out=dst_states[0])
-        torch.where(mask.unsqueeze(0).unsqueeze(-1), src_states[1].to(dtype), other[1].to(dtype), out=dst_states[1])
+        torch.where(
+            mask.unsqueeze(0).unsqueeze(-1),
+            src_states[0].to(dtype),
+            other[0].to(dtype),
+            out=dst_states[0],
+        )
+        torch.where(
+            mask.unsqueeze(0).unsqueeze(-1),
+            src_states[1].to(dtype),
+            other[1].to(dtype),
+            out=dst_states[1],
+        )
 
     @classmethod
     def batch_replace_states_all(
@@ -596,7 +671,9 @@ class RNNTDecoder(torch.nn.Module):
         Split states into a list of states.
         Useful for splitting the final state for converting results of the decoding algorithm to Hypothesis class.
         """
-        return list(zip(batch_states[0].split(1, dim=1), batch_states[1].split(1, dim=1)))
+        return list(
+            zip(batch_states[0].split(1, dim=1), batch_states[1].split(1, dim=1))
+        )
 
     def batch_copy_states(
         self,
@@ -736,7 +813,7 @@ class RNNTJoint(torch.nn.Module):
 
         self._vocab_size = num_classes
         self._num_extra_outputs = num_extra_outputs
-        self._num_classes = num_classes + num_extra_outputs  
+        self._num_classes = num_classes + num_extra_outputs
 
         self.masking_prob = masking_prob
         if self.masking_prob > 0.0:
@@ -750,7 +827,9 @@ class RNNTJoint(torch.nn.Module):
         self._fused_batch_size = fused_batch_size
 
         if fuse_loss_wer and (fused_batch_size is None):
-            raise ValueError("If `fuse_loss_wer` is set, then `fused_batch_size` cannot be None!")
+            raise ValueError(
+                "If `fuse_loss_wer` is set, then `fused_batch_size` cannot be None!"
+            )
 
         self._loss = None
 
@@ -758,16 +837,14 @@ class RNNTJoint(torch.nn.Module):
         self.log_softmax = log_softmax
         self.preserve_memory = preserve_memory
 
-
-
         # Required arguments
-        self.encoder_hidden = jointnet['encoder_hidden']
-        self.pred_hidden = jointnet['pred_hidden']
-        self.joint_hidden = jointnet['joint_hidden']
-        self.activation = jointnet['activation']
+        self.encoder_hidden = jointnet["encoder_hidden"]
+        self.pred_hidden = jointnet["pred_hidden"]
+        self.joint_hidden = jointnet["joint_hidden"]
+        self.activation = jointnet["activation"]
 
         # Optional arguments
-        dropout = jointnet.get('dropout', 0.0)
+        dropout = jointnet.get("dropout", 0.0)
 
         self.pred, self.enc, self.joint_net = self._joint_net_modules(
             num_classes=self._num_classes,  # add 1 for blank symbol
@@ -784,14 +861,13 @@ class RNNTJoint(torch.nn.Module):
         # to change, requires running ``model.temperature = T`` explicitly
         self.temperature = 1.0
 
-
     def forward(
         self,
         encoder_outputs: torch.Tensor,
         decoder_outputs: Optional[torch.Tensor],
         encoder_lengths: Optional[torch.Tensor] = None,
         transcripts: Optional[torch.Tensor] = None,
-        transcript_lengths: Optional[torch.Tensor] = None
+        transcript_lengths: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, List[Optional[torch.Tensor]]]:
         # encoder = (B, T, D)
         # decoder = (B, D, U) if passed, else None
@@ -810,12 +886,12 @@ class RNNTJoint(torch.nn.Module):
 
         else:
             # At least the loss module must be supplied during fused joint
-           
 
             # When using fused joint step, both encoder and transcript lengths must be provided
             if (encoder_lengths is None) or (transcript_lengths is None):
                 raise ValueError(
-                    "`fuse_loss_wer` is set, therefore encoder and target lengths " "must be provided as well!"
+                    "`fuse_loss_wer` is set, therefore encoder and target lengths "
+                    "must be provided as well!"
                 )
 
             losses = []
@@ -831,8 +907,12 @@ class RNNTJoint(torch.nn.Module):
                 # Extract the sub batch inputs
                 # sub_enc = encoder_outputs[begin:end, ...]
                 # sub_transcripts = transcripts[begin:end, ...]
-                sub_enc = encoder_outputs.narrow(dim=0, start=begin, length=int(end - begin))
-                sub_transcripts = transcripts.narrow(dim=0, start=begin, length=int(end - begin))
+                sub_enc = encoder_outputs.narrow(
+                    dim=0, start=begin, length=int(end - begin)
+                )
+                sub_transcripts = transcripts.narrow(
+                    dim=0, start=begin, length=int(end - begin)
+                )
 
                 sub_enc_lens = encoder_lengths[begin:end]
                 sub_transcript_lens = transcript_lengths[begin:end]
@@ -846,15 +926,21 @@ class RNNTJoint(torch.nn.Module):
                     # Reduce encoder length to preserve computation
                     # Encoder: [sub-batch, T, D] -> [sub-batch, T', D]; T' < T
                     if sub_enc.shape[1] != max_sub_enc_length:
-                        sub_enc = sub_enc.narrow(dim=1, start=0, length=int(max_sub_enc_length))
+                        sub_enc = sub_enc.narrow(
+                            dim=1, start=0, length=int(max_sub_enc_length)
+                        )
 
                     # sub_dec = decoder_outputs[begin:end, ...]  # [sub-batch, U, D]
-                    sub_dec = decoder_outputs.narrow(dim=0, start=begin, length=int(end - begin))  # [sub-batch, U, D]
+                    sub_dec = decoder_outputs.narrow(
+                        dim=0, start=begin, length=int(end - begin)
+                    )  # [sub-batch, U, D]
 
                     # Reduce decoder length to preserve computation
                     # Decoder: [sub-batch, U, D] -> [sub-batch, U', D]; U' < U
                     if sub_dec.shape[1] != max_sub_transcript_length + 1:
-                        sub_dec = sub_dec.narrow(dim=1, start=0, length=int(max_sub_transcript_length + 1))
+                        sub_dec = sub_dec.narrow(
+                            dim=1, start=0, length=int(max_sub_transcript_length + 1)
+                        )
 
                     # Perform joint => [sub-batch, T', U', V + 1]
                     sub_joint = self.joint(sub_enc, sub_dec)
@@ -864,13 +950,14 @@ class RNNTJoint(torch.nn.Module):
                     # Reduce transcript length to correct alignment
                     # Transcript: [sub-batch, L] -> [sub-batch, L']; L' <= L
                     if sub_transcripts.shape[1] != max_sub_transcript_length:
-                        sub_transcripts = sub_transcripts.narrow(dim=1, start=0, length=int(max_sub_transcript_length))
+                        sub_transcripts = sub_transcripts.narrow(
+                            dim=1, start=0, length=int(max_sub_transcript_length)
+                        )
 
                     # Compute sub batch loss
                     # preserve loss reduction type
 
                     # override loss reduction to sum
-      
 
                     # compute and preserve loss
                     loss_batch = self.loss(
@@ -879,27 +966,25 @@ class RNNTJoint(torch.nn.Module):
                         input_lengths=sub_enc_lens,
                         target_lengths=sub_transcript_lens,
                     )
-                    
+
                     losses.append(loss_batch)
                     target_lengths.append(sub_transcript_lens)
-                                            
+
                     # reset loss reduction type
 
                 else:
                     losses = None
 
                 # Update WER for sub batch
-                
-
-                    
 
                 del sub_enc, sub_transcripts, sub_enc_lens, sub_transcript_lens
 
-            losses = self.loss.reduce(losses, target_lengths,batch_size)
+            losses = self.loss.reduce(losses, target_lengths, batch_size)
 
             # Collect sub batch wer results
 
             return losses
+
     def project_prednet(self, prednet_output: torch.Tensor) -> torch.Tensor:
         """
         Project the Prediction Network (Decoder) output to the joint hidden dimension.
@@ -942,7 +1027,10 @@ class RNNTJoint(torch.nn.Module):
         Returns:
             Logits / log softmaxed tensor of shape (B, T, U, V + 1).
         """
-        return self.joint_after_projection(self.project_encoder(f), self.project_prednet(g))
+        return self.joint_after_projection(
+            self.project_encoder(f), self.project_prednet(g)
+        )
+
     def project_encoder(self, encoder_output: torch.Tensor) -> torch.Tensor:
         """
         Project the encoder output to the joint hidden dimension.
@@ -1032,7 +1120,15 @@ class RNNTJoint(torch.nn.Module):
                     res = res.log_softmax(dim=-1)
         return res
 
-    def _joint_net_modules(self, num_classes, pred_n_hidden, enc_n_hidden, joint_n_hidden, activation, dropout):
+    def _joint_net_modules(
+        self,
+        num_classes,
+        pred_n_hidden,
+        enc_n_hidden,
+        joint_n_hidden,
+        activation,
+        dropout,
+    ):
         """
         Prepare the trainable modules of the Joint Network
 
@@ -1047,16 +1143,19 @@ class RNNTJoint(torch.nn.Module):
         pred = torch.nn.Linear(pred_n_hidden, joint_n_hidden)
         enc = torch.nn.Linear(enc_n_hidden, joint_n_hidden)
 
-        if activation not in ['relu', 'sigmoid', 'tanh']:
-            raise ValueError("Unsupported activation for joint step - please pass one of " "[relu, sigmoid, tanh]")
+        if activation not in ["relu", "sigmoid", "tanh"]:
+            raise ValueError(
+                "Unsupported activation for joint step - please pass one of "
+                "[relu, sigmoid, tanh]"
+            )
 
         activation = activation.lower()
 
-        if activation == 'relu':
+        if activation == "relu":
             activation = torch.nn.ReLU(inplace=True)
-        elif activation == 'sigmoid':
+        elif activation == "sigmoid":
             activation = torch.nn.Sigmoid()
-        elif activation == 'tanh':
+        elif activation == "tanh":
             activation = torch.nn.Tanh()
 
         layers = (
@@ -1065,8 +1164,6 @@ class RNNTJoint(torch.nn.Module):
             + [torch.nn.Linear(joint_n_hidden, num_classes)]
         )
         return pred, enc, torch.nn.Sequential(*layers)
-
-   
 
     @property
     def num_classes_with_blank(self):
@@ -1082,7 +1179,9 @@ class RNNTJoint(torch.nn.Module):
 
     def set_loss(self, loss):
         if not self._fuse_loss_wer:
-            raise ValueError("Attempting to set loss module even though `fuse_loss_wer` is not set!")
+            raise ValueError(
+                "Attempting to set loss module even though `fuse_loss_wer` is not set!"
+            )
 
         self._loss = loss
 
@@ -1092,7 +1191,9 @@ class RNNTJoint(torch.nn.Module):
 
     def set_wer(self, wer):
         if not self._fuse_loss_wer:
-            raise ValueError("Attempting to set WER module even though `fuse_loss_wer` is not set!")
+            raise ValueError(
+                "Attempting to set WER module even though `fuse_loss_wer` is not set!"
+            )
 
         self._wer = wer
 

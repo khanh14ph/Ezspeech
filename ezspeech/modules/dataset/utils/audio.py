@@ -8,13 +8,12 @@ import torchaudio
 
 
 def extract_filterbank(
-
     waveform: torch.Tensor,
     sample_rate: int,
     transformation=None,
     normalize: Optional[bool] = False,
 ) -> torch.Tensor:
-    if transformation==None:
+    if transformation == None:
         transformation = torchaudio.transforms.MelSpectrogram(
             sample_rate=sample_rate,
             n_fft=int(0.05 * sample_rate),
@@ -90,5 +89,3 @@ def get_augmentation(config: DictConfig) -> Tuple[List[Any], List[Any]]:
     feature_augments = [instantiate(cfg) for cfg in augment_config.values()]
 
     return audio_augments, feature_augments
-
-

@@ -1,6 +1,7 @@
 from typing import Tuple, List, Union, Optional
 import re
 
+
 def tokenize(sentence: str, vocab: List[str]) -> List[str]:
     sentence = re.sub(r"\s+", "|", sentence)
     sentence = sentence.strip("|")
@@ -12,6 +13,8 @@ def tokenize(sentence: str, vocab: List[str]) -> List[str]:
 
 VOWELS = "aăâeêioôơuưy"
 TONE_CHARS = "àằầèềìòồờùừỳáắấéếíóốớúứýảẳẩẻểỉỏổởủửỷạặậẹệịọộợụựỵãẵẫẽễĩõỗỡũữỹ"
+
+
 def check_end_word(token: str, vocab: List[str]):
     """_summary_
 
@@ -31,8 +34,6 @@ def check_end_word(token: str, vocab: List[str]):
         return True
     else:
         return False
-    
-
 
 
 def number_to_vietnamese_words(number):
@@ -48,9 +49,9 @@ def number_to_vietnamese_words(number):
 
     # Special cases for tens
     special_tens = {
-   "linh",
-   "mười",
-   "lăm",  # Used when 5 is in the ones place after 10
+        "linh",
+        "mười",
+        "lăm",  # Used when 5 is in the ones place after 10
     }
 
     # Function to convert a group of 3 digits
@@ -131,10 +132,13 @@ def convert_numbers_in_text_vi(text):
 
     # Replace all matched numbers
     return re.sub(pattern, replace_match, text)
-special_symbol=[",",".","?","$","@","-","_","(",")","*","!","#","/"]
+
+
+special_symbol = [",", ".", "?", "$", "@", "-", "_", "(", ")", "*", "!", "#", "/"]
 # Cài đặt: pip install num2words
 import re
 from num2words import num2words
+
 
 def convert_numbers_in_text_en(text):
     # Tìm tất cả các số trong văn bản
@@ -143,12 +147,12 @@ def convert_numbers_in_text_en(text):
         return num2words(number)
 
     # Sử dụng regex để tìm và thay thế các số
-    return re.sub(r'\b\d+\b', replace_num, text)
+    return re.sub(r"\b\d+\b", replace_num, text)
 
 
 def normalize(x):
 
     for i in special_symbol:
-        x=x.replace(i," ")
-    x=" ".join(x.split())
+        x = x.replace(i, " ")
+    x = " ".join(x.split())
     return x

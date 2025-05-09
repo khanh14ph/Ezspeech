@@ -5,37 +5,24 @@ from typing import Tuple, List, Dict, Union, Optional
 import time
 import torch
 from torch.nn.utils.rnn import pad_sequence
-from pyctcdecode import build_ctcdecoder
-import sentencepiece as spm
-
+import hydra
+from hydra.utils import instantiate
+from tqdm import tqdm
+from omegaconf import OmegaConf
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_decoding import RNNTDecoding
 from ezspeech.utils.common import load_module
 from ezspeech.modules.dataset.utils.audio import extract_filterbank
 
 
-# from lightspeech.modules.searcher import ctc_decoder
-from torchaudio.models.decoder import ctc_decoder
-
-
-@dataclass
-class RNNTHypothesis:
-    score: float
-    tokens: List[int]
-    state: Union[List[torch.Tensor], torch.Tensor]
-    lm_states: Optional[List[str]] = field(default_factory=list)
-    timesteps: Optional[List[int]] = field(default_factory=list)
-    alignment: Optional[List[int]] = field(default_factory=list)
-    confidence: Optional[List[float]] = field(default_factory=list)
-
-
 class LightningASR(object):
-    def __init__(self, filepath: str, device: str, vocab: str = None,decoding_cfg=None):
+    def __init__(
+        self, filepath: str, device: str, vocab: str = None, decoding_cfg=None
+    ):
         self.blank = 0
         self.beam_size = 5
 
         self.device = device
         self.vocab = open(vocab).read().splitlines()
-
 
         (
             self.encoder,
@@ -43,7 +30,9 @@ class LightningASR(object):
             self.predictor,
             self.joint,
         ) = self._load_checkpoint(filepath, device)
-        self.rnnt_decoding=RNNTDecoding(decoding_cfg,self.predictor,self.joint,self.vocab)
+        self.rnnt_decoding = RNNTDecoding(
+            decoding_cfg, self.predictor, self.joint, self.vocab
+        )
 
     def _load_checkpoint(self, filepath: str, device: str):
         checkpoint = torch.load(filepath, map_location="cpu", weights_only=False)
@@ -68,6 +57,7 @@ class LightningASR(object):
         enc_outs, enc_lens = self.encoder(xs, x_lens)
 
         return enc_outs, enc_lens
+
     @torch.inference_mode()
     def transcribe(
         self,
@@ -75,11 +65,20 @@ class LightningASR(object):
         sample_rates: List[int],
         searcher: str = "ctc",
     ) -> Tuple[str, float]:
-       
-        enc_outs, enc_lens=self.forward_encoder(speeches,sample_rates)
-        hypothesis=self.rnnt_decoding.rnnt_decoder_predictions_tensor(encoder_output=enc_outs,encoded_lengths=enc_lens)
 
-        return hypothesis
+        enc_outs, enc_lens = self.forward_encoder(speeches, sample_rates)
+        hypothesises = self.rnnt_decoding.rnnt_decoder_predictions_tensor(
+            encoder_output=enc_outs, encoded_lengths=enc_lens
+        )
+        text_token = [
+            self.idx_to_token(hypothesis["idx_sequence"]) for hypothesis in hypothesises
+        ]
+        text = ["".join(i).replace("|", " ") for i in text_token]
+        return text
+
+    def idx_to_token(self, lst):
+        return [self.vocab[i] for i in lst]
+
     def _preprocess(
         self, speeches: List[torch.Tensor], sample_rates: List[int]
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -99,25 +98,13 @@ class LightningASR(object):
 
         return xs, x_lens
 
-    def _ctc_greedy_search(
-        self, emissions: torch.Tensor, lengths: torch.Tensor
-    ) -> List[Tuple[str, float]]:
 
-        hypos = []
-        for i, emission in enumerate(emissions):
-            emission = emission[: lengths[i]]
+if __name__ == "__main__":
+    config = OmegaConf.load("/data/khanhnd65/Ezspeech/config/test/test.yaml")
+    model = instantiate(config.model)
+    import torchaudio
 
-            indices = torch.argmax(emission, dim=1)
-            indices = torch.unique_consecutive(indices, dim=0).tolist()
-            # indices = torch.masked_select(indices, indices != self.blank)
-
-            indices = [idx for idx in indices if idx != self.blank]
-            tokens = self.bpe_model.decode(indices)
-            text = "".join(tokens)
-
-
-            hypos.append(text)  # The alignment is None
-
-        return hypos
-
-    
+    audio, sr = torchaudio.load(
+        "/data/datbt7/dataset/speech/16k/youtube/2019/mn-20190921-other-0006-0585026-0585254.wav"
+    )
+    print(model.transcribe([audio], [sr]))

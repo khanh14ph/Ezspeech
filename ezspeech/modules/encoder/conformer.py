@@ -29,6 +29,8 @@ from ezspeech.layers.sampling import ConvSubsampling
 from ezspeech.utils.asr.regularization_utils import compute_stochastic_depth_drop_probs
 from ezspeech.layers.attention import RelPositionMultiHeadAttention
 from ezspeech.layers.causal_convs import CausalConv1D
+
+
 class ConformerFeedForward(nn.Module):
     """
     feed-forward module of Conformer model.
@@ -61,6 +63,8 @@ class ConformerFeedForward(nn.Module):
             if self.use_bias:
                 nn.init.uniform_(self.linear1.bias, -ffn1_max, ffn1_max)
                 nn.init.uniform_(self.linear2.bias, -ffn2_max, ffn2_max)
+
+
 class ConformerConvolution(nn.Module):
     """The convolution module for the Conformer model.
     Args:
@@ -124,7 +128,6 @@ class ConformerConvolution(nn.Module):
     def forward(self, x, pad_mask=None, cache=None):
         x = self.pointwise_conv1(x)
 
-    
         x = nn.functional.glu(x, dim=1)
 
         if pad_mask is not None:
@@ -132,13 +135,12 @@ class ConformerConvolution(nn.Module):
 
         x = self.depthwise_conv(x, cache=cache)
 
-   
         x = self.batch_norm(x)
 
         x = self.activation(x)
         x = self.pointwise_conv2(x)
         x = x.transpose(1, 2)
-        
+
         return x
 
     def reset_parameters_conv(self):
@@ -154,6 +156,7 @@ class ConformerConvolution(nn.Module):
                 nn.init.uniform_(self.pointwise_conv2.bias, -pw2_max, pw2_max)
                 nn.init.uniform_(self.depthwise_conv.bias, -dw_max, dw_max)
 
+
 class ConformerLayer(torch.nn.Module):
     """A single block of the Conformer encoder.
 
@@ -166,7 +169,7 @@ class ConformerLayer(torch.nn.Module):
                 overlapping chunks. Attention context is determined by att_context_size parameter.
             'abs_pos': absolute positional embedding and Transformer
             Default is rel_pos.
-       
+
         n_heads (int): number of heads for multi-head attention
         conv_kernel_size (int): kernel size for depthwise convolution in convolution module
         dropout (float): dropout probabilities for linear layers
@@ -179,10 +182,10 @@ class ConformerLayer(torch.nn.Module):
         self,
         d_model,
         d_ff,
-        self_attention_model='rel_pos',
+        self_attention_model="rel_pos",
         n_heads=4,
         conv_kernel_size=31,
-        conv_norm_type='batch_norm',
+        conv_norm_type="batch_norm",
         conv_context_size=None,
         dropout=0.1,
         dropout_att=0.1,
@@ -205,7 +208,9 @@ class ConformerLayer(torch.nn.Module):
 
         # first feed forward module
         self.norm_feed_forward1 = LayerNorm(d_model)
-        self.feed_forward1 = ConformerFeedForward(d_model=d_model, d_ff=d_ff, dropout=dropout, use_bias=use_bias)
+        self.feed_forward1 = ConformerFeedForward(
+            d_model=d_model, d_ff=d_ff, dropout=dropout, use_bias=use_bias
+        )
 
         # convolution module
         self.norm_conv = LayerNorm(d_model)
@@ -230,16 +235,25 @@ class ConformerLayer(torch.nn.Module):
             use_pytorch_sdpa=self.use_pytorch_sdpa,
             use_pytorch_sdpa_backends=self.use_pytorch_sdpa_backends,
         )
-       
 
         # second feed forward module
         self.norm_feed_forward2 = LayerNorm(d_model)
-        self.feed_forward2 = ConformerFeedForward(d_model=d_model, d_ff=d_ff, dropout=dropout, use_bias=use_bias)
+        self.feed_forward2 = ConformerFeedForward(
+            d_model=d_model, d_ff=d_ff, dropout=dropout, use_bias=use_bias
+        )
 
         self.dropout = nn.Dropout(dropout)
         self.norm_out = LayerNorm(d_model)
 
-    def forward(self, x, att_mask=None, pos_emb=None, pad_mask=None, cache_last_channel=None, cache_last_time=None):
+    def forward(
+        self,
+        x,
+        att_mask=None,
+        pos_emb=None,
+        pad_mask=None,
+        cache_last_channel=None,
+        cache_last_time=None,
+    ):
         """
         Args:
             x (torch.Tensor): input signals (B, T, d_model)
@@ -260,17 +274,21 @@ class ConformerLayer(torch.nn.Module):
 
         x = self.norm_self_att(residual)
 
-        x = self.self_attn(query=x, key=x, value=x, mask=att_mask, pos_emb=pos_emb, cache=cache_last_channel)
-
-
-        
+        x = self.self_attn(
+            query=x,
+            key=x,
+            value=x,
+            mask=att_mask,
+            pos_emb=pos_emb,
+            cache=cache_last_channel,
+        )
 
         residual = residual + self.dropout(x)
 
         x = self.norm_conv(residual)
-        x=x.transpose(1, 2)
+        x = x.transpose(1, 2)
         x = self.conv(x, pad_mask=pad_mask, cache=cache_last_time)
-    
+
         residual = residual + self.dropout(x)
 
         x = self.norm_feed_forward2(residual)
@@ -279,7 +297,6 @@ class ConformerLayer(torch.nn.Module):
 
         x = self.norm_out(residual)
 
-     
         return x
 
 
@@ -393,7 +410,6 @@ class ConformerEncoder(nn.Module):
         stochastic_depth_drop_prob: float = 0.0,
         stochastic_depth_mode: str = "linear",
         stochastic_depth_start_layer: int = 1,
-
         use_pytorch_sdpa: bool = False,
         use_pytorch_sdpa_backends=None,
         sync_max_audio_length: bool = True,
@@ -500,9 +516,7 @@ class ConformerEncoder(nn.Module):
             )[0]
         else:
             cur_att_context_size = self.att_context_size
-        
 
-        
         audio_signal, length = self.subsampling(x=audio_signal, lengths=length)
         length = length.to(torch.int64)
         max_audio_length = audio_signal.size(1)
@@ -546,11 +560,10 @@ class ConformerEncoder(nn.Module):
                         1.0 - drop_prob
                     ) + original_signal
 
-
         audio_signal = torch.transpose(audio_signal, 1, 2)
         length = length.to(dtype=torch.int64)
 
-        return audio_signal.transpose(1,2), length
+        return audio_signal.transpose(1, 2), length
 
     def update_max_seq_length(self, seq_length: int, device):
         """
@@ -613,6 +626,7 @@ class ConformerEncoder(nn.Module):
             att_context_probs,
             conv_context_size,
         )
+
     def set_max_audio_length(self, max_audio_length):
         """
         Sets maximum input length.

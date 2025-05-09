@@ -9,7 +9,11 @@ from ezspeech.modules.decoder.rnnt.rnnt_utils import ConfidenceMethodConfig
 from ezspeech.modules.decoder.rnnt.rnnt_utils import Hypothesis
 from ezspeech.modules.decoder.rnnt.rnn import label_collate
 from ezspeech.modules.decoder.rnnt.rnnt import RNNTDecoder, RNNTJoint
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.confidence_utils import ConfidenceMethodMixin
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.confidence_utils import (
+    ConfidenceMethodMixin,
+)
+
+
 def pack_hypotheses(
     hypotheses: List[Hypothesis],
     logitlen: torch.Tensor,
@@ -28,8 +32,8 @@ def pack_hypotheses(
     Returns:
         list: A list of packed hypotheses in tensor format.
     """
-    if hasattr(logitlen, 'cpu'):
-        logitlen_cpu = logitlen.to('cpu')
+    if hasattr(logitlen, "cpu"):
+        logitlen_cpu = logitlen.to("cpu")
     else:
         logitlen_cpu = logitlen
 
@@ -46,7 +50,8 @@ def pack_hypotheses(
 
     return hypotheses
 
-def _states_to_device(dec_state, device='cpu'):
+
+def _states_to_device(dec_state, device="cpu"):
     """
     Transfers decoder states to the specified device.
 
@@ -114,7 +119,6 @@ class _GreedyRNNTInfer(ConfidenceMethodMixin):
                     - 'exp' for using exponential mapping with linear shift.
     """
 
-   
     def __init__(
         self,
         decoder_model: RNNTDecoder,
@@ -131,7 +135,9 @@ class _GreedyRNNTInfer(ConfidenceMethodMixin):
         self._SOS = blank_index  # Start of single index
 
         if max_symbols_per_step is not None and max_symbols_per_step <= 0:
-            raise ValueError(f"Expected max_symbols_per_step > 0 (or None), got {max_symbols_per_step}")
+            raise ValueError(
+                f"Expected max_symbols_per_step > 0 (or None), got {max_symbols_per_step}"
+            )
         self.max_symbols = max_symbols_per_step
 
         # set confidence calculation method
@@ -172,12 +178,16 @@ class _GreedyRNNTInfer(ConfidenceMethodMixin):
         else:
             # Label is an integer
             if label == self._SOS:
-                return self.decoder.predict(None, hidden, add_sos=add_sos, batch_size=batch_size)
+                return self.decoder.predict(
+                    None, hidden, add_sos=add_sos, batch_size=batch_size
+                )
 
             label = label_collate([[label]])
 
         # output: [B, 1, K]
-        return self.decoder.predict(label, hidden, add_sos=add_sos, batch_size=batch_size)
+        return self.decoder.predict(
+            label, hidden, add_sos=add_sos, batch_size=batch_size
+        )
 
     def _joint_step(self, enc, pred, log_normalize: Optional[bool] = None):
         """
@@ -203,7 +213,9 @@ class _GreedyRNNTInfer(ConfidenceMethodMixin):
 
         return logits
 
-    def _joint_step_after_projection(self, enc, pred, log_normalize: Optional[bool] = None) -> torch.Tensor:
+    def _joint_step_after_projection(
+        self, enc, pred, log_normalize: Optional[bool] = None
+    ) -> torch.Tensor:
         """
         Common joint step based on AbstractRNNTJoint implementation.
 
@@ -226,13 +238,17 @@ class _GreedyRNNTInfer(ConfidenceMethodMixin):
                     logits = logits.log_softmax(dim=len(logits.shape) - 1)
 
         return logits
+
+
 class GreedyBatchedRNNTInferConfig:
     """Greedy Batched RNNT Infer Config"""
 
     max_symbols_per_step: Optional[int] = 10
     tdt_include_token_duration: bool = False
     tdt_include_duration_confidence: bool = False
-    confidence_method_cfg: Optional[ConfidenceMethodConfig] = field(default_factory=lambda: ConfidenceMethodConfig())
+    confidence_method_cfg: Optional[ConfidenceMethodConfig] = field(
+        default_factory=lambda: ConfidenceMethodConfig()
+    )
     loop_labels: bool = True
     use_cuda_graph_decoder: bool = True
     ngram_lm_model: Optional[str] = None
@@ -245,6 +261,8 @@ class GreedyBatchedRNNTInferConfig:
             if isinstance(self.confidence_method_cfg, ConfidenceMethodConfig)
             else ConfidenceMethodConfig(**self.confidence_method_cfg)
         )
+
+
 class GreedyTDTInfer(_GreedyRNNTInfer):
     """A greedy TDT decoder.
 
@@ -304,7 +322,6 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
         blank_index: int,
         durations: list,
         max_symbols_per_step: Optional[int] = None,
-     
         include_duration: bool = False,
         include_duration_confidence: bool = False,
         confidence_method_cfg: Optional[DictConfig] = None,
@@ -352,8 +369,14 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
                 inseq = encoder_output[batch_idx, :, :].unsqueeze(1)  # [T, 1, D]
                 logitlen = encoded_lengths[batch_idx]
 
-                partial_hypothesis = partial_hypotheses[batch_idx] if partial_hypotheses is not None else None
-                hypothesis = self._greedy_decode(inseq, logitlen, partial_hypotheses=partial_hypothesis)
+                partial_hypothesis = (
+                    partial_hypotheses[batch_idx]
+                    if partial_hypotheses is not None
+                    else None
+                )
+                hypothesis = self._greedy_decode(
+                    inseq, logitlen, partial_hypotheses=partial_hypothesis
+                )
                 hypotheses.append(hypothesis)
 
             # Pack results into Hypotheses
@@ -366,14 +389,22 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
 
     @torch.no_grad()
     def _greedy_decode(
-        self, x: torch.Tensor, out_len: torch.Tensor, partial_hypotheses: Optional[Hypothesis] = None
+        self,
+        x: torch.Tensor,
+        out_len: torch.Tensor,
+        partial_hypotheses: Optional[Hypothesis] = None,
     ):
         # x: [T, 1, D]
         # out_len: [seq_len]
 
         # Initialize blank state and empty label set in Hypothesis
         hypothesis = Hypothesis(
-            score=0.0, y_sequence=[], dec_state=None, timestamp=[], token_duration=[], last_token=None
+            score=0.0,
+            y_sequence=[],
+            dec_state=None,
+            timestamp=[],
+            token_duration=[],
+            last_token=None,
         )
 
         if partial_hypotheses is not None:
@@ -384,10 +415,10 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
                 else partial_hypotheses.y_sequence
             )
             if partial_hypotheses.dec_state is not None:
-                hypothesis.dec_state = self.decoder.batch_concat_states([partial_hypotheses.dec_state])
+                hypothesis.dec_state = self.decoder.batch_concat_states(
+                    [partial_hypotheses.dec_state]
+                )
                 hypothesis.dec_state = _states_to_device(hypothesis.dec_state, x.device)
-
-
 
         time_idx = 0
         while time_idx < out_len:
@@ -400,7 +431,9 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
 
             need_loop = True
             # While blank is not predicted, or we dont run out of max symbols per timestep
-            while need_loop and (self.max_symbols is None or symbols_added < self.max_symbols):
+            while need_loop and (
+                self.max_symbols is None or symbols_added < self.max_symbols
+            ):
                 # In the first timestep, we initialize the network with RNNT Blank
                 # In later timesteps, we provide previous predicted label as input.
                 if hypothesis.last_token is None and hypothesis.dec_state is None:
@@ -413,7 +446,9 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
                 # If preserving per-frame confidence, log_normalize must be true
                 logits = self._joint_step(f, g, log_normalize=False)
                 logp = logits[0, 0, 0, : -len(self.durations)]
-                duration_logp = torch.log_softmax(logits[0, 0, 0, -len(self.durations) :], dim=-1)
+                duration_logp = torch.log_softmax(
+                    logits[0, 0, 0, -len(self.durations) :], dim=-1
+                )
                 del g
 
                 # torch.max(0) op doesnt exist for FP 16.
@@ -428,10 +463,6 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
                 d_k = d_k.item()
 
                 skip = self.durations[d_k]
-
-          
-
-            
 
                 del logp
 
@@ -457,11 +488,8 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
             if skip == 0:
                 skip = 1
 
-
             if symbols_added == self.max_symbols:
                 time_idx += 1
-
-      
 
         # Unpack the hidden states
         hypothesis.dec_state = self.decoder.batch_select_state(hypothesis.dec_state, 0)
