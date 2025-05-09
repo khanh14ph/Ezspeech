@@ -3,8 +3,9 @@ import re
 
 
 def tokenize(sentence: str, vocab: List[str]) -> List[str]:
-    sentence = re.sub(r"\s+", "|", sentence)
-    sentence = sentence.strip("|")
+    # sentence = re.sub(r"\s+", "|", sentence)
+    # sentence = sentence.strip("|")
+    sentence=sentence.replace(" ","_")+"_"
 
     patterns = "|".join(map(re.escape, sorted(vocab, reverse=True)))
     tokens = re.findall(patterns, sentence)
@@ -156,3 +157,7 @@ def normalize(x):
         x = x.replace(i, " ")
     x = " ".join(x.split())
     return x
+if __name__=="__main__":
+    vocab=open("/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/vi_en.txt").read().splitlines()
+    res=tokenize("xin chào tôi là người đẳng cấp PRO VIP ENTERTAINMENT",vocab)
+    print(res)

@@ -2,7 +2,7 @@ task:
   _target_: ezspeech.tasks.recognition.SpeechRecognitionTask
 
   dataset:
-    vocab: &vocab ezspeech/resource/vocab.txt
+    vocab: &vocab /home4/khanhnd/Ezspeech/ezspeech/resource/vocab/vi_en.txt
     train_ds:
       _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
       filepaths:
@@ -65,7 +65,7 @@ task:
     tdt_durations: [0, 1, 2, 3, 4]
     num_tdt_durations: 5
     d_model: &d_model 512
-    vocab_size: &vocab_size 1830
+    vocab_size: &vocab_size 1825
     # pretrained_weights: /data/datbt7/checkpoints/asr-offline-60000h.ckpt
 
 

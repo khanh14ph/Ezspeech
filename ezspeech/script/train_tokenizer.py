@@ -1,95 +1,41 @@
+import sentencepiece as spm
+import orjson
+import random
+import json
+from tqdm import tqdm
+import re
+# i = re.sub('<[^>]*>', '', i)
 
+# import glob
+# from ezspeech.modules.dataset.utils.text import normalize
+# lst=glob.glob("/home4/khanhnd/librispeech-lm-corpus/corpus/*/*")
+# final=[]
+# for i in tqdm(lst):
+#     final.extend(open(i).read().split("\n"))
 
-class TextCorpus:
-    def __init__(self, corpus: str, vocab: List[str] = []) -> None:
-        self.corpus = corpus
-        self.vocab = vocab
-
-        self.word_freqs = self.create_word_dict(open(corpus).read().split("\n")[:-1])
-
-    def create_new_vocab(self, vocab_size: int) -> List[int]:
-        if vocab_size < len(self.vocab):
-            raise Exception("New vocab size is too small")
-
-        # Split alphabet
-        vocab = self.vocab.copy()
-        for word in self.word_freqs.keys():
-            for letter in word:
-                if letter not in vocab:
-                    vocab.append(letter)
-
-        splits = dict()
-        for word in tqdm(self.word_freqs.keys()):
-            spell = tokenize(word, build_vocab())
-            if len(spell) > 0:
-                splits[word] = spell
-        while len(vocab) < vocab_size:
-            scores = self.compute_pair_scores(splits)
-            best_pair, max_score = "", None
-
-            for pair, score in scores.items():
-                if max_score is None or max_score < score:
-                    best_pair = pair
-                    max_score = score
-
-            splits = self.merge_pair(*best_pair, splits)
-            new_token = best_pair[0] + best_pair[1]
-            if new_token not in vocab:
-                print("\r" + str(len(vocab)))
-                vocab.append(new_token)
-
-        return vocab
-
-    def create_word_dict(self, corpus: List[str]) -> Dict:
-        # Create word dicts
-        word_freqs = defaultdict(int)
-
-        for text in corpus:
-            text = text.lower().strip()
-            words = text.split()
-            for word in words:
-                if word != "":
-                    word_freqs[word] += 1
-
-        return word_freqs
-
-    def compute_pair_scores(self, splits: Dict) -> float:
-        letter_freqs = defaultdict(int)
-        pair_freqs = defaultdict(int)
-        for word, freq in self.word_freqs.items():
-            split = splits[word]
-
-            if len(split) == 1:
-                letter_freqs[split[0]] += freq
-                continue
-
-            for i in range(len(split) - 1):
-                pair = (split[i], split[i + 1])
-                letter_freqs[split[i]] += freq
-                pair_freqs[pair] += freq
-            letter_freqs[split[-1]] += freq
-
-        scores = {pair: freq for pair, freq in pair_freqs.items()}
-        # scores = {
-        #     pair: freq / (letter_freqs[pair[0]] * letter_freqs[pair[1]]) ** 0.5
-        #     for pair, freq in pair_freqs.items()
-        # }
-        return scores
-
-    def merge_pair(self, a: str, b: str, splits: Dict) -> Dict:
-        for word in self.word_freqs:
-            split = splits[word]
-            if len(split) == 1:
-                continue
-
-            i = 0
-            while i < len(split) - 1:
-                if split[i] == a and split[i + 1] == b:
-                    merge = a + b
-                    split = split[:i] + [merge] + split[i + 2 :]
-                else:
-                    i += 1
-
-            splits[word] = split
-
-        return splits
+# final=[i for i in final if i!=""]
+# with open("/home4/khanhnd/Ezspeech/ezspeech/resource/corpus/librispeech_upper.txt","w") as f:
+#     for i in tqdm(final):
+#         f.write(normalize(i).upper()+"\n")
+# spm.SentencePieceTrainer.train(
+#     input="/home4/khanhnd/Ezspeech/ezspeech/resource/corpus/librispeech_upper.txt",
+#     model_prefix="/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/bpe/en_upper",
+#     model_type="bpe",
+#     user_defined_symbols=[],
+#     vocab_size=1024,
+#     input_sentence_size=10000000,
+#     train_extremely_large_corpus=True,
+#     shuffle_input_sentence=True,
+#     character_coverage=0.985,
+#     treat_whitespace_as_suffix=True,
+#     # unk_surface="<unk>",
+#     # pad_id=0,
+#     # unk_id=1,
+#     # bos_id=2,
+#     # eos_id=3,
+# )
+lst=open("/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/en_upper.vocab").read().splitlines()
+lst=[i.split()[0] for i in lst]
+with open("/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/en_upper.txt","w") as f:
+    for i in lst:
+        f.write(i+"\n")
