@@ -108,4 +108,10 @@ def avoid_float16_autocast_context():
         return nullcontext()
 
 if __name__ == "__main__":
-    csv2json("/home4/khanhnd/vivos/test.tsv","/home4/khanhnd/Ezspeech/data/test.jsonl",sep="\t")
+    import librosa
+    # csv2json("/home4/khanhnd/vivos/test.tsv","/home4/khanhnd/Ezspeech/data/test.jsonl",sep="\t")
+    a=load_dataset("/home4/khanhnd/Ezspeech/data/test.jsonl")
+    final=[]
+    for i in a:
+        final.append({"audio_filepath": i["audio_filepath"],"duration":librosa.get_duration(path=i["audio_filepath"]),"text":i["transcript"]})
+    save_dataset(final,"/home4/khanhnd/Ezspeech/data/test_nemo.jsonl")

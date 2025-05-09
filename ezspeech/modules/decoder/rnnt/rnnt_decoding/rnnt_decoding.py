@@ -195,25 +195,18 @@ class RNNTDecoding:
         super(RNNTDecoding, self).__init__()
 
         # we need to ensure blank is the last token in the vocab for the case of RNNT and Multi-blank RNNT.
-        blank_id = len(vocabulary) + joint.num_extra_outputs
-
-        if hasattr(decoding_cfg, 'model_type') and decoding_cfg.model_type == 'tdt':
-            blank_id = len(vocabulary)
+        blank_id = 0
 
         self.labels_map = dict([(i, vocabulary[i]) for i in range(len(vocabulary))])
 
         # Convert dataclass to config object
-        if is_dataclass(decoding_cfg):
-            decoding_cfg = OmegaConf.structured(decoding_cfg)
 
         self.cfg = decoding_cfg
         self.blank_id = blank_id
         self.num_extra_outputs = joint.num_extra_outputs
         self.durations = self.cfg.get("durations", None)
         self.compute_hypothesis_token_set = self.cfg.get("compute_hypothesis_token_set", False)
-        self.compute_langs = decoding_cfg.get('compute_langs', False)
-        self.preserve_alignments = self.cfg.get('preserve_alignments', None)
-        self.compute_timestamps = self.cfg.get('compute_timestamps', None)
+
         self.tdt_include_token_duration = self.cfg.get('tdt_include_token_duration', False)
         self.word_seperator = self.cfg.get('word_seperator', ' ')
 

@@ -160,9 +160,13 @@ class SpeechRecognitionTask(LightningModule):
         self.decoder = instantiate(model.decoder)
 
         self.predictor = instantiate(model.predictor)
+        
         self.joint = instantiate(model.joint)
+
         self.rnnt_loss= instantiate(model.loss.rnnt_loss)
+
         self.joint.set_loss(self.rnnt_loss)
+
         self.ctc_loss= instantiate(model.loss.ctc_loss)
 
 

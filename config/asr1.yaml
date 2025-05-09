@@ -167,23 +167,7 @@ task:
       use_cer: self.wer.use_cer,
       log_prediction: self.wer.log_prediction,
       dist_sync_on_step: True,
-    decoding:
-    # Using greedy decoding is highly recommended for TDT models. Using greedy-batch will give very bad results
-    # if omega is 0; even if omega is non-zero, greedy-batch results are still going to be inaccurate.
-      strategy: "greedy"
-      model_type: "tdt"
-      # this must not be None in order to use the TDT specific decoding method.
-      durations: ${task.model.tdt_durations}
-      # greedy strategy config
-      greedy:
-        max_symbols: 10
-      # beam strategy config
-      beam:
-        beam_size: 2
-        return_best_hypothesis: False
-        score_norm: true
-        alsd_max_target_len: 2.0  # for Alignment-Length Synchronous Decoding
-      word_seperator: "|"
+    
     optimizer:
       lr: 1
       betas: [0.9, 0.999]
@@ -228,7 +212,7 @@ trainer:
   max_epochs: 200
   strategy: ddp
   accelerator: gpu
-  devices: [1]
+  devices: [0]
   accumulate_grad_batches: 1
   # detect_anomaly: True
   # precision: 16
