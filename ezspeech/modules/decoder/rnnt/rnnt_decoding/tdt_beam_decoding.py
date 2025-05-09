@@ -246,7 +246,7 @@ class BeamTDTInfer:
 
         with torch.inference_mode():
             # Apply optional preprocessing
-            encoder_output = encoder_output.transpose(1, 2)  # (B, T, D)
+              # (B, T, D)
 
             self.decoder.eval()
             self.joint.eval()
@@ -994,7 +994,6 @@ class BeamBatchedTDTInfer:
 
         with torch.inference_mode():
             # Apply optional preprocessing
-            encoder_output = encoder_output.transpose(1, 2)  # (B, T, D)
             logitlen = encoded_lengths
 
             self.decoder.eval()
