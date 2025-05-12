@@ -35,7 +35,7 @@ import kenlm
 if TRITON_AVAILABLE:
     import triton
 
-    from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils import ngram_advance_triton_kernel
+    from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.ngram_lm_triton import ngram_advance_triton_kernel
 
 # Define constants for parsing ARPA
 _BOS_ID = -1  # Begin-of-Sentence
