@@ -28,7 +28,7 @@ from torch.nn.utils.rnn import pad_sequence
 from tqdm.auto import tqdm
 NEG_INF = -10000.0
 from lightning.pytorch import LightningModule
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.optional_libs import TRITON_AVAILABLE, triton_required
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.optional_libs import TRITON_AVAILABLE, triton_required,kenlm_required
 import kenlm
 
 
