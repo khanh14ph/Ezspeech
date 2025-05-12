@@ -2,7 +2,7 @@ task:
   _target_: ezspeech.tasks.recognition.SpeechRecognitionTask
 
   dataset:
-    vocab: &vocab /home4/khanhnd/Ezspeech/ezspeech/resource/vocab/vi_en.txt
+    vocab: &vocab ezspeech/resource/vocab/vi_en.txt
     train_ds:
       _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
       filepaths:
