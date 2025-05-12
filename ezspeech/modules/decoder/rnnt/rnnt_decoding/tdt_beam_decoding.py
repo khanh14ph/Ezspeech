@@ -10,7 +10,7 @@ from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_greedy_decoding import (
     pack_hypotheses,
 )
 
-from nemo.collections.asr.parts.submodules.tdt_malsd_batched_computer import ModifiedALSDBatchedTDTComputer
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_malsd_batched_computer import ModifiedALSDBatchedTDTComputer
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import (
     BlankLMScoreMode,
     PruningMode,
