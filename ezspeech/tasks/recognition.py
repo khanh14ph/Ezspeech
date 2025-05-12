@@ -153,34 +153,35 @@ from ezspeech.modules.metric.wer import WER
 
 
 class SpeechRecognitionTask(LightningModule):
-    def __init__(self, dataset: DictConfig, model: DictConfig):
+    def __init__(self, config: DictConfig):
         super(SpeechRecognitionTask, self).__init__()
 
         self.save_hyperparameters()
 
-        self.preprocessor = instantiate(model.preprocessor)
+        self.preprocessor = instantiate(config.model.preprocessor)
 
-        self.spec_augment = instantiate(model.spec_augment)
+        self.spec_augment = instantiate(config.model.spec_augment)
 
-        self.encoder = instantiate(model.encoder)
+        self.encoder = instantiate(config.model.encoder)
+        
 
-        self.decoder = instantiate(model.decoder)
+        self.decoder = instantiate(config.model.decoder)
 
-        self.predictor = instantiate(model.predictor)
+        self.predictor = instantiate(config.model.predictor)
 
-        self.joint = instantiate(model.joint)
+        self.joint = instantiate(config.model.joint)
 
-        self.rnnt_loss = instantiate(model.loss.rnnt_loss)
+        self.rnnt_loss = instantiate(config.model.loss.rnnt_loss)
 
         self.joint.set_loss(self.rnnt_loss)
 
-        self.ctc_loss = instantiate(model.loss.ctc_loss)
+        self.ctc_loss = instantiate(config.model.loss.ctc_loss)
 
-        self.vocab = open(dataset.vocab).read().splitlines()
+        self.vocab = open(config.dataset.vocab).read().splitlines()
 
     def train_dataloader(self) -> DataLoader:
-        dataset = instantiate(self.hparams.dataset.train_ds, _recursive_=False)
-        loaders = self.hparams.dataset.loaders
+        dataset = instantiate(self.hparams.config.dataset.train_ds, _recursive_=False)
+        loaders = self.hparams.config.dataset.loaders
 
         train_dl = DataLoader(
             dataset=dataset,
@@ -192,8 +193,8 @@ class SpeechRecognitionTask(LightningModule):
         return train_dl
 
     def val_dataloader(self) -> DataLoader:
-        dataset = instantiate(self.hparams.dataset.val_ds, _recursive_=False)
-        loaders = self.hparams.dataset.loaders
+        dataset = instantiate(self.hparams.config.dataset.val_ds, _recursive_=False)
+        loaders = self.hparams.config.dataset.loaders
 
         val_dl = DataLoader(
             dataset=dataset,
@@ -270,11 +271,11 @@ class SpeechRecognitionTask(LightningModule):
     def configure_optimizers(self):
         optimizer = AdamW(
             self.parameters(),
-            **self.hparams.model.optimizer,
+            **self.hparams.config.model.optimizer,
         )
         scheduler = NoamAnnealing(
             optimizer,
-            **self.hparams.model.scheduler,
+            **self.hparams.config.model.scheduler,
         )
         return {
             "optimizer": optimizer,

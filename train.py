@@ -2,19 +2,19 @@ import hydra
 import pytorch_lightning as pl
 from omegaconf import DictConfig
 from hydra.utils import instantiate
-
+from omegaconf import OmegaConf
 import torch
-
-
+from ezspeech.tasks.recognition import SpeechRecognitionTask
+from tqdm import tqdm
 pl.seed_everything(42, workers=True)
 torch.set_float32_matmul_precision("medium")
 
 
 @hydra.main(version_base=None, config_path="config", config_name="asr1")
 def main(config: DictConfig):
-    task = instantiate(config.task, _recursive_=False)
-    if config.task.model.get("pretrained_weights") is not None:
-        checkpoint_filepath = config.task.model.pretrained_weights
+    task = SpeechRecognitionTask(config)
+    if config.model.get("pretrained_weights") is not None:
+        checkpoint_filepath = config.model.pretrained_weights
         checkpoint = torch.load(checkpoint_filepath, map_location="cpu")
         for attr, weights in checkpoint["state_dict"].items():
             if hasattr(task, attr):
@@ -27,7 +27,8 @@ def main(config: DictConfig):
                     )
                     continue
                 print(f"***** Loading {attr} from {checkpoint_filepath :<20s} *****")
-
+    
+    
     callbacks = None
     if config.get("callbacks") is not None:
         callbacks = [instantiate(cfg) for _, cfg in config.callbacks.items()]

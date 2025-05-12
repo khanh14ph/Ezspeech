@@ -309,6 +309,7 @@ class ConformerEncoder(nn.Module):
 
     Args:
         feat_in (int): the size of feature channels
+        feat_out
         n_layers (int): number of layers of ConformerBlock
         d_model (int): the hidden size of the model
         subsampling (str): the method of subsampling:
@@ -386,8 +387,9 @@ class ConformerEncoder(nn.Module):
     def __init__(
         self,
         feat_in,
-        n_layers,
-        d_model,
+        feat_out=-1,
+        n_layers=12,
+        d_model=512,
         subsampling_factor=4,
         subsampling_conv_chunking_factor=1,
         subsampling_conv_channels=-1,
@@ -413,12 +415,14 @@ class ConformerEncoder(nn.Module):
         use_pytorch_sdpa: bool = False,
         use_pytorch_sdpa_backends=None,
         sync_max_audio_length: bool = True,
+        **kwargs
     ):
         super().__init__()
         d_ff = d_model * ff_expansion_factor
         self.d_model = d_model
         self.n_layers = n_layers
         self._feat_in = feat_in
+        self._feat_out=feat_out
         self.att_context_style = att_context_style
         self.subsampling_factor = subsampling_factor
         self.subsampling_conv_chunking_factor = subsampling_conv_chunking_factor
@@ -442,7 +446,8 @@ class ConformerEncoder(nn.Module):
             conv_context_size=conv_context_size,
             conv_kernel_size=conv_kernel_size,
         )
-
+        if feat_out!=-1:
+            self.proj_out=nn.Linear(d_model,feat_out)
         self.subsampling = ConvSubsampling(
             subsampling_factor=subsampling_factor,
             feat_in=feat_in,
@@ -562,8 +567,10 @@ class ConformerEncoder(nn.Module):
 
         audio_signal = torch.transpose(audio_signal, 1, 2)
         length = length.to(dtype=torch.int64)
-
-        return audio_signal.transpose(1, 2), length
+        audio_signal=audio_signal.transpose(1, 2)
+        if self._feat_out!=-1:
+            audio_signal=self.proj_out(audio_signal)
+        return audio_signal, length
 
     def update_max_seq_length(self, seq_length: int, device):
         """

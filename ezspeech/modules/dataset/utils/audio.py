@@ -93,7 +93,7 @@ class AudioToMelSpectrogramTA(nn.Module):
             'ones': torch.ones,
             None: torch.ones,
         }
-        self._mel_spec_extractor= torchaudio.transforms.MelSpectrogram(
+        self.featurizer= torchaudio.transforms.MelSpectrogram(
             sample_rate=self._sample_rate,
             win_length=self.win_length,
             hop_length=self.hop_length,
@@ -109,7 +109,7 @@ class AudioToMelSpectrogramTA(nn.Module):
     
     def filter_banks(self):
         """Matches the analogous class"""
-        return self._mel_spec_extractor.mel_scale.fb
+        return self.featurizer.mel_scale.fb
 
     def _resolve_log_zero_guard_value(self, dtype: torch.dtype) -> float:
         if isinstance(self.log_zero_guard_value, float):
@@ -154,7 +154,7 @@ class AudioToMelSpectrogramTA(nn.Module):
     def _extract_spectrograms(self, signals: torch.Tensor) -> torch.Tensor:
         # Complex FFT needs to be done in single precision
         with torch.amp.autocast('cuda', enabled=False):
-            features = self._mel_spec_extractor(waveform=signals)
+            features = self.featurizer(waveform=signals)
         return features
 
     def _apply_normalization(self, features: torch.Tensor, lengths: torch.Tensor, eps: float = 1e-5) -> torch.Tensor:
