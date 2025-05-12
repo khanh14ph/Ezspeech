@@ -7,7 +7,7 @@ task:
       _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
       filepaths:
         - /home4/khanhnd/Ezspeech/data/vn.jsonl
-      vocab: *vocab
+      vocab_file: *vocab
       augmentation:
         # audio_augment:
           # speed_perturbation:
@@ -54,7 +54,7 @@ task:
       filepaths:
         - /home4/khanhnd/Ezspeech/data/test.jsonl
 
-      vocab: *vocab
+      vocab_file: *vocab
     loaders:
       batch_size: 2
       num_workers: 8
@@ -68,7 +68,26 @@ task:
     vocab_size: &vocab_size 1825
     # pretrained_weights: /data/datbt7/checkpoints/asr-offline-60000h.ckpt
 
-
+    preprocessor:
+      _target_: ezspeech.modules.dataset.utils.audio.AudioToMelSpectrogramTA
+      sample_rate: 16000
+      normalize: per_feature
+      window_size: 0.025
+      window_stride: 0.01
+      window: hann
+      features: 128
+      n_fft: 512
+      log: true
+      frame_splicing: 1
+      dither: 1.0e-05
+      pad_to: 0
+      pad_value: 0.0
+    spec_augment:
+      _target_: ezspeech.modules.dataset.augment.SpecAugmentNumba
+      freq_masks: 2
+      time_masks: 10
+      freq_width: 27
+      time_width: 0.05
     encoder:
       _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
       feat_in: 128
@@ -215,5 +234,5 @@ trainer:
   devices: [0]
   accumulate_grad_batches: 1
   # detect_anomaly: True
-  # precision: 16
+  precision: 16
   val_check_interval: 0.5

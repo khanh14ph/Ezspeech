@@ -34,7 +34,7 @@ import numba
 import torch
 from torch.autograd import Function
 
-from nemo.collections.asr.parts.numba.rnnt_loss.utils import global_constants
+from ezspeech.modules.losses.rnnt_numba.utils.cpu_utils import global_constants
 
 
 def log_sum_exp(a: torch.Tensor, b: torch.Tensor):

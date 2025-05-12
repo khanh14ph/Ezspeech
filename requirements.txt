@@ -10,3 +10,5 @@ datasets
 jiwer
 orjson
 num2words
+einops
+editdistance
