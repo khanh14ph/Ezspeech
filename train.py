@@ -15,17 +15,15 @@ def main(config: DictConfig):
     task = SpeechRecognitionTask(config)
     if config.model.get("pretrained_weights") is not None:
         checkpoint_filepath = config.model.pretrained_weights
-        checkpoint = torch.load(checkpoint_filepath, map_location="cpu")
-        for attr, weights in checkpoint["state_dict"].items():
+        checkpoint = torch.load(checkpoint_filepath, map_location="cpu",weights_only=False)
+
+        for attr, _ in checkpoint["hyper_parameters"].items():
+            weights=checkpoint["state_dict"][attr]
+            print("attr",attr)
             if hasattr(task, attr):
-                try:
-                    net = getattr(task, attr)
-                    net.load_state_dict(weights)
-                except:
-                    print(
-                        f"***** Can't load {attr} from {checkpoint_filepath :<20s} *****"
-                    )
-                    continue
+                net = getattr(task, attr)
+                net.load_state_dict(weights)
+
                 print(f"***** Loading {attr} from {checkpoint_filepath :<20s} *****")
     
     

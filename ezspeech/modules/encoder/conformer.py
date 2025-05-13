@@ -448,7 +448,7 @@ class ConformerEncoder(nn.Module):
         )
         if feat_out!=-1:
             self.proj_out=nn.Linear(d_model,feat_out)
-        self.subsampling = ConvSubsampling(
+        self.pre_encode= ConvSubsampling(
             subsampling_factor=subsampling_factor,
             feat_in=feat_in,
             feat_out=d_model,
@@ -501,7 +501,7 @@ class ConformerEncoder(nn.Module):
             stochastic_depth_start_layer,
         )
         # will be set in self.forward() if defined in AccessMixin config
-
+        
     def forward(self, audio_signal, length):
 
         self.update_max_seq_length(
@@ -522,7 +522,7 @@ class ConformerEncoder(nn.Module):
         else:
             cur_att_context_size = self.att_context_size
 
-        audio_signal, length = self.subsampling(x=audio_signal, lengths=length)
+        audio_signal, length = self.pre_encode(x=audio_signal, lengths=length)
         length = length.to(torch.int64)
         max_audio_length = audio_signal.size(1)
         padding_length = length

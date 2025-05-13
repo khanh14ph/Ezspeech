@@ -5,45 +5,7 @@ dataset:
     filepaths:
       - /home4/khanhnd/Ezspeech/data/vn.jsonl
     vocab_file: *vocab
-    augmentation:
-      # audio_augment:
-        # speed_perturbation:
-        #   _target_: ezspeech.datas.augment.SpeedPerturbation
-        #   orig_freqs: 16000
-        #   factors: [0.9, 1.1, 1.0, 1.0, 1.0]
 
-        # pitchshift:
-        #   _target_: ezspeech.datas.augment.PitchShift
-        #   min_step: -5
-        #   max_step: 5
-        #   sample_rates: [16000]
-        #   probability: 0.2
-
-        # rir_noise:
-        #   _target_: ezspeech.datas.augment.ApplyImpulseResponse
-        #   rir_filepath_16k: /data/sondd9/noise-16k/RIR.json
-        #   second_before_peak: 0.01
-        #   second_after_peak: 0.5
-        #   probability: 0.2
-
-        # background_noise:
-        #   _target_: ezspeech.augment.AddBackgroundNoise
-        #   noise_filepath_16k: /data/sondd9/noise-16k/background-noise.json
-        #   # noise_filepath_8k: /dataset/8k/noise/background-noise.json
-        #   min_snr_db: 0.0
-        #   max_snr_db: 30.0
-        #   probability: 0.2
-
-      feature_augment:
-        freq_masking:
-          _target_: ezspeech.modules.dataset.augment.FrequencyMasking
-          freq_masks: 1
-          freq_width: 27
-
-        time_masking:
-          _target_: ezspeech.modules.dataset.augment.TimeMasking
-          time_masks: 10
-          time_width: 0.05
 
 
   val_ds:
@@ -53,7 +15,7 @@ dataset:
 
     vocab_file: *vocab
   loaders:
-    batch_size: 2
+    batch_size: 4
     num_workers: 8
     pin_memory: false
 
@@ -63,22 +25,20 @@ model:
   num_tdt_durations: 5
   d_model: &d_model 512
   vocab_size: &vocab_size 1825
-  # pretrained_weights: /data/datbt7/checkpoints/asr-offline-60000h.ckpt
+  pretrained_weights: /home4/khanhnd/models/parakeet/ezspeech.ckpt
  
   preprocessor:
-    _target_: ezspeech.modules.dataset.utils.audio.AudioToMelSpectrogramTA
+    _target_: ezspeech.modules.dataset.utils.audio.AudioToMelSpectrogramPreprocessor
     sample_rate: 16000
     normalize: per_feature
     window_size: 0.025
     window_stride: 0.01
     window: hann
-    features: 128
+    features: 80
     n_fft: 512
-    log: true
     frame_splicing: 1
     dither: 1.0e-05
     pad_to: 0
-    pad_value: 0.0
   spec_augment:
     _target_: ezspeech.modules.dataset.augment.SpecAugmentNumba
     freq_masks: 2
@@ -87,16 +47,25 @@ model:
     time_width: 0.05
   encoder:
     _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
-    feat_in: 128
-    n_layers: 12
-    d_model: *d_model
+    feat_in: ${model.preprocessor.features}
+    feat_out: -1
+    n_layers: 17
+    d_model: 512
+    subsampling: dw_striding
     subsampling_factor: 8
     subsampling_conv_channels: 256
+    causal_downsampling: false
+    reduction: null
+    reduction_position: null
+    reduction_factor: 1
     ff_expansion_factor: 4
     self_attention_model: rel_pos
     n_heads: 8
-    att_context_size: [-1, -1]
+    att_context_size:
+    - -1
+    - -1
     att_context_style: regular
+    xscaling: false
     untie_biases: true
     pos_emb_max_len: 5000
     conv_kernel_size: 9
@@ -145,7 +114,7 @@ model:
     # However, to preserve memory, this ratio can be 1:8 or even 1:16.
     # Extreme case of 1:B (i.e. fused_batch_size=1) should be avoided as training speed would be very slow.
     fuse_loss_wer: true
-    fused_batch_size: 1
+    fused_batch_size: 2
 
     jointnet:
       encoder_hidden: *d_model
@@ -162,7 +131,7 @@ model:
       _target_: ezspeech.modules.losses.ctc.CTCLoss
       blank_idx: 0
       reduction: mean
-      zero_infinity: False
+      zero_infinity: True
     rnnt_loss:
       _target_: ezspeech.modules.losses.rnnt.TDTLoss
       blank_idx: 0
@@ -227,8 +196,8 @@ trainer:
   max_epochs: 200
   strategy: ddp
   accelerator: gpu
-  devices: [0]
+  devices: [3]
   accumulate_grad_batches: 1
   # detect_anomaly: True
-  precision: 16
+  precision: 32
   val_check_interval: 0.5
