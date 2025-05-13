@@ -1,6 +1,6 @@
 from typing import Tuple, List, Union, Optional
 from omegaconf import DictConfig
-
+from hydra.utils import instantiate
 import torch
 import torchaudio
 from torch.utils.data import Dataset
@@ -11,19 +11,6 @@ from ezspeech.modules.dataset.utils.text import tokenize
 from ezspeech.utils.common import load_dataset, time_reduction
 
 
-# def collate_asr_data(batch: List[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
-#     ưav = [b[0] for b in batch]
-#     feature_lengths = [len(f) for f in features]
-#     features = pad_sequence(features, batch_first=True)
-#     feature_lengths = torch.tensor(feature_lengths, dtype=torch.long)
-
-#     tokens = [b[1] for b in batch]
-#     token_lengths = [len(t) for t in tokens]
-#     tokens = pad_sequence(tokens, batch_first=True)
-#     token_lengths = torch.tensor(token_lengths, dtype=torch.long)
-#     # print("features", features.shape)
-#     # audio_filepaths=[b[2] for b in batch]
-#     return features, feature_lengths, tokens, token_lengths
 
 def collate_asr_data(batch: List[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
     pad_id=0
@@ -78,11 +65,10 @@ class SpeechRecognitionDataset(Dataset):
 
         self.dataset = load_dataset(filepaths)
 
-        self.audio_augment, self.feature_augment = [], []
-        self.augmentation = augmentation
-        # if augmentation:
-        #     augmentation = get_augmentation(augmentation)
-            # self.audio_augment, self.feature_augment = augmentation
+        self.audio_augment= []
+        self.augmentation_cfg = augmentation
+        if augmentation:
+            self.audio_augment= [instantiate(cfg) for cfg in self.augmentation_cfg.values()]
         self.resampler = {
             8000: T.Resample(8000, 16000),
             24000: T.Resample(24000, 16000),
@@ -94,6 +80,8 @@ class SpeechRecognitionDataset(Dataset):
         transcript = data["transcript"]
 
         speech, sample_rate = torchaudio.load(audio_filepath)
+        for augment in self.audio_augment:
+            speech = augment.apply(speech, sample_rate)
         if sample_rate != 16000:
             if sample_rate not in self.resampler.keys():
                 self.resampler[sample_rate] = T.Resample(sample_rate, 16000)

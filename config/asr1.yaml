@@ -5,6 +5,33 @@ dataset:
     filepaths:
       - /home4/khanhnd/Ezspeech/data/vn.jsonl
     vocab_file: *vocab
+    # augmentation:
+          # speed_perturbation:
+          #   _target_: ezspeech.datas.augment.SpeedPerturbation
+          #   orig_freqs: 16000
+          #   factors: [0.9, 1.1, 1.0, 1.0, 1.0]
+
+          # pitchshift:
+          #   _target_: ezspeech.datas.augment.PitchShift
+          #   min_step: -5
+          #   max_step: 5
+          #   sample_rates: [16000]
+          #   probability: 0.2
+
+          # rir_noise:
+          #   _target_: ezspeech.datas.augment.ApplyImpulseResponse
+          #   rir_filepath_16k: /data/sondd9/noise-16k/RIR.json
+          #   second_before_peak: 0.01
+          #   second_after_peak: 0.5
+          #   probability: 0.2
+
+          # background_noise:
+          #   _target_: ezspeech.augment.AddBackgroundNoise
+          #   noise_filepath_16k: /data/sondd9/noise-16k/background-noise.json
+          #   # noise_filepath_8k: /dataset/8k/noise/background-noise.json
+          #   min_snr_db: 0.0
+          #   max_snr_db: 30.0
+          #   probability: 0.2
 
 
 

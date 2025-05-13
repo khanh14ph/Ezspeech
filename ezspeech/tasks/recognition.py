@@ -187,11 +187,11 @@ class SpeechRecognitionTask(LightningModule):
         plt.grid(True)
         
         # Save the plot
-        plot_path = os.path.join(self.plot_dir, f'mean_loss_plot_step_{self.current_step}.png')
+        plot_path = os.path.join(self.plot_dir, f'mean_loss_plot.png')
         plt.savefig(plot_path)
         plt.close()
 
-    def export(self, filepath: str):
+    def export_checkpoint(self, filepath: str):
         checkpoint = {
             "state_dict": {
                 "encoder": self.encoder.state_dict(),

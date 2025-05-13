@@ -469,7 +469,7 @@ class ConformerEncoder(nn.Module):
             xscale=None,
             dropout_rate_emb=dropout_emb,
         )
-
+        
         self.layers = nn.ModuleList()
         for i in range(n_layers):
             layer = ConformerLayer(
