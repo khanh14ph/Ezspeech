@@ -1,12 +1,12 @@
 model:
   _target_: ezspeech.inference_models.tdt_inference.LightningASR
-  filepath: hehe.ckpt
+  filepath: ../exported_checkpoint/hehe.ckpt
   device: cuda
-  vocab: /data/khanhnd65/Ezspeech/ezspeech/resource/vocab.txt
+  vocab: ezspeech/resource/vocab/vi_en.txt
   decoding_cfg:
     # Using greedy decoding is highly recommended for TDT models. Using greedy-batch will give very bad results
     # if omega is 0; even if omega is non-zero, greedy-batch results are still going to be inaccurate.
-    strategy: "greedy"
+    strategy: "maes"
     model_type: "tdt"
     # this must not be None in order to use the TDT specific decoding method.
     durations: [0,1,2,3,4]
@@ -19,4 +19,12 @@ model:
       return_best_hypothesis: False
       score_norm: true
       alsd_max_target_len: 2.0  # for Alignment-Length Synchronous Decoding
-    word_seperator: "|"
+# possible_strategies = [
+#             "greedy",
+#             "greedy_batch",
+#             "beam",
+#             "alsd",
+#             "maes",
+#             "malsd_batch",
+#             "maes_batch",
+#         ]

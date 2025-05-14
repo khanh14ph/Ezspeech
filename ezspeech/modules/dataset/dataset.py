@@ -99,16 +99,3 @@ class SpeechRecognitionDataset(Dataset):
     def __len__(self) -> int:
         return len(self.dataset)
 
-
-def collate_wav_data(batch: List[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
-    features = [b[0] for b in batch]
-    feature_lengths = [len(feat) for feat in features]
-    features = pad_sequence(features, batch_first=True)
-    feature_lengths = torch.tensor(feature_lengths, dtype=torch.long)
-
-    audio_tgts = [b[1] for b in batch]
-    audio_lens = [len(audio) for audio in audio_tgts]
-    audio_tgts = pad_sequence(audio_tgts, batch_first=True).transpose(1, 2)
-    audio_lens = torch.tensor(audio_lens, dtype=torch.long)
-
-    return features, feature_lengths, audio_tgts, audio_lens

@@ -49,7 +49,6 @@ class RNNTDecoding:
         self.tdt_include_token_duration = self.cfg.get(
             "tdt_include_token_duration", False
         )
-        self.word_seperator = self.cfg.get("word_seperator", " ")
 
         self._is_tdt = (
             self.durations is not None and self.durations != []
@@ -140,7 +139,7 @@ class RNNTDecoding:
                 maes_num_steps=self.cfg.beam.get("maes_num_steps", 2),
                 maes_prefix_alpha=self.cfg.beam.get("maes_prefix_alpha", 1),
                 maes_expansion_gamma=self.cfg.beam.get("maes_expansion_gamma", 2.3),
-                maes_expansion_beta=self.cfg.beam.get("maes_expansion_beta", 2.0),
+                maes_expansion_beta=self.cfg.beam.get("maes_expansion_beta", 2),
                 softmax_temperature=self.cfg.beam.get("softmax_temperature", 1.0),
                 ngram_lm_model=self.cfg.beam.get("ngram_lm_model", None),
                 ngram_lm_alpha=self.cfg.beam.get("ngram_lm_alpha", 0.3),
@@ -173,10 +172,6 @@ class RNNTDecoding:
                 f"but was provided {self.cfg.strategy}"
             )
 
-        if isinstance(self.decoding, rnnt_beam_decoding.BeamRNNTInfer) or isinstance(
-            self.decoding, tdt_beam_decoding.BeamTDTInfer
-        ):
-            self.decoding.set_decoding_type("char")
 
     def rnnt_decoder_predictions_tensor(
         self,
@@ -212,12 +207,7 @@ class RNNTDecoding:
                 partial_hypotheses=partial_hypotheses,
             )  # type: [List[Hypothesis]]
 
-            # extract the hypotheses
-            hypotheses_list = hypotheses_list[0]  # type: List[Hypothesis]
-
-        prediction_list = hypotheses_list
-
-        hypotheses = self.decode_hypothesis(prediction_list)  # type: List[str]
+        hypotheses = self.decode_hypothesis(hypotheses_list)  # type: List[str]
 
         return [
             {"idx_sequence": h.y_sequence, "score": h.score, "timestamp": h.timestamp}

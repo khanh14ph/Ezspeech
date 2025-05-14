@@ -53,8 +53,9 @@ class SpeechRecognitionTask(LightningModule):
         self.current_step = 0
         
         # Create directory for loss plots if it doesn't exist
-        self.plot_dir = f"{config.loggers.tb.save_dir}/{config.loggers.tb.version}"
-        os.makedirs(self.plot_dir, exist_ok=True)
+        if self.training:
+            self.plot_dir = f"{config.loggers.tb.save_dir}/{config.loggers.tb.version}"
+            os.makedirs(self.plot_dir, exist_ok=True)
 
     def train_dataloader(self) -> DataLoader:
         dataset = instantiate(self.hparams.config.dataset.train_ds, _recursive_=False)
@@ -194,12 +195,13 @@ class SpeechRecognitionTask(LightningModule):
     def export_checkpoint(self, filepath: str):
         checkpoint = {
             "state_dict": {
+                "preprocessor": self.preprocessor.state_dict(),
                 "encoder": self.encoder.state_dict(),
                 "decoder": self.decoder.state_dict(),
                 "predictor": self.predictor.state_dict(),
                 "joint": self.joint.state_dict(),
             },
-            "hyper_parameters": self.hparams.model,
+            "hyper_parameters": self.hparams.config.model,
         }
         print("checkpoint")
         torch.save(checkpoint, filepath)

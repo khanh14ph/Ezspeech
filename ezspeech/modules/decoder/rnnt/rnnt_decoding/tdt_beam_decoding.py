@@ -6,10 +6,6 @@ import torch
 from tqdm import tqdm
 
 from ezspeech.modules.decoder.rnnt.rnnt import RNNTDecoder, RNNTJoint
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_greedy_decoding import (
-    pack_hypotheses,
-)
-
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_malsd_batched_computer import ModifiedALSDBatchedTDTComputer
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import (
     BlankLMScoreMode,
@@ -23,7 +19,52 @@ from ezspeech.modules.decoder.rnnt.rnnt_utils import (
 )
 
 import kenlm
+def _states_to_device(dec_state, device='cpu'):
+    """
+    Transfers decoder states to the specified device.
 
+    This function moves the provided decoder states to the specified device (e.g., 'cpu' or 'cuda').
+
+    Args:
+        dec_state (Tensor): The decoder states to be transferred.
+        device (str): The target device to which the decoder states should be moved. Defaults to 'cpu'.
+
+    Returns:
+        Tensor: The decoder states on the specified device.
+    """
+    if torch.is_tensor(dec_state):
+        dec_state = dec_state.to(device)
+
+    elif isinstance(dec_state, (list, tuple)):
+        dec_state = tuple(_states_to_device(dec_i, device) for dec_i in dec_state)
+
+    return dec_state
+def pack_hypotheses(hypotheses: List[Hypothesis]) -> List[Hypothesis]:
+    """
+    Packs a list of hypotheses into a tensor and prepares decoder states.
+
+    This function takes a list of token sequences (hypotheses) and converts
+    it into a tensor format. If any decoder states are on the GPU, they
+    are moved to the CPU. Additionally, the function removes any timesteps
+    with a value of -1 from the sequences.
+
+    Args:
+        hypotheses (list): A list of token sequences representing hypotheses.
+
+    Returns:
+        list: A list of packed hypotheses in tensor format.
+    """
+    for idx, hyp in enumerate(hypotheses):  # type: rnnt_utils.Hypothesis
+        hyp.y_sequence = torch.tensor(hyp.y_sequence, dtype=torch.long)
+
+        if hyp.dec_state is not None:
+            hyp.dec_state = _states_to_device(hyp.dec_state)
+
+        # Remove -1 from timestep
+        if hyp.timestamp is not None and len(hyp.timestamp) > 0 and hyp.timestamp[0] == -1:
+            hyp.timestamp = hyp.timestamp[1:]
+
+    return hypotheses
 
 class BeamTDTInfer:
     """
@@ -132,7 +173,6 @@ class BeamTDTInfer:
         self.score_norm = score_norm
         self.max_candidates = beam_size
         self.softmax_temperature = softmax_temperature
-
         if beam_size < 1:
             raise ValueError("Beam search size cannot be less than 1!")
 
@@ -189,9 +229,9 @@ class BeamTDTInfer:
             self.maes_prefix_alpha = int(maes_prefix_alpha)
             self.maes_expansion_beta = int(maes_expansion_beta)
             self.maes_expansion_gamma = float(maes_expansion_gamma)
-
-            self.max_candidates += maes_expansion_beta
-
+            self.max_candidates += self.maes_expansion_beta
+            
+            
             if self.maes_prefix_alpha < 0:
                 raise ValueError("`maes_prefix_alpha` must be a positive integer.")
 
@@ -288,17 +328,13 @@ class BeamTDTInfer:
                     # Prepare the list of hypotheses
                     nbest_hyps = pack_hypotheses(nbest_hyps)
 
-                    # Pack the result
-                    if self.return_best_hypothesis:
-                        best_hypothesis: Hypothesis = nbest_hyps[0]
-                    else:
-                        best_hypothesis: NBestHypotheses = NBestHypotheses(nbest_hyps)
-                    hypotheses.append(best_hypothesis)
+                    hypotheses.append(nbest_hyps[0])
+
+  
 
         self.decoder.train(decoder_training_state)
         self.joint.train(joint_training_state)
-
-        return (hypotheses,)
+        return hypotheses
 
     def default_beam_search(
         self,
@@ -583,6 +619,7 @@ class BeamTDTInfer:
                 # Then, select the top `max_candidates` pairs of (token, duration)
                 # based on the highest combined probabilities.
                 # Note that indices are obtained in flattened array.
+
                 beam_logp_topks, beam_idx_topks = beam_logp.topk(
                     self.max_candidates, dim=-1
                 )

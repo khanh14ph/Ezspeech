@@ -246,3 +246,282 @@ class SpecAugmentNumba(nn.Module):
         )
         x=x.transpose(1,2)
         return x
+    
+class SpeedPerturbation:
+    r"""Adjust the speed of the input by that factor.
+
+    Args:
+        orig_freqs (int or Sequence[int]): original frequency of the signals
+        in ``waveform``.
+        factors (Sequence[float]): factors by which to adjust speed of input.
+            Values greater than 1.0 compress ``waveform`` in time,
+            whereas values less than 1.0 stretch ``waveform`` in time.
+    """
+
+    def __init__(
+        self, orig_freqs: Union[int, Sequence[int]], factors: Sequence[float]
+    ) -> None:
+
+        if isinstance(orig_freqs, int):
+            orig_freqs = [orig_freqs]
+
+        self.orig_freqs = orig_freqs
+
+        self.transforms = {
+            freq: T.SpeedPerturbation(freq, factors) for freq in orig_freqs
+        }
+
+    def apply(self, speech: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        r"""Adjust the speed of audio.
+
+        Args:
+            speech (Tensor): tensor of audio of dimension `(..., time)`.
+            sample_rate (int): the sample rate of audio signal.
+
+        Returns:
+            Tensor
+                speed-adjusted waveform, with shape `(..., new_time)`.
+        """
+
+        if sample_rate not in self.orig_freqs:
+            raise ValueError(f"Sample rate {sample_rate} is not supported")
+
+        speech, _ = self.transforms[sample_rate](speech)
+
+        return speech
+
+
+class Speed:
+    r"""Adjust the speed of the input by that factor.
+
+    Args:
+        orig_freqs (int or Sequence[int]): original frequency of the signals
+        in ``waveform``.
+        factors (Sequence[float]): factors by which to adjust speed of input.
+            Values greater than 1.0 compress ``waveform`` in time,
+            whereas values less than 1.0 stretch ``waveform`` in time.
+        probability (float): the probability of applying this augmentation.
+    """
+
+    def __init__(
+        self,
+        orig_freqs: Union[int, Sequence[int]],
+        factors: Sequence[float],
+        probability: float = 1.0,
+    ) -> None:
+
+        if isinstance(orig_freqs, int):
+            orig_freqs = [orig_freqs]
+
+        self.factor = factors
+        self.orig_freqs = orig_freqs
+        self.probability = probability
+
+        self.transforms = {
+            freq: {factor: T.Speed(freq, factor) for factor in factors}
+            for freq in orig_freqs
+        }  # noqa
+
+    def apply(self, speech: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        r"""Adjust the speed of audio.
+
+        Args:
+            speech (Tensor): tensor of audio of dimension `(..., time)`.
+            sample_rate (int): the sample rate of audio signal.
+
+        Returns:
+            Tensor
+                speed-adjusted waveform, with shape `(..., new_time)`.
+        """
+
+        if random.random() > self.probability:
+            return speech
+
+        if sample_rate not in self.orig_freqs:
+            raise ValueError(f"Sample rate {sample_rate} is not supported")
+
+        factor = random.choice(self.factor)
+        speech, _ = self.transforms[sample_rate][factor](speech)
+
+        return speech
+
+
+class TrimAudioSample(object):
+    def __init__(
+        self,
+        factor: float,
+        min_length: float,
+        max_length: float,
+        probability: float,
+    ):
+        self.factor = factor
+        self.min_length = min_length
+        self.max_length = max_length
+        self.probability = probability
+
+    def apply(self, speech: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        if random.random() > self.probability:
+            return speech
+
+        audio_length = speech.size(1) / sample_rate
+
+        sample_length = self.factor * audio_length
+        sample_length = min(self.max_length, sample_length)
+        sample_length = max(self.min_length, sample_length)
+
+        max_start_index = (audio_length - sample_length) * sample_rate
+        start_index = random.randint(0, max(0, int(max_start_index)))
+
+        length = int(sample_length * sample_rate)
+        sample = speech[:, start_index : start_index + length]
+
+        return sample
+
+
+class ApplyImpulseResponse(object):
+    def __init__(
+        self,
+        rir_filepath_8k: str = None,
+        rir_filepath_16k: str = None,
+        second_before_peak: Optional[float] = 0.01,
+        second_after_peak: Optional[float] = 0.5,
+        probability: Optional[float] = 0.2,
+    ):
+        self.probability = probability
+        self.second_before_peak = second_before_peak
+        self.second_after_peak = second_after_peak
+
+        if rir_filepath_8k:
+            self.rir_8k = load_dataset(rir_filepath_8k)
+        if rir_filepath_16k:
+            self.rir_16k = load_dataset(rir_filepath_16k)
+
+    def apply(self, speech: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        if random.random() > self.probability:
+            return speech
+
+        if int(sample_rate) == 8000 and hasattr(self, "rir_8k"):
+            rir_dataset = self.rir_8k
+        elif int(sample_rate) == 16000 and hasattr(self, "rir_16k"):
+            rir_dataset = self.rir_16k
+        else:
+            return speech
+
+        rir_data = random.choice(rir_dataset)
+        rir_filepath = rir_data["audio_filepath"]
+        rir, sample_rate = torchaudio.load(rir_filepath)
+
+        peak_index = rir.argmax()
+        start_index = int(peak_index - self.second_before_peak * sample_rate)
+        end_index = int(peak_index + self.second_after_peak * sample_rate)
+        start_index = max(0, start_index)
+        end_index = min(rir.size(1), end_index)
+
+        rir = rir[:, start_index:end_index]
+        rir /= rir.norm() + 1e-9
+        rir = torch.flip(rir, [1])
+        rir = rir[None, ...]
+
+        padded_speech = F.pad(speech, (rir.size(2) - 1, 0))
+        padded_speech = padded_speech[None, ...]
+
+        reverbed_speech = fft_convolution(padded_speech, rir)[0]
+        reverbed_speech *= speech.norm() / (reverbed_speech.norm() + 1e-9)
+        reverbed_speech = reverbed_speech.clamp(-1.0, 1.0)
+
+        return reverbed_speech
+
+
+class AddBackgroundNoise(object):
+    def __init__(
+        self,
+        noise_filepath_8k: str = None,
+        noise_filepath_16k: str = None,
+        min_snr_db: Optional[float] = 0.0,
+        max_snr_db: Optional[float] = 30.0,
+        probability: Optional[float] = 0.2,
+    ):
+        self.probability = probability
+        self.snr_db = torch.distributions.Uniform(min_snr_db, max_snr_db)
+
+        if noise_filepath_8k:
+            self.noise_8k = load_dataset(noise_filepath_8k)
+        if noise_filepath_16k:
+            self.noise_16k = load_dataset(noise_filepath_16k)
+
+    def apply(self, speech: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        if random.random() > self.probability:
+            return speech
+
+        if int(sample_rate) == 8000 and hasattr(self, "noise_8k"):
+            noise_dataset = self.noise_8k
+        elif int(sample_rate) == 16000 and hasattr(self, "noise_16k"):
+            noise_dataset = self.noise_16k
+        else:
+            return speech
+
+        noise_data = random.choice(noise_dataset)
+        noise_filepath = noise_data["audio_filepath"]
+        noise_duration = noise_data["duration"]
+
+        speech_duration = speech.size(1) / sample_rate
+        mismatch = int((noise_duration - speech_duration) * sample_rate)
+        if mismatch > 0:
+            frame_offset = random.randint(0, mismatch)
+            noise, __ = torchaudio.load(
+                noise_filepath,
+                frame_offset=frame_offset,
+                num_frames=speech.size(1),
+            )
+            rms_noise = noise.square().mean().sqrt() + 1e-9
+        else:
+            noise, __ = torchaudio.load(noise_filepath)
+            rms_noise = noise.square().mean().sqrt() + 1e-9
+            frame_offset = random.randint(0, -mismatch)
+            noise = F.pad(noise, (frame_offset, -mismatch - frame_offset))
+
+        snr_db = self.snr_db.sample()
+        rms_speech = speech.square().mean().sqrt() + 1e-9
+        scale = 10 ** (-snr_db / 20) * rms_speech / rms_noise
+
+        noise = F.pad(noise, (0, speech.size(1) - noise.size(1)))
+        noisy_speech = speech + scale * noise
+        noisy_speech *= speech.norm() / (noisy_speech.norm() + 1e-9)
+        noisy_speech = noisy_speech.clamp(-1.0, 1.0)
+
+        return noisy_speech
+
+
+# TODO move to device
+class PitchShift(object):
+    def __init__(
+        self,
+        min_step: int = -5,
+        max_step: int = 5,
+        sample_rates: List[int] = [8000, 16000, 22050],
+        probability: float = 1.0,
+    ) -> None:
+        """Pitch shift
+
+        Args:
+            min_step (int, optional): Minimum number of steps to shift speech.
+                Defaults to -5.
+            max_step (int, optional): Maximum number of steps to shift speech.
+                Defaults to 5.
+            sample_rates (List[int], optional): List of sample rate.
+                Defaults to [8000, 16000, 22050].
+            probability (float, optional): Probability of applying forward
+                speech. Defaults to 1.0.
+        """
+        self.min_step = min_step
+        self.max_step = max_step
+        self.probability = probability
+
+    def apply(self, speech: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        if random.random() > self.probability:
+            return speech
+        n_steps = random.randint(self.min_step, self.max_step)
+        speech = librosa.effects.pitch_shift(
+            speech.numpy(), sr=sample_rate, n_steps=n_steps
+        )
+        return torch.tensor(speech)
