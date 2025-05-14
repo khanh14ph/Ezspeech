@@ -115,8 +115,8 @@ if __name__ == "__main__":
     model = instantiate(config.model)
     import torchaudio
 
-    audio2, sr2 = torchaudio.load("/home4/khanhnd/temp_wav/2.wav")
-    audio1,sr1=torchaudio.load("/home4/khanhnd/temp_wav/3.wav")
+    audio2, sr2 = torchaudio.load("/home4/khanhnd/vivos/test/waves/VIVOSDEV02/VIVOSDEV02_R106.wav")
+    audio1,sr1=torchaudio.load("/home4/khanhnd/vivos/test/waves/VIVOSDEV02/VIVOSDEV02_R122.wav")
     audio=[audio1,audio2]
     sr=[sr1,sr2]
     enc, enc_length = model.forward_encoder(audio, sr)

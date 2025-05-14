@@ -6,7 +6,7 @@ model:
   decoding_cfg:
     # Using greedy decoding is highly recommended for TDT models. Using greedy-batch will give very bad results
     # if omega is 0; even if omega is non-zero, greedy-batch results are still going to be inaccurate.
-    strategy: "maes"
+    strategy: "malsd_batch"
     model_type: "tdt"
     # this must not be None in order to use the TDT specific decoding method.
     durations: [0,1,2,3,4]
@@ -16,9 +16,7 @@ model:
     # beam strategy config
     beam:
       beam_size: 2
-      return_best_hypothesis: False
-      score_norm: true
-      alsd_max_target_len: 2.0  # for Alignment-Length Synchronous Decoding
+# for Alignment-Length Synchronous Decoding
 # possible_strategies = [
 #             "greedy",
 #             "greedy_batch",
@@ -26,5 +24,4 @@ model:
 #             "alsd",
 #             "maes",
 #             "malsd_batch",
-#             "maes_batch",
 #         ]

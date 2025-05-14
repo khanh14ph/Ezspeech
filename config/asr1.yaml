@@ -38,7 +38,7 @@ dataset:
   val_ds:
     _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
     filepaths:
-      - /home4/khanhnd/Ezspeech/data/test.jsonl
+    - /home4/khanhnd/Ezspeech/data/test.jsonl
 
     vocab_file: *vocab
   loaders:
