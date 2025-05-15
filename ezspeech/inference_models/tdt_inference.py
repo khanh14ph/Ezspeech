@@ -18,8 +18,7 @@ class LightningASR(object):
         self.beam_size = 5
 
         self.device = device
-        self.vocab = open(vocab).read().splitlines()
-
+        self.vocab = open(vocab,encoding="utf-8").read().splitlines()
         (
             self.preprocessor,
             self.encoder,

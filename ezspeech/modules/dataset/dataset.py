@@ -89,7 +89,7 @@ class SpeechRecognitionDataset(Dataset):
             sample_rate = 16000
 
 
-        tokens = tokenize(transcript, self.vocab)
+        tokens=data.get("tokenized_transcript",tokenize(transcript, self.vocab))
 
         tokens = [self.vocab.index(token) for token in tokens]
 

@@ -940,6 +940,7 @@ class BeamBatchedTDTInfer:
         durations: list,
         blank_index: int,
         beam_size: int,
+        vocab_size: int,
         search_type: str = "malsd_batch",
         score_norm: bool = True,
         max_symbols_per_step: Optional[int] = None,
@@ -948,6 +949,7 @@ class BeamBatchedTDTInfer:
         blank_lm_score_mode: Optional[
             str | BlankLMScoreMode
         ] = BlankLMScoreMode.NO_SCORE,
+        
         pruning_mode: Optional[str | PruningMode] = PruningMode.EARLY,
         allow_cuda_graphs: Optional[bool] = True,
         return_best_hypothesis: Optional[str] = True,
@@ -974,6 +976,7 @@ class BeamBatchedTDTInfer:
 
         self.durations = durations
         self._blank_index = blank_index
+        self.vocab_size=vocab_size
         self._SOS = blank_index  # Start of single index
         self.beam_size = beam_size
         self.return_best_hypothesis = return_best_hypothesis
@@ -996,6 +999,7 @@ class BeamBatchedTDTInfer:
                 blank_index=self._blank_index,
                 max_symbols_per_step=self.max_symbols,
                 ngram_lm_model=ngram_lm_model,
+                vocab_size=self.vocab_size,
                 ngram_lm_alpha=ngram_lm_alpha,
                 blank_lm_score_mode=blank_lm_score_mode,
                 pruning_mode=pruning_mode,

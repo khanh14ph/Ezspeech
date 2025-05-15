@@ -241,6 +241,7 @@ class ModifiedALSDBatchedTDTComputer:
         durations,
         blank_index: int,
         beam_size: int,
+        vocab_size: int,
         max_symbols_per_step: Optional[int] = 10,
         preserve_alignments=False,
         ngram_lm_model: Optional[str | Path] = None,
@@ -269,7 +270,6 @@ class ModifiedALSDBatchedTDTComputer:
         self.decoder = decoder
         self.joint = joint
         self._blank_index = blank_index
-
         self.beam_size = beam_size
         self.max_symbols = max_symbols_per_step
         self.preserve_alignments = preserve_alignments
@@ -283,16 +283,13 @@ class ModifiedALSDBatchedTDTComputer:
         self.state = None
         self.full_graph = None
         self.separate_graphs = None
-
+        self.vocab_size=vocab_size
         self.cuda_graphs_mode = None
         self.maybe_enable_cuda_graphs()
 
         if ngram_lm_model is not None:
-            expected_blank_index = self.joint.num_classes_with_blank - self.joint.num_extra_outputs - 1
-            if self._blank_index != expected_blank_index:
-                raise ValueError(f"Invalid blank index: expected {expected_blank_index}, got {self._blank_index}")
 
-            self.ngram_lm_batch = NGramGPULanguageModel.from_file(lm_path=ngram_lm_model, vocab_size=self._blank_index)
+            self.ngram_lm_batch = NGramGPULanguageModel.from_file(lm_path=ngram_lm_model, vocab_size=self.vocab_size)
 
             self.pruning_mode = PruningMode.EARLY if pruning_mode is None else PruningMode(pruning_mode)
             self.blank_lm_score_mode = (

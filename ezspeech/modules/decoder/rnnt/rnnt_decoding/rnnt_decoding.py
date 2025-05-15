@@ -35,7 +35,7 @@ class RNNTDecoding:
         blank_id = 0
 
         self.labels_map = dict([(i, vocabulary[i]) for i in range(len(vocabulary))])
-
+        self.vocab_size=len(self.labels_map)
         # Convert dataclass to config object
 
         self.cfg = decoding_cfg
@@ -159,6 +159,7 @@ class RNNTDecoding:
                 blank_lm_score_mode=self.cfg.beam.get(
                     "blank_lm_score_mode", BlankLMScoreMode.LM_WEIGHTED_FULL
                 ),
+                vocab_size=self.vocab_size,
                 pruning_mode=self.cfg.beam.get("pruning_mode", PruningMode.LATE),
                 score_norm=self.cfg.beam.get("score_norm", True),
                 allow_cuda_graphs=self.cfg.beam.get("allow_cuda_graphs", True),

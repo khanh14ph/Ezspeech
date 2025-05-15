@@ -38,9 +38,9 @@ if TRITON_AVAILABLE:
     from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.ngram_lm_triton import ngram_advance_triton_kernel
 
 # Define constants for parsing ARPA
-_BOS_ID = -1  # Begin-of-Sentence
-_EOS_ID = -2  # End-of-Sentence
-_UNK_ID = -3  # Unk
+_BOS_ID = 2  # Begin-of-Sentence
+_EOS_ID = 3  # End-of-Sentence
+_UNK_ID = 1  # Unk
 DEFAULT_TOKEN_OFFSET=100
 _SPECIAL_SYMBOLS_MAP = {"<s>": _BOS_ID, "</s>": _EOS_ID, "<unk>": _UNK_ID}
 
