@@ -88,6 +88,7 @@ class SpeechRecognitionTask(LightningModule):
         self, batch: Tuple[torch.Tensor, ...], batch_idx: int
     ) -> torch.Tensor:
         if self.global_step==self.config.model.freeze_encoder_steps:
+            print(f"UNFREEZE ENCODER after {str(self.config.model.freeze_encoder_steps)} steps")
             for param in self.encoder.parameters():
                 param.requires_grad = True
         wavs, wav_lengths, targets, target_lengths = batch
