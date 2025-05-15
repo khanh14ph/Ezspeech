@@ -53,7 +53,7 @@ model:
   d_model: &d_model 512
   vocab_size: &vocab_size 1825
   pretrained_weights: /home4/khanhnd/models/parakeet/ezspeech.ckpt
- 
+  freeze_encoder_steps: 1000
   preprocessor:
     _target_: ezspeech.modules.dataset.utils.audio.AudioToMelSpectrogramPreprocessor
     sample_rate: 16000

@@ -20,15 +20,16 @@ from ezspeech.modules.metric.wer import WER
 class SpeechRecognitionTask(LightningModule):
     def __init__(self, config: DictConfig):
         super(SpeechRecognitionTask, self).__init__()
-
+        
         self.save_hyperparameters()
-
+        self.config=config
         self.preprocessor = instantiate(config.model.preprocessor)
 
         self.spec_augment = instantiate(config.model.spec_augment)
 
         self.encoder = instantiate(config.model.encoder)
-        
+        for param in self.encoder.parameters():
+            param.requires_grad = False
 
         self.decoder = instantiate(config.model.decoder)
 
@@ -86,6 +87,9 @@ class SpeechRecognitionTask(LightningModule):
     def training_step(
         self, batch: Tuple[torch.Tensor, ...], batch_idx: int
     ) -> torch.Tensor:
+        if self.global_step==self.config.model.freeze_encoder_steps:
+            for param in self.encoder.parameters():
+                param.requires_grad = True
         wavs, wav_lengths, targets, target_lengths = batch
         features, feature_lengths = self.preprocessor(wavs, wav_lengths)
         features = self.spec_augment(features, feature_lengths)
@@ -176,28 +180,7 @@ class SpeechRecognitionTask(LightningModule):
                 "interval": "step",
             },
         }
-    def on_after_backward(self):
-        """
-        zero-out the gradients which any of them is NAN or INF
-        """
-        super().on_after_backward()
-        device = next(self.parameters()).device
-        valid_gradients = torch.tensor([1], device=device, dtype=torch.float32)
-
-        # valid_gradients = True
-        for param_name, param in self.named_parameters():
-            if param.grad is not None:
-                is_not_nan_or_inf = not (torch.isnan(param.grad).any() or torch.isinf(param.grad).any())
-                if not is_not_nan_or_inf:
-                    valid_gradients = valid_gradients * 0
-                    break
-
-        if torch.distributed.is_initialized():
-            torch.distributed.all_reduce(valid_gradients, op=torch.distributed.ReduceOp.MIN)
-
-        if valid_gradients < 1:
-            print(f'detected inf or nan values in gradients! Setting gradients to zero.')
-            self.zero_grad()
+    
     def plot_losses(self):
         plt.figure(figsize=(10, 6))
         steps = list(range(100, len(self.mean_losses) * 100 + 100, 100))
