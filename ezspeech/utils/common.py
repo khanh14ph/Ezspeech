@@ -16,7 +16,7 @@ from contextlib import  nullcontext
 
 def save_dataset(x: List[dict], filepath: str):
     with open(filepath, "w", encoding="utf8") as outfile:
-        for entry in x:
+        for entry in tqdm(x):
             json.dump(entry, outfile, ensure_ascii=False)
             outfile.write("\n")
 def load_dataset(filepaths: Union[str, List[str]]) -> List[dict]:
