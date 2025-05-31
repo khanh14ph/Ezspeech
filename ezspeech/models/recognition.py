@@ -1,25 +1,16 @@
 from typing import Tuple
 from omegaconf import DictConfig
 from hydra.utils import instantiate
-from pytorch_lightning import LightningModule
 
 import torch
-import torch.nn.functional as F
-from torch.optim import AdamW
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import os
 import numpy as np
-from collections import deque
-
-from ezspeech.modules.dataset.dataset import collate_asr_data
-from ezspeech.optims.scheduler import NoamAnnealing
 from ezspeech.modules.metric.wer import WER
+from ezspeech.models.abtract import SpeechModel
 
 
-class SpeechRecognitionTask(LightningModule):
+class SpeechRecognitionTask(SpeechModel):
     def __init__(self, config: DictConfig):
-        super(SpeechRecognitionTask, self).__init__()
+        super().__init__(config)
         
         self.save_hyperparameters()
         self.config=config
@@ -42,47 +33,8 @@ class SpeechRecognitionTask(LightningModule):
         self.joint.set_loss(self.rnnt_loss)
 
         self.ctc_loss = instantiate(config.model.loss.ctc_loss)
-
-
-        # Add loss tracking lists
-        # Use deque with maxlen=100 to store last 100 losses
-        self.window_losses = deque(maxlen=100)
-        
-        # List to store mean values for plotting
-        self.mean_losses = []
-        
-        self.current_step = 0
-        
-        # Create directory for loss plots if it doesn't exist
-        if self.training:
-            self.plot_dir = f"{config.loggers.tb.save_dir}/{config.loggers.tb.version}"
-            os.makedirs(self.plot_dir, exist_ok=True)
-
-    def train_dataloader(self) -> DataLoader:
-        dataset = instantiate(self.hparams.config.dataset.train_ds, _recursive_=False)
-        loaders = self.hparams.config.dataset.loaders
-
-        train_dl = DataLoader(
-            dataset=dataset,
-            collate_fn=collate_asr_data,
-            shuffle=True,
-            **loaders,
-        )
-
-        return train_dl
-
-    def val_dataloader(self) -> DataLoader:
-        dataset = instantiate(self.hparams.config.dataset.val_ds, _recursive_=False)
-        loaders = self.hparams.config.dataset.loaders
-
-        val_dl = DataLoader(
-            dataset=dataset,
-            collate_fn=collate_asr_data,
-            shuffle=False,
-            **loaders,
-        )
-
-        return val_dl
+        self.modules_map={"encoder":self.encoder,
+                          "preprocessor":self.preprocessor}
 
     def training_step(
         self, batch: Tuple[torch.Tensor, ...], batch_idx: int
@@ -165,50 +117,3 @@ class SpeechRecognitionTask(LightningModule):
 
         return loss, ctc_loss, rnnt_loss
 
-    def configure_optimizers(self):
-        optimizer = AdamW(
-            self.parameters(),
-            **self.hparams.config.model.optimizer,
-        )
-        scheduler = NoamAnnealing(
-            optimizer,
-            **self.hparams.config.model.scheduler,
-        )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "interval": "step",
-            },
-        }
-    
-    def plot_losses(self):
-        plt.figure(figsize=(10, 6))
-        steps = list(range(100, len(self.mean_losses) * 100 + 100, 100))
-        
-        plt.plot(steps, self.mean_losses, label='Training Loss', marker='o', color='blue')
-        plt.xlabel('Steps')
-        plt.ylabel('Mean Loss (per 100 steps)')
-        plt.title('Training Loss Over Time (100-step moving average)')
-        plt.legend()
-        plt.grid(True)
-        
-        # Save the plot
-        plot_path = os.path.join(self.plot_dir, f'mean_loss_plot.png')
-        plt.savefig(plot_path)
-        plt.close()
-
-    def export_checkpoint(self, filepath: str):
-        checkpoint = {
-            "state_dict": {
-                "preprocessor": self.preprocessor.state_dict(),
-                "encoder": self.encoder.state_dict(),
-                "decoder": self.decoder.state_dict(),
-                "predictor": self.predictor.state_dict(),
-                "joint": self.joint.state_dict(),
-            },
-            "hyper_parameters": self.hparams.config.model,
-        }
-        print("checkpoint")
-        torch.save(checkpoint, filepath)
-        print(f'Model checkpoint is saved to "{filepath}" ...')

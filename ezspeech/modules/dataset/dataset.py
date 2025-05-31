@@ -11,35 +11,7 @@ from ezspeech.modules.dataset.utils.text import tokenize
 from ezspeech.utils.common import load_dataset, time_reduction
 from ezspeech.modules.dataset.utils.text import Tokenizer
 vn_word_lst=open("/home4/khanhnd/Ezspeech/ezspeech/resource/vn_word_lst.txt").read().splitlines()
-def collate_asr_data(batch: List[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
-    pad_id=0
-    wavs = [b[0][0] for b in batch]
-    wav_lengths = [torch.tensor(len(f)) for f in wavs]
 
-    tokens = [b[1] for b in batch]
-    tokens_lengths = [torch.tensor(len(t)) for t in tokens]
-
-    max_audio_len = max(wav_lengths).item()
-    max_tokens_len = max(tokens_lengths).item()
-
-    new_audio_signal, new_tokens = [], []
-    for sig, sig_len, tokens_i, tokens_i_len in zip(wavs,wav_lengths,tokens,tokens_lengths):
-        if sig_len < max_audio_len:
-            pad = (0, max_audio_len - sig_len)
-            sig = torch.nn.functional.pad(sig, pad)
-        new_audio_signal.append(sig)
-        if tokens_i_len < max_tokens_len:
-            pad = (0, max_tokens_len - tokens_i_len)
-            tokens_i = torch.nn.functional.pad(tokens_i, pad, value=pad_id)
-        new_tokens.append(tokens_i)
-
-    new_audio_signal = torch.stack(new_audio_signal)
-    audio_lengths = torch.stack(wav_lengths)
-
-    new_tokens = torch.stack(new_tokens)
-    tokens_lengths = torch.stack(tokens_lengths)
-
-    return new_audio_signal, audio_lengths, new_tokens, tokens_lengths
 
 
 
@@ -71,7 +43,7 @@ class SpeechRecognitionDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, ...]:
         data = self.dataset[idx]
         audio_filepath = data["audio_filepath"]
-        transcript = data["transcript"]
+        transcript = data["text"]
 
         speech, sample_rate = torchaudio.load(audio_filepath)
         for augment in self.audio_augment:
@@ -88,6 +60,35 @@ class SpeechRecognitionDataset(Dataset):
 
     def __len__(self) -> int:
         return len(self.dataset)
+    def collate_asr_data(self,batch: List[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
+        pad_id=0
+        wavs = [b[0][0] for b in batch]
+        wav_lengths = [torch.tensor(len(f)) for f in wavs]
+
+        tokens = [b[1] for b in batch]
+        tokens_lengths = [torch.tensor(len(t)) for t in tokens]
+
+        max_audio_len = max(wav_lengths).item()
+        max_tokens_len = max(tokens_lengths).item()
+
+        new_audio_signal, new_tokens = [], []
+        for sig, sig_len, tokens_i, tokens_i_len in zip(wavs,wav_lengths,tokens,tokens_lengths):
+            if sig_len < max_audio_len:
+                pad = (0, max_audio_len - sig_len)
+                sig = torch.nn.functional.pad(sig, pad)
+            new_audio_signal.append(sig)
+            if tokens_i_len < max_tokens_len:
+                pad = (0, max_tokens_len - tokens_i_len)
+                tokens_i = torch.nn.functional.pad(tokens_i, pad, value=pad_id)
+            new_tokens.append(tokens_i)
+
+        new_audio_signal = torch.stack(new_audio_signal)
+        audio_lengths = torch.stack(wav_lengths)
+
+        new_tokens = torch.stack(new_tokens)
+        tokens_lengths = torch.stack(tokens_lengths)
+
+        return new_audio_signal, audio_lengths, new_tokens, tokens_lengths
 
 class ASRDatasetBilingual(Dataset):
     def __init__(

@@ -15,7 +15,7 @@ dataset:
     spe_file: /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/tdt_ctc_110m_nemo_spe_bpe_v1024.model
     vocab_file: *vocab
   loaders:
-    batch_size: 6
+    batch_size: 4
     num_workers: 8
     pin_memory: false
 

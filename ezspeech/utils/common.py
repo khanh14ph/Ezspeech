@@ -81,6 +81,14 @@ def load_module(
         param.requires_grad = False
 
     return net
+import tarfile
+import os
+
+def untar(tar_file, folder):
+    """Simple one-liner to extract tar to folder"""
+    os.makedirs(folder, exist_ok=True)
+    tarfile.open(tar_file, 'r:*').extractall(folder)
+    print(f"Extracted {tar_file} → {folder}")
 
 def csv2json(csv_path,jsonl_path,sep=",",replace_columns=None):
     import pandas as pd 
