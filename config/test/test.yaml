@@ -16,7 +16,7 @@ model:
     # beam strategy config
     beam:
       beam_size: 2
-      ngram_lm_model: /home4/khanhnd/improved_unimatch/corpus/large_corpus.arpa
+      ngram_lm_model: /home4/khanhnd/exported_checkpoint/char.arpa
 # for Alignment-Length Synchronous Decoding
 # possible_strategies = [
 #             "greedy",

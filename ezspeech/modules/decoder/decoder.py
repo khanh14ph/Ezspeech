@@ -3,7 +3,7 @@ from typing import List, Tuple, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from ezspeech.utils.operation import init_weights
 
 class PredictorNetwork(nn.Module):
     def __init__(
@@ -66,3 +66,27 @@ class CTCDecoder(nn.Module):
         ctc_outs = self.linear2(ctc_outs)
         ctc_outs = ctc_outs.log_softmax(2)
         return ctc_outs
+class ConvASRDecoder(nn.Module):
+    """Simple ASR Decoder for use with CTC-based models such as JasperNet and QuartzNet
+
+    Based on these papers:
+       https://arxiv.org/pdf/1904.03288.pdf
+       https://arxiv.org/pdf/1910.10261.pdf
+       https://arxiv.org/pdf/2005.04290.pdf
+    """
+
+    def __init__(self, feat_in, num_classes, init_mode="xavier_uniform"):
+        super().__init__()
+
+        self._feat_in = feat_in
+        # Add 1 for blank char
+        self._num_classes = num_classes
+        self.apply(lambda x: init_weights(x, mode=init_mode))
+        self.decoder_layers = torch.nn.Sequential(
+            torch.nn.Conv1d(self._feat_in, self._num_classes, kernel_size=1, bias=True)
+        )
+
+    def forward(self, encoder_output):
+        # Adapter module forward step
+        encoder_output=encoder_output.transpose(1,2)
+        return torch.nn.functional.log_softmax(self.decoder_layers(encoder_output).transpose(1, 2), dim=-1)

@@ -1,0 +1,145 @@
+dataset:
+  vocab: &vocab /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/vocab.txt
+  train_ds:
+    _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
+    filepaths:
+      # - /home4/khanhnd/Ezspeech/data/vlsp2020_libri_train.jsonl
+      - /home4/khanhnd/data_combine/libri.jsonl
+    vocab_file: *vocab
+    spe_file: /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/tdt_ctc_110m_nemo_spe_bpe_v1024.model
+
+  val_ds:
+    _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
+    filepaths:
+    - /home4/khanhnd/Ezspeech/data/vivos_libri_test.jsonl
+    spe_file: /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/tdt_ctc_110m_nemo_spe_bpe_v1024.model
+    vocab_file: *vocab
+  loaders:
+    batch_size: 6
+    num_workers: 8
+    pin_memory: false
+
+model:
+  # variables for TDT configs.
+  d_model: &d_model 512
+  vocab_size: &vocab_size 2049
+  pretrained_weights: /home4/khanhnd/models/parakeet/ezspeech.ckpt
+  freeze_encoder_steps: 1000
+  preprocessor:
+    _target_: ezspeech.modules.dataset.utils.audio.AudioToMelSpectrogramPreprocessor
+    sample_rate: 16000
+    normalize: per_feature
+    window_size: 0.025
+    window_stride: 0.01
+    window: hann
+    features: 80
+    n_fft: 512
+    frame_splicing: 1
+    dither: 1.0e-05
+    pad_to: 0
+  spec_augment:
+    _target_: ezspeech.modules.dataset.augment.SpecAugment
+    freq_masks: 2
+    time_masks: 10
+    freq_width: 27
+    time_width: 0.05
+  encoder:
+    _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
+    feat_in: ${model.preprocessor.features}
+    feat_out: -1
+    n_layers: 17
+    d_model: 512
+    subsampling: dw_striding
+    subsampling_factor: 8
+    subsampling_conv_channels: 256
+    causal_downsampling: false
+    reduction: null
+    reduction_position: null
+    reduction_factor: 1
+    ff_expansion_factor: 4
+    self_attention_model: rel_pos
+    n_heads: 8
+    att_context_size:
+    - -1
+    - -1
+    att_context_style: regular
+    xscaling: false
+    untie_biases: true
+    pos_emb_max_len: 5000
+    conv_kernel_size: 9
+    conv_norm_type: batch_norm
+    conv_context_size: null
+    dropout: 0.1
+    dropout_pre_encoder: 0.1
+    dropout_emb: 0.0
+    dropout_att: 0.1
+    stochastic_depth_drop_prob: 0.0
+    stochastic_depth_mode: linear
+    stochastic_depth_start_layer: 1
+  decoder:
+    _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
+    feat_in: *d_model
+    num_classes: 1025
+  decoder_extra:
+    _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
+    feat_in: *d_model
+    num_classes: 1024
+
+    
+    
+  loss:
+    ctc_loss:
+      _target_: ezspeech.modules.losses.ctc.CTCLoss
+      blank_idx: 1024
+      reduction: mean
+      zero_infinity: True
+  
+  optimizer:
+    lr: 1
+    betas: [0.9, 0.999]
+    weight_decay: 1e-2
+    eps: 1e-9
+    foreach: False
+    fused: True
+
+  scheduler:
+    d_model: *d_model
+    warmup_steps: 10000
+  
+callbacks:
+  lr:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+
+  swa:
+    _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
+    swa_lrs: 1e-6
+    swa_epoch_start: 0.8
+    annealing_epochs: 1
+
+  cb:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: step
+    save_top_k: 5
+    save_last: True
+    filename: "{epoch}-{val_ctc_loss:.5f}-{step}"
+    every_n_epochs: 1
+    mode: max
+
+loggers:
+  tb:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: ../lightning_logs
+    name: icassp
+    version: ctc
+
+    default_hp_metric: false
+
+trainer:
+  max_epochs: 200
+  strategy: ddp
+  accelerator: gpu
+  devices: [2]
+  accumulate_grad_batches: 1
+  # detect_anomaly: True
+  precision: 16
+  val_check_interval: 0.5

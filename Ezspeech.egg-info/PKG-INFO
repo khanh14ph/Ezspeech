@@ -1,0 +1,34 @@
+Metadata-Version: 2.4
+Name: Ezspeech
+Version: 0.1.0
+Summary: A simple speech recognition and text-to-speech library
+Home-page: https://github.com/khanh14ph/Ezspeech
+Author: Your Name
+Author-email: your_email@example.com
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Multimedia :: Sound/Audio :: Speech
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Description-Content-Type: text/markdown
+Requires-Dist: torchaudio
+Requires-Dist: torch
+Requires-Dist: librosa
+Requires-Dist: pytorch-lightning
+Requires-Dist: hydra-core
+Requires-Dist: tensorboardX
+Requires-Dist: pandas
+Requires-Dist: transformers[torch]
+Requires-Dist: datasets
+Requires-Dist: jiwer
+Requires-Dist: orjson
+Requires-Dist: num2words
+Requires-Dist: einops
+Requires-Dist: editdistance
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: requires-dist
+Dynamic: summary

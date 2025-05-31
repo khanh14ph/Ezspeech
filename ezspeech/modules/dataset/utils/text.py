@@ -1,16 +1,36 @@
 from typing import Tuple, List, Union, Optional
 import re
+import sentencepiece as spm
 
 
 def tokenize(sentence: str, vocab: List[str]) -> List[str]:
     # sentence = re.sub(r"\s+", "|", sentence)
     # sentence = sentence.strip("|")
-    sentence=sentence.replace(" ","_")+"_"
+    sentence = sentence.replace(" ", "_") + "_"
 
     patterns = "|".join(map(re.escape, sorted(vocab, reverse=True)))
     tokens = re.findall(patterns, sentence)
     return tokens
 
+
+class Tokenizer:
+    def __init__(self, vocab_file, spe_file=None):
+        super().__init__()
+        self.spe_file = spe_file
+        if self.spe_file != None:
+            self.spe_model = spm.SentencePieceProcessor(model_file=spe_file)
+        self.vocab = open(vocab_file,encoding="utf-8").read().splitlines()
+        self.vocab = [i.split("\t")[0] for i in self.vocab ]
+    def encode(self, sentence):
+        if self.spe_file == None:
+            tokens = tokenize(sentence, self.vocab)
+            token_idx=[self.vocab.index(token) for token in tokens]
+        else:
+            token_idx=self.spe_model.encode(sentence)
+        return token_idx
+    def decode(self,token_idx):
+        return [self.vocab(token) for token in token_idx]
+	
 
 VOWELS = "aăâeêioôơuưy"
 TONE_CHARS = "àằầèềìòồờùừỳáắấéếíóốớúứýảẳẩẻểỉỏổởủửỷạặậẹệịọộợụựỵãẵẫẽễĩõỗỡũữỹ"
@@ -157,7 +177,13 @@ def normalize(x):
         x = x.replace(i, " ")
     x = " ".join(x.split())
     return x
-if __name__=="__main__":
-    vocab=open("/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/vi_en.txt").read().splitlines()
-    res=tokenize("xin chào tôi là người đẳng cấp PRO VIP ENTERTAINMENT",vocab)
+
+
+if __name__ == "__main__":
+    vocab = (
+        open("/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/vi_en.txt")
+        .read()
+        .splitlines()
+    )
+    res = tokenize("xin chào tôi là người đẳng cấp PRO VIP ENTERTAINMENT", vocab)
     print(res)

@@ -13,9 +13,15 @@ for i in module_set:
         name,new_name=j.split(".",1)
         if name==i:
             final[i][new_name]=checkpoint[j]
+
 config=OmegaConf.load("/home4/khanhnd/models/parakeet/config.yaml")
+new_final=dict()
+for i in config.keys():
+    if i in final.keys():
+        new_final[i]=final[i]
+        print(f"convert module ** {i} ** successfully")
 checkpoint = {
-        "state_dict": final,
+        "state_dict": new_final,
         "hyper_parameters": config,
     }
 print(final.keys())

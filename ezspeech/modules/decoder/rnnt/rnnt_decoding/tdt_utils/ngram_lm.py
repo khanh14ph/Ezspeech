@@ -38,13 +38,22 @@ if TRITON_AVAILABLE:
     from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.ngram_lm_triton import ngram_advance_triton_kernel
 
 # Define constants for parsing ARPA
-_BOS_ID = 2  # Begin-of-Sentence
-_EOS_ID = 3  # End-of-Sentence
-_UNK_ID = 1  # Unk
+_BOS_ID = -1  # Begin-of-Sentence
+_EOS_ID = -2 # End-of-Sentence
+_UNK_ID = -3 # Unk
 DEFAULT_TOKEN_OFFSET=100
 _SPECIAL_SYMBOLS_MAP = {"<s>": _BOS_ID, "</s>": _EOS_ID, "<unk>": _UNK_ID}
 
+# \data\
+# ngram 1=23296
+# ngram 2=893615
+# ngram 3=3736816
 
+# \1-grams:
+# -5.94268        <unk>   0
+# 0       <s>     -1.682516
+# -2.004672       </s>    0
+# -2.541804       nhưng   -0.99593705
 def _log_10_to_e(score):
     """Convert logarithm with base 10 to natural"""
     return score / np.log10(np.e)
@@ -319,6 +328,7 @@ class SuffixTreeStorage:
                 if ilabel == _EOS_ID:
                     self.states[self.start_state]["final"] = ngram["weight"]
                 continue
+            print("ilabel",ilabel)
             assert ilabel < self.vocab_size
             arc_id = ilabel
             added_symbols.add(ilabel)
@@ -430,8 +440,9 @@ class SuffixTreeStorage:
             ]
             self._ngrams = np.zeros([max_ngrams], dtype=dtype)
             self._ngrams_cnt = 0
-        # for max order - no need in accumulator
 
+        # for max order - no need in accumulator
+    
     def _add_ngram(self, ngram: NGram, bos_id: int):
         """Helper to add ngram"""
         assert len(ngram.symbols) == self._cur_order
@@ -653,7 +664,6 @@ class NGramGPULanguageModel(LightningModule):
         Returns:
             NGramGPULanguageModel instance
         """
-        print(f"{cls.__name__}: reading LM from {lm_path}")
         with open(lm_path, "r", encoding="utf-8") as f:
             order2cnt = cls._read_header(f=f)
             # init suffix tree storage
@@ -817,7 +827,6 @@ class NGramGPULanguageModel(LightningModule):
 
             if line.startswith("\\"):
                 continue
-
             ngram = cls._line_to_ngram(line=line, pattern=pattern, token_offset=token_offset)
             yield ngram
 
@@ -831,12 +840,13 @@ class NGramGPULanguageModel(LightningModule):
         else:
             backoff = 0.0
         weight = _log_10_to_e(float(weight))
-        symbols_re = pattern.findall(symbols_str)
 
+        symbols_re = pattern.findall(symbols_str)
         symbols = tuple(
             (ord(symbol) - token_offset if symbol not in _SPECIAL_SYMBOLS_MAP else _SPECIAL_SYMBOLS_MAP[symbol])
             for symbol in symbols_re
         )
+        print("symbols",symbols)
         return NGram(symbols=symbols, weight=weight, backoff=backoff)
 
     def _init_from_suffix_tree_np(self, suffix_tree_np: SuffixTreeStorage):

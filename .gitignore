@@ -8,3 +8,4 @@ lightning_logs/*
 __pycache__/
 *.py[cod]
 ezspeech/resource/corpus
+benchmark

@@ -1,0 +1,14 @@
+torchaudio
+torch
+librosa
+pytorch-lightning
+hydra-core
+tensorboardX
+pandas
+transformers[torch]
+datasets
+jiwer
+orjson
+num2words
+einops
+editdistance
