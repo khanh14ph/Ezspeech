@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 import torch
-from ezspeech.models.recognition import SpeechRecognitionTask
+from ezspeech.models.ASR import SpeechRecognitionTask
 # from ezspeech.tasks.ctc_recognition import SpeechRecognitionTask
 from tqdm import tqdm
 pl.seed_everything(42, workers=True)
@@ -26,7 +26,7 @@ def main(config: DictConfig):
     #             net.load_state_dict(weights)
 
     #             print(f"***** Loading {attr} from {checkpoint_filepath :<20s} *****")
-    task.restore_from(config.model.get("pretrained_weights"))
+    task.restore_from(config.model.model_pretrained)
     
     callbacks = None
     if config.get("callbacks") is not None:

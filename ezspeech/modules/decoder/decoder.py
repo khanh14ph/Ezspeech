@@ -59,7 +59,7 @@ class CTCDecoder(nn.Module):
         super(CTCDecoder, self).__init__()
 
         self.linear1 = nn.Linear(input_dim, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, output_dim)
+        self.linear2 = nn.Linear(hidden_dim, output_dim+1)
 
     def forward(self, enc_outs: torch.Tensor) -> torch.Tensor:
         ctc_outs = F.silu(self.linear1(enc_outs))

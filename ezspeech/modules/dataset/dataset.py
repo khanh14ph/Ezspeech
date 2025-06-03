@@ -19,15 +19,9 @@ class SpeechRecognitionDataset(Dataset):
     def __init__(
         self,
         filepaths,
-        vocab_file,
-        spe_file=None,
         augmentation: Optional[DictConfig] = None,
     ):
         super(SpeechRecognitionDataset, self).__init__()
-        sample_rate = 16000
-        self.tokenizer=Tokenizer(vocab_file,spe_file=spe_file)
-        self.vocab = open(vocab_file,encoding="utf-8").read().splitlines()
-        self.vocab = [i.split()[0] for i in self.vocab ]
 
         self.dataset = load_dataset(filepaths)
 
@@ -39,7 +33,8 @@ class SpeechRecognitionDataset(Dataset):
             8000: T.Resample(8000, 16000),
             24000: T.Resample(24000, 16000),
         }
-
+    def set_tokenizer(self,tokenzier):
+        self.tokenizer=tokenzier
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, ...]:
         data = self.dataset[idx]
         audio_filepath = data["audio_filepath"]

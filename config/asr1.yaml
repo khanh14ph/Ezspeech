@@ -1,11 +1,11 @@
 dataset:
-  vocab: &vocab /home4/khanhnd/Ezspeech/ezspeech/resource/vocab/vi_en.txt
+  tokenizer:
+    _target_: ezspeech.modules.dataset.utils.text.Tokenizer
+    spe_file: /home4/khanhnd/nemo_dev/tokenizer/mix/tokenizer_spe_bpe_v2024/tokenizer.model
   train_ds:
     _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
     filepaths:
       - /home4/khanhnd/Ezspeech/data/vlsp2020.jsonl
-    vocab_file: *vocab
-    # spe_file:  /home4/khanhnd/nemo_dev/tokenizer/mix/tokenizer_spe_bpe_v2024/tokenizer.model
     # augmentation:
           # speed_perturbation:
           #   _target_: ezspeech.datas.augment.SpeedPerturbation
@@ -41,7 +41,6 @@ dataset:
     filepaths:
     - /home4/khanhnd/Ezspeech/data/test.jsonl
 
-    vocab_file: *vocab
   loaders:
     batch_size: 4
     num_workers: 8
@@ -52,8 +51,11 @@ model:
   tdt_durations: [0, 1, 2, 3, 4]
   num_tdt_durations: 5
   d_model: &d_model 512
-  vocab_size: &vocab_size 1825
-  pretrained_weights: /home4/khanhnd/parakeet-tdt_ctc-110m.nemo
+  vocab_size: &vocab_size 2024
+  init_from_nemo_model:
+  model_pretrained:
+    path: /home4/khanhnd/parakeet-tdt_ctc-110m.nemo
+    include: ["preprocessor","encoder","tokenizer","joint","decoder","ctc_decoder"]
   freeze_encoder_steps: 1000
   preprocessor:
     _target_: ezspeech.modules.dataset.utils.audio.AudioToMelSpectrogramPreprocessor
@@ -106,7 +108,7 @@ model:
     stochastic_depth_drop_prob: 0.0
     stochastic_depth_mode: linear
     stochastic_depth_start_layer: 1
-  decoder:
+  ctc_decoder:
     _target_: ezspeech.modules.decoder.decoder.CTCDecoder
     input_dim: *d_model
     hidden_dim: *d_model
@@ -114,7 +116,7 @@ model:
 
 
 
-  predictor:
+  decoder:
     _target_: ezspeech.modules.decoder.rnnt.rnnt.RNNTDecoder
     vocab_size: *vocab_size
     normalization_mode: null # Currently only null is supported for export.
@@ -146,7 +148,7 @@ model:
 
     jointnet:
       encoder_hidden: *d_model
-      pred_hidden: ${model.predictor.prednet.pred_hidden}
+      pred_hidden: ${model.decoder.prednet.pred_hidden}
       joint_hidden: *d_model
       activation: "relu"
       dropout: 0.2
@@ -157,12 +159,12 @@ model:
   loss:
     ctc_loss:
       _target_: ezspeech.modules.losses.ctc.CTCLoss
-      blank_idx: 0
+      blank_idx: *vocab_size
       reduction: mean
       zero_infinity: True
     rnnt_loss:
       _target_: ezspeech.modules.losses.rnnt.TDTLoss
-      blank_idx: 0
+      blank_idx: *vocab_size
       reduction: mean
       # FastEmit regularization: https://arxiv.org/abs/2010.11148
       # You may enable FastEmit to reduce the latency of the model for streaming
@@ -228,4 +230,4 @@ trainer:
   accumulate_grad_batches: 1
   # detect_anomaly: True
   precision: 32
-  val_check_interval: 0.5
+  val_check_interval: 0.01

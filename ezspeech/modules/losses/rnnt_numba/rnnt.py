@@ -428,15 +428,11 @@ class _TDTNumba(Function):
         Refer to https://arxiv.org/abs/2304.06795 for detailed explanations for
             the above parameters;
         """
-        is_cuda = label_acts.is_cuda
+        assert label_acts.is_cuda
 
         if clamp < 0:
             raise ValueError("`clamp` must be 0.0 or positive float value.")
 
-        if is_cuda:
-            loss_func = tdt_loss_gpu
-        else:
-            raise ValueError("TDT is not yet implemented for non CUDA computation.")
 
         label_grads = torch.zeros_like(label_acts) if label_acts.requires_grad else None
         duration_grads = (
@@ -447,7 +443,7 @@ class _TDTNumba(Function):
             minibatch_size, device=label_acts.device, dtype=label_acts.dtype
         )
 
-        loss_func(
+        tdt_loss_gpu(
             label_acts,
             duration_acts,
             labels=labels,

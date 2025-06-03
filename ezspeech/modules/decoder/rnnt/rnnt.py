@@ -815,7 +815,7 @@ class RNNTJoint(torch.nn.Module):
 
         self._vocab_size = num_classes
         self._num_extra_outputs = num_extra_outputs
-        self._num_classes = num_classes + num_extra_outputs
+        self._num_classes = num_classes +1+ num_extra_outputs
 
         self.masking_prob = masking_prob
         if self.masking_prob > 0.0:

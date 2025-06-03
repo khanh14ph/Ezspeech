@@ -17,9 +17,9 @@ from ezspeech.optims.scheduler import NoamAnnealing
 from ezspeech.modules.metric.wer import WER
 
 
-class SpeechRecognitionTask(LightningModule):
+class ASR_hybrid_ctc_rnnt_training(LightningModule):
     def __init__(self, config: DictConfig):
-        super(SpeechRecognitionTask, self).__init__()
+        super(ASR_hybrid_ctc_rnnt_training, self).__init__()
 
         self.save_hyperparameters()
         self.config = config
