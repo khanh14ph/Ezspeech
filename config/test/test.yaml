@@ -1,9 +1,9 @@
 model:
-  _target_: ezspeech.inference_models.tdt_inference.LightningASR
-  filepath: ../exported_checkpoint/hehe.ckpt
+  _target_: ezspeech.models.ASR.LightningASR
+  filepath: /home4/khanhnd/Ezspeech/checkpoint/model_weights.ckpt
   device: cuda
-  vocab: ezspeech/resource/vocab/vi_en.txt
-  decoding_cfg:
+  tokenizer_path: /home4/khanhnd/Ezspeech/checkpoint/tokenizer.model
+  decoding_cfg: 
     # Using greedy decoding is highly recommended for TDT models. Using greedy-batch will give very bad results
     # if omega is 0; even if omega is non-zero, greedy-batch results are still going to be inaccurate.
     strategy: "malsd_batch"
@@ -16,7 +16,7 @@ model:
     # beam strategy config
     beam:
       beam_size: 2
-      ngram_lm_model: /home4/khanhnd/exported_checkpoint/char.arpa
+      # ngram_lm_model: /home4/khanhnd/exported_checkpoint/char.arpa
 # for Alignment-Length Synchronous Decoding
 # possible_strategies = [
 #             "greedy",

@@ -1,7 +1,7 @@
 dataset:
   tokenizer:
     _target_: ezspeech.modules.dataset.utils.text.Tokenizer
-    spe_file: /home4/khanhnd/nemo_dev/tokenizer/mix/tokenizer_spe_bpe_v2024/tokenizer.model
+    spe_file: /home4/khanhnd/Ezspeech/checkpoint/tokenizer.model
   train_ds:
     _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
     filepaths:
@@ -50,12 +50,14 @@ model:
   # variables for TDT configs.
   tdt_durations: [0, 1, 2, 3, 4]
   num_tdt_durations: 5
-  d_model: &d_model 512
-  vocab_size: &vocab_size 2024
+  enc_hidden: &enc_hidden 512
+  pred_hidden: &pred_hidden 640
+  joint_hidden: &joint_hidden 640
+  vocab_size: &vocab_size 1024
   init_from_nemo_model:
   model_pretrained:
-    path: /home4/khanhnd/parakeet-tdt_ctc-110m.nemo
-    include: ["preprocessor","encoder","tokenizer","joint","decoder","ctc_decoder"]
+    path: /home4/khanhnd/Ezspeech/checkpoint
+    include: ["preprocessor","encoder","joint","decoder","ctc_decoder"]
   freeze_encoder_steps: 1000
   preprocessor:
     _target_: ezspeech.modules.dataset.utils.audio.AudioToMelSpectrogramPreprocessor
@@ -80,7 +82,7 @@ model:
     feat_in: ${model.preprocessor.features}
     feat_out: -1
     n_layers: 17
-    d_model: 512
+    d_model: *enc_hidden
     subsampling: dw_striding
     subsampling_factor: 8
     subsampling_conv_channels: 256
@@ -109,10 +111,9 @@ model:
     stochastic_depth_mode: linear
     stochastic_depth_start_layer: 1
   ctc_decoder:
-    _target_: ezspeech.modules.decoder.decoder.CTCDecoder
-    input_dim: *d_model
-    hidden_dim: *d_model
-    output_dim: *vocab_size
+    _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
+    feat_in: *enc_hidden
+    num_classes: *vocab_size
 
 
 
@@ -124,7 +125,7 @@ model:
     blank_as_pad: true # This flag must be set in order to support exporting of RNNT models + efficient inference.
 
     prednet:
-      pred_hidden: *d_model
+      pred_hidden: *pred_hidden
       pred_rnn_layers: 1
       t_max: null
       dropout: 0.2
@@ -147,52 +148,52 @@ model:
     fused_batch_size: 1
 
     jointnet:
-      encoder_hidden: *d_model
+      encoder_hidden: *enc_hidden
       pred_hidden: ${model.decoder.prednet.pred_hidden}
-      joint_hidden: *d_model
+      joint_hidden: *joint_hidden
       activation: "relu"
       dropout: 0.2
     num_extra_outputs: ${model.num_tdt_durations}
 
     
     
-  loss:
-    ctc_loss:
-      _target_: ezspeech.modules.losses.ctc.CTCLoss
-      blank_idx: *vocab_size
-      reduction: mean
-      zero_infinity: True
-    rnnt_loss:
-      _target_: ezspeech.modules.losses.rnnt.TDTLoss
-      blank_idx: *vocab_size
-      reduction: mean
-      # FastEmit regularization: https://arxiv.org/abs/2010.11148
-      # You may enable FastEmit to reduce the latency of the model for streaming
-      fastemit_lambda: 0.001  # Recommended values to be in range [1e-4, 1e-2], 0.001 is a good start.
-      clamp: -1.0  # if > 0, applies gradient clamping in range [-clamp, clamp] for the joint tensor only.
+loss:
+  ctc_loss:
+    _target_: ezspeech.modules.losses.ctc.CTCLoss
+    blank_idx: *vocab_size
+    reduction: mean
+    zero_infinity: True
+  rnnt_loss:
+    _target_: ezspeech.modules.losses.rnnt.TDTLoss
+    blank_idx: *vocab_size
+    reduction: mean
+    # FastEmit regularization: https://arxiv.org/abs/2010.11148
+    # You may enable FastEmit to reduce the latency of the model for streaming
+    fastemit_lambda: 0.001  # Recommended values to be in range [1e-4, 1e-2], 0.001 is a good start.
+    clamp: -1.0  # if > 0, applies gradient clamping in range [-clamp, clamp] for the joint tensor only.
 
-      # refer to https://arxiv.org/abs/2304.06795 for the meaning of the following three configs.
-      durations: ${model.tdt_durations}
-      sigma: 0.05 # hyper-param for under-normalization.
-      omega: 0.1 # weight for regular RNN-T loss.
-  metric:
-    decoding: self.decoding,
-    batch_dim_index: self.wer.batch_dim_index,
-    use_cer: self.wer.use_cer,
-    log_prediction: self.wer.log_prediction,
-    dist_sync_on_step: True,
-  
-  optimizer:
-    lr: 1
-    betas: [0.9, 0.999]
-    weight_decay: 1e-2
-    eps: 1e-9
-    foreach: False
-    fused: True
+    # refer to https://arxiv.org/abs/2304.06795 for the meaning of the following three configs.
+    durations: ${model.tdt_durations}
+    sigma: 0.05 # hyper-param for under-normalization.
+    omega: 0.1 # weight for regular RNN-T loss.
+metric:
+  decoding: self.decoding,
+  batch_dim_index: self.wer.batch_dim_index,
+  use_cer: self.wer.use_cer,
+  log_prediction: self.wer.log_prediction,
+  dist_sync_on_step: True,
 
-  scheduler:
-    d_model: *d_model
-    warmup_steps: 10000
+optimizer:
+  lr: 1
+  betas: [0.9, 0.999]
+  weight_decay: 1e-2
+  eps: 1e-9
+  foreach: False
+  fused: True
+
+scheduler:
+  d_model: *enc_hidden
+  warmup_steps: 10000
   
 callbacks:
   lr:

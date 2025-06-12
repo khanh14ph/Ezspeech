@@ -9,9 +9,9 @@ from ezspeech.modules.metric.wer import WER
 from ezspeech.models.abtract import SpeechModel
 import os
 from ezspeech.modules.dataset.utils.text import Tokenizer
+import shutil
 
-
-class SpeechRecognitionTask(SpeechModel):
+class RNNT_CTC_Training(SpeechModel):
     def __init__(self, config: DictConfig):
         super().__init__(config)
 
@@ -32,11 +32,11 @@ class SpeechRecognitionTask(SpeechModel):
 
         self.joint = instantiate(config.model.joint)
 
-        self.rnnt_loss = instantiate(config.model.loss.rnnt_loss)
+        self.rnnt_loss = instantiate(config.loss.rnnt_loss)
 
         self.joint.set_loss(self.rnnt_loss)
 
-        self.ctc_loss = instantiate(config.model.loss.ctc_loss)
+        self.ctc_loss = instantiate(config.loss.ctc_loss)
         self.modules_map = {
             "preprocessor": self.preprocessor,
             "encoder": self.encoder,
@@ -45,22 +45,6 @@ class SpeechRecognitionTask(SpeechModel):
             "ctc_decoder": self.ctc_decoder,
         }
 
-    def restore_from(self, restore_path):
-        super().restore_from(restore_path)
-        if "tokenizer" in self.modules_map:
-            tokenizer_spe_path_lst = glob.glob(f"{self.save_dir}/*.model")
-            tokenizer_regex_path = f"{self.save_dir}/vocab.txt"
-            if len(tokenizer_spe_path_lst) > 0:
-                self.config.dataset.tokenizer.spe_file=tokenizer_spe_path_lst[0]
-                self.tokenizer = Tokenizer(spe_file=tokenizer_spe_path_lst[0])
-            elif os.path.exists(tokenizer_regex_path):
-                self.tokenizer = Tokenizer(vocab_file=tokenizer_regex_path)
-            else:
-                raise Exception("No tokenizer found in checkpoint")
-        if len(self.tokenizer) != self.joint._vocab_size:
-            raise Exception("Vocab between tokenizer and Jointnet mismatch")
-        if len(self.tokenizer) != self.decoder.vocab_size:
-            raise Exception("Vocab of tokenizer and Jointnet mismatch")
 
     def training_step(
         self, batch: Tuple[torch.Tensor, ...], batch_idx: int
@@ -145,16 +129,22 @@ class SpeechRecognitionTask(SpeechModel):
         return loss, ctc_loss, rnnt_loss
     def export_ez_checkpoint(self,export_path):
         checkpoint = {
-            "state_dict": {
+            "state_dict":{
                 "preprocessor": self.preprocessor.state_dict(),
                 "encoder": self.encoder.state_dict(),
-                "ctc_decoder": self.ctc_decoder.state_dict()
+                "ctc_decoder": self.ctc_decoder.state_dict(),
+                "decoder": self.decoder.state_dict(),
+                "joint":self.joint.state_dict()
             },
-            "hyper_parameters": self.hparams.config.model,
+            "hyper_parameters": self.config.model,        
+            
         }
-        print("checkpoint")
-        # torch.save(checkpoint, filepath)
-        # print(f'Model checkpoint is saved to "{filepath}" ...')
+        
+        config=self.config
+        shutil.copy(self.config.dataset.tokenizer.spe_file,export_path)
+        OmegaConf.save(config, export_path+"/config.yaml")
+        torch.save(checkpoint,export_path+"/model.ckpt")
+        print(" ")
 from typing import Tuple, List
 import time
 import torch
@@ -167,19 +157,20 @@ from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_decoding import RNNTDecodi
 from ezspeech.utils.common import load_module
 
 
-class LightningASR(object):
+class RNNT_CTC_Inference(object):
     def __init__(
-        self, filepath: str, device: str, vocab: str = None, decoding_cfg=None
+        self, filepath: str, device: str, tokenizer_path: str = None, decoding_cfg=None
     ):
         self.blank = 0
         self.beam_size = 5
 
         self.device = device
-        self.vocab = open(vocab,encoding="utf-8").read().splitlines()
+        self.tokenizer=Tokenizer(spe_file=tokenizer_path)
+        self.vocab = self.tokenizer.vocab
         (
             self.preprocessor,
             self.encoder,
-            self.decoder,
+            self.ctc_decoder,
             self.predictor,
             self.joint,
         ) = self._load_checkpoint(filepath, device)
@@ -197,12 +188,12 @@ class LightningASR(object):
             hparams["preprocessor"], weights["preprocessor"], device
         )
         encoder = load_module(hparams["encoder"], weights["encoder"], device)
-        decoder = load_module(hparams["decoder"], weights["decoder"], device)
+        ctc_decoder = load_module(hparams["ctc_decoder"], weights["ctc_decoder"], device)
 
-        predictor = load_module(hparams["predictor"], weights["predictor"], device)
+        predictor = load_module(hparams["decoder"], weights["decoder"], device)
         joint = load_module(hparams["joint"], weights["joint"], device)
 
-        return preprocessor, encoder, decoder, predictor, joint
+        return preprocessor, encoder, ctc_decoder, predictor, joint
 
     @torch.inference_mode()
     def forward_encoder(
@@ -226,25 +217,25 @@ class LightningASR(object):
             self.idx_to_token(hypothesis["idx_sequence"]) for hypothesis in hypothesises
         ]
         text = ["".join(i).replace("|", " ") for i in text_token]
-        text = [i.replace("_", " ").strip() for i in text]
+        text = [i.replace("▁", " ").strip() for i in text]
         return text
 
     @torch.inference_mode()
     def greedy_ctc_decode(
         self, enc_outs: List[torch.Tensor], enc_lens: List[torch.Tensor]
     ):
-        logits = self.decoder(enc_outs)
+        logits = self.ctc_decoder(enc_outs)
         predicted_ids = torch.argmax(logits, dim=-1)
         predicted_ids = [torch.unique_consecutive(i) for i in predicted_ids]
         predicted_tokens = [self.idx_to_token(i) for i in predicted_ids]
         predicted_transcripts = ["".join(i) for i in predicted_tokens]
         predicted_transcripts = [
-            i.replace("_", " ").strip() for i in predicted_transcripts
+            i.replace("▁", " ").strip() for i in predicted_transcripts
         ]
         return predicted_transcripts
 
     def idx_to_token(self, lst):
-        lst = [j for j in lst if j != 0]
+        lst = [j for j in lst if j != len(self.vocab)]
         return [self.vocab[i] for i in lst]
 
     def collate_wav(
@@ -264,3 +255,15 @@ class LightningASR(object):
         new_audio_signal = torch.stack(new_audio_signal)
         audio_lengths = torch.stack(wav_lengths)
         return new_audio_signal, audio_lengths
+if __name__ == "__main__":
+    config = OmegaConf.load("/home4/khanhnd/Ezspeech/config/test/test.yaml")
+    model = instantiate(config.model)
+    import torchaudio
+
+    audio2, sr2 = torchaudio.load("/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/train-clean-100/374/180298/374-180298-0004.flac")
+    audio1,sr1=torchaudio.load("/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/train-clean-100/374/180298/374-180298-0004.flac")
+    audio=[audio1,audio2]
+    sr=[sr1,sr2]
+    enc, enc_length = model.forward_encoder(audio, sr)
+    print(model.greedy_ctc_decode(enc, enc_length))
+    print(model.greedy_tdt_decode(enc, enc_length))

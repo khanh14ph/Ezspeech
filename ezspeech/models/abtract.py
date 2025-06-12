@@ -10,11 +10,10 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 from collections import deque
-from ezspeech.utils.common import untar
+from ezspeech.utils.common import load_module
 from ezspeech.utils import color
 from ezspeech.optims.scheduler import NoamAnnealing
 from omegaconf import OmegaConf
-
 
 class SpeechModel(LightningModule, ABC):
     def __init__(self, config: DictConfig):
@@ -41,28 +40,8 @@ class SpeechModel(LightningModule, ABC):
             self.plot_dir = f"{config.loggers.tb.save_dir}/{config.loggers.tb.version}"
             os.makedirs(self.plot_dir, exist_ok=True)
 
-    def restore_from(self, restore_config):
-        self.save_dir = f"{self.config.loggers.tb.save_dir}/temp_checkpoint"
-        untar(restore_config.path, self.save_dir)
-        self.model_config_path = self.save_dir + "/model_config.yaml"
-        self.checkpoint_config = OmegaConf.load(self.model_config_path)
-        self.model_weights_path = self.save_dir + "/model_weights.ckpt"
-        weights = torch.load(self.model_weights_path)
-        weight_dict = dict()
-        for i in restore_config.include:
-            temp_dict = dict()
-            weight_dict[i] = dict()
-            for j in weights:
-                if i == j.split(".")[0]:
-                    weight_dict[i][".".join(j.split(".")[1:])] = weights[j]
-            try:
-                self.modules_map[i].load_state_dict(weight_dict[i])
-            except:
-                print(f"Model config of {color.RED}{i}{color.RESET} do not fit the checkpoint")
-                print("Change the config to checkpoint config instead")
-                self.modules_map[i] = instantiate(self.checkpoint_config[i])
-            print(f"Loaded from {color.GREEN}{i}{color.RESET} successfully")
-
+    
+        
     def train_dataloader(self) -> DataLoader:
 
         loaders = self.config.dataset.loaders
@@ -121,11 +100,11 @@ class SpeechModel(LightningModule, ABC):
     def configure_optimizers(self):
         optimizer = AdamW(
             self.parameters(),
-            **self.hparams.config.model.optimizer,
+            **self.hparams.config.optimizer,
         )
         scheduler = NoamAnnealing(
             optimizer,
-            **self.hparams.config.model.scheduler,
+            **self.hparams.config.scheduler,
         )
         return [optimizer], [scheduler]
 

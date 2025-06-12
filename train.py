@@ -5,7 +5,7 @@ from hydra.utils import instantiate
 from omegaconf import OmegaConf
 import torch
 from ezspeech.models.ASR import SpeechRecognitionTask
-# from ezspeech.tasks.ctc_recognition import SpeechRecognitionTask
+from ezspeech.utils import color
 from tqdm import tqdm
 pl.seed_everything(42, workers=True)
 torch.set_float32_matmul_precision("medium")
@@ -14,20 +14,25 @@ torch.set_float32_matmul_precision("medium")
 @hydra.main(version_base=None, config_path="config", config_name="asr1")
 def main(config: DictConfig):
     task = SpeechRecognitionTask(config)
-    # if config.model.get("pretrained_weights") is not None:
-    #     checkpoint_filepath = config.model.pretrained_weights
-    #     checkpoint = torch.load(checkpoint_filepath, map_location="cpu",weights_only=False)
-    #     print(checkpoint["hyper_parameters"].items())
-    #     for attr, _ in checkpoint["hyper_parameters"].items():
-    #         weights=checkpoint["state_dict"][attr]
-    #         print("attr:",attr)
-    #         if hasattr(task, attr):
-    #             net = getattr(task, attr)
-    #             net.load_state_dict(weights)
+    if config.model.get("model_pretrained") is not None:
+        checkpoint_filepath = config.model.model_pretrained.path+"/model_weights.ckpt"
+        checkpoint = torch.load(checkpoint_filepath, map_location="cpu",weights_only=False)
+        for attr in config.model.model_pretrained.include:
+            if attr not in checkpoint["state_dict"].keys():
+                print(f"Module {attr} not exist in checkpoint")
+                continue
+            if hasattr(task, attr):
+                weights=checkpoint["state_dict"][attr]
+                # try:
+                net = getattr(task, attr)
+                net.load_state_dict(weights)
+                print(f"Modules {color.GREEN}{attr}{color.RESET} loaded successfully from checkpoint")
+                # except:
+                #     print(
+                #         f"***** Can't load {color.RED}{attr}{color.RESET} from {checkpoint_filepath :<20s} *****"
+                #     )
+                #     continue
 
-    #             print(f"***** Loading {attr} from {checkpoint_filepath :<20s} *****")
-    task.restore_from(config.model.model_pretrained)
-    
     callbacks = None
     if config.get("callbacks") is not None:
         callbacks = [instantiate(cfg) for _, cfg in config.callbacks.items()]

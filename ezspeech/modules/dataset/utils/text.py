@@ -34,8 +34,11 @@ class Tokenizer:
         else:
             raise Exception("None tokenizer provided")
         return token_idx
+    
     def decode(self,token_idx):
-        return [self.vocab(token) for token in token_idx]
+        
+        return [self.vocab[token] for token in token_idx]
+
     def __len__(self):
         return len(self.vocab)
 	

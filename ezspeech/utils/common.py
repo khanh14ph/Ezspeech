@@ -1,10 +1,11 @@
 import json
 from typing import List, Tuple, Union, OrderedDict, Optional
 import wave
+
 import contextlib
 
 
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from hydra.utils import instantiate
 from tqdm import tqdm
 import torch
@@ -81,14 +82,8 @@ def load_module(
         param.requires_grad = False
 
     return net
-import tarfile
-import os
 
-def untar(tar_file, folder):
-    """Simple one-liner to extract tar to folder"""
-    os.makedirs(folder, exist_ok=True)
-    tarfile.open(tar_file, 'r:*').extractall(folder)
-    print(f"Extracted {tar_file} → {folder}")
+
 
 def csv2json(csv_path,jsonl_path,sep=",",replace_columns=None):
     import pandas as pd 
@@ -116,15 +111,4 @@ def avoid_float16_autocast_context():
         return nullcontext()
 
 if __name__ == "__main__":
-    import librosa
-    csv2json("/home4/tuannd/vbee-asr/librispeech_test_clean.csv","/home4/khanhnd/Ezspeech/data/libri_test.jsonl",sep=",")
-    # a=load_dataset("/home4/khanhnd/Ezspeech/data/test_nemo.jsonl")
-    # import librosa
-    # final=[]
-    # for i in a:
-    #     # i["transcript"]=i["transcription"].lower()
-    #     # i["audio_filepath"]=i["path"]
-    #     # i.pop("transcription")
-    #     # i.pop("path")
-    #     i["lang"]="vi"
-    # save_dataset(a,"/home4/khanhnd/Ezspeech/data/test_nemo.jsonl")
+    pass
