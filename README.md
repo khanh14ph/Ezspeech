@@ -1,4 +1,4 @@
-# 🎤 NeMo-Lite Speech Recognition Toolkit
+# 🎤 EzSpeech - Easy Speech Recognition Toolkit
 
 > A streamlined, customizable speech recognition toolkit built on NeMo foundations with PyTorch Lightning power, featuring all state-of-the-art ASR algorithms
 
@@ -9,9 +9,9 @@
 [![Triton](https://img.shields.io/badge/Triton-Supported-FF6B35.svg)](https://triton-lang.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 🚀 What Makes This Special?
+## 🚀 What Makes EzSpeech Special?
 
-**NeMo-Lite** brings you the complete arsenal of NVIDIA NeMo's cutting-edge ASR algorithms in a simplified, customizable package. Built for researchers, developers, and ML engineers who demand both **performance** and **flexibility**.
+**EzSpeech** brings you the complete arsenal of NVIDIA NeMo's cutting-edge ASR algorithms in a simplified, customizable package. Built for researchers, developers, and ML engineers who demand both **performance** and **ease of use**.
 
 - 🔥 **All NeMo SOTA algorithms** - TDT decode, Fast Conformer, GPU N-gram LM, and more
 - ⚡ **CUDA-optimized inference** with CUDA Graph acceleration
@@ -41,3 +41,13 @@
 - **🎯 Dynamic Batching**: Optimal GPU utilization
 - **💾 Memory Optimization**: Gradient checkpointing and activation recomputation
 
+## 🛠 Installation
+
+```bash
+# Install from PyPI (coming soon!)
+pip install ezspeech
+
+# Or install from source
+git clone https://github.com/yourusername/EzSpeech.git
+cd EzSpeech
+pip install -e .
