@@ -1,17 +1,21 @@
-from typing import Tuple
-from omegaconf import DictConfig
-from hydra.utils import instantiate
-import glob
-import torch
-import numpy as np
-from omegaconf import OmegaConf
-from ezspeech.modules.metric.wer import WER
-from ezspeech.models.abtract import SpeechModel
 import os
-from ezspeech.modules.dataset.utils.text import Tokenizer
+import glob
+import time
 import shutil
+from typing import Tuple, List
 
+import torch
+from torch.nn.utils.rnn import pad_sequence
+from tqdm import tqdm
+from omegaconf import DictConfig, OmegaConf
+import hydra
+from hydra.utils import instantiate
 
+from ezspeech.models.abtract import SpeechModel
+from ezspeech.modules.dataset.utils.text import Tokenizer
+from ezspeech.modules.metric.wer import WER
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_decoding import RNNTDecoding
+from ezspeech.utils.common import load_module
 class RNNT_CTC_Training(SpeechModel):
     def __init__(self, config: DictConfig):
         super().__init__(config)
@@ -147,16 +151,7 @@ class RNNT_CTC_Training(SpeechModel):
         print(" ")
 
 
-from typing import Tuple, List
-import time
-import torch
-from torch.nn.utils.rnn import pad_sequence
-import hydra
-from hydra.utils import instantiate
-from tqdm import tqdm
-from omegaconf import OmegaConf
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_decoding import RNNTDecoding
-from ezspeech.utils.common import load_module
+
 
 
 class RNNT_CTC_Inference(object):
