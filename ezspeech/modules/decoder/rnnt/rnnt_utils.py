@@ -121,6 +121,7 @@ class Hypothesis:
         """
         return [] if self.text is None else self.text.split()
 
+
 @dataclass
 class NBestHypotheses:
     """List of N best hypotheses"""
@@ -235,6 +236,8 @@ class ConfidenceMethodConfig:
                 f"`entropy_norm` must be one of the following: "
                 f"{'`' + '`, `'.join(ConfidenceMethodConstants.ENTROPY_NORMS) + '`'}. Provided: `{self.entropy_norm}`"
             )
+
+
 class BatchedHyps:
     """Class to store batched hypotheses (labels, time_indices, scores) for efficient RNNT decoding"""
 
@@ -263,19 +266,29 @@ class BatchedHyps:
         # batch of current lengths of hypotheses and correspoinding timestamps
         self.current_lengths = torch.zeros(batch_size, device=device, dtype=torch.long)
         # tensor for storing transcripts
-        self.transcript = torch.zeros((batch_size, self._max_length), device=device, dtype=torch.long)
+        self.transcript = torch.zeros(
+            (batch_size, self._max_length), device=device, dtype=torch.long
+        )
         # tensor for storing timestamps corresponding to transcripts
-        self.timestamps = torch.zeros((batch_size, self._max_length), device=device, dtype=torch.long)
+        self.timestamps = torch.zeros(
+            (batch_size, self._max_length), device=device, dtype=torch.long
+        )
         # tensor for storing durations corresponding to transcripts tokens
-        self.token_durations = torch.zeros((batch_size, self._max_length), device=device, dtype=torch.long)
+        self.token_durations = torch.zeros(
+            (batch_size, self._max_length), device=device, dtype=torch.long
+        )
         # accumulated scores for hypotheses
         self.scores = torch.zeros(batch_size, device=device, dtype=float_dtype)
 
         # tracking last timestamp of each hyp to avoid infinite looping (when max symbols per frame is restricted)
         # last observed timestamp (with label) for each hypothesis
-        self.last_timestamp = torch.full((batch_size,), -1, device=device, dtype=torch.long)
+        self.last_timestamp = torch.full(
+            (batch_size,), -1, device=device, dtype=torch.long
+        )
         # number of labels for the last timestamp
-        self.last_timestamp_lasts = torch.zeros(batch_size, device=device, dtype=torch.long)
+        self.last_timestamp_lasts = torch.zeros(
+            batch_size, device=device, dtype=torch.long
+        )
         self._batch_indices = torch.arange(batch_size, device=device)
         self._ones_batch = torch.ones_like(self._batch_indices)
 
@@ -296,9 +309,15 @@ class BatchedHyps:
         Allocate 2x space for tensors, similar to common C++ std::vector implementations
         to maintain O(1) insertion time complexity
         """
-        self.transcript = torch.cat((self.transcript, torch.zeros_like(self.transcript)), dim=-1)
-        self.timestamps = torch.cat((self.timestamps, torch.zeros_like(self.timestamps)), dim=-1)
-        self.token_durations = torch.cat((self.token_durations, torch.zeros_like(self.token_durations)), dim=-1)
+        self.transcript = torch.cat(
+            (self.transcript, torch.zeros_like(self.transcript)), dim=-1
+        )
+        self.timestamps = torch.cat(
+            (self.timestamps, torch.zeros_like(self.timestamps)), dim=-1
+        )
+        self.token_durations = torch.cat(
+            (self.token_durations, torch.zeros_like(self.token_durations)), dim=-1
+        )
         self._max_length *= 2
 
     def add_results_(
@@ -363,7 +382,9 @@ class BatchedHyps:
             self.token_durations[active_indices, active_lengths] = token_durations
         # store last observed timestamp + number of observation for the current timestamp
         self.last_timestamp_lasts[active_indices] = torch.where(
-            self.last_timestamp[active_indices] == time_indices, self.last_timestamp_lasts[active_indices] + 1, 1
+            self.last_timestamp[active_indices] == time_indices,
+            self.last_timestamp_lasts[active_indices] + 1,
+            1,
         )
         self.last_timestamp[active_indices] = time_indices
         # increase lengths
@@ -423,7 +444,9 @@ class BatchedHyps:
         self.transcript[self._batch_indices, self.current_lengths] = labels
         self.timestamps[self._batch_indices, self.current_lengths] = time_indices
         if token_durations is not None:
-            self.token_durations[self._batch_indices, self.current_lengths] = token_durations
+            self.token_durations[self._batch_indices, self.current_lengths] = (
+                token_durations
+            )
         # store last observed timestamp + number of observation for the current timestamp
         # if last_timestamp == time_indices, increase; else set to 1
         torch.where(
@@ -439,9 +462,13 @@ class BatchedHyps:
             out=self.last_timestamp_lasts,
         )
         # same as: self.last_timestamp[active_mask] = time_indices[active_mask], but non-blocking
-        torch.where(active_mask, time_indices, self.last_timestamp, out=self.last_timestamp)
+        torch.where(
+            active_mask, time_indices, self.last_timestamp, out=self.last_timestamp
+        )
         # increase lengths
         self.current_lengths += active_mask
+
+
 class BatchedAlignments:
     """
     Class to store batched alignments (logits, labels, frame_confidence).
@@ -480,7 +507,9 @@ class BatchedAlignments:
         self._max_length = init_length
 
         # tensor to store observed timestamps (for alignments / confidence scores)
-        self.timestamps = torch.zeros((batch_size, self._max_length), device=device, dtype=torch.long)
+        self.timestamps = torch.zeros(
+            (batch_size, self._max_length), device=device, dtype=torch.long
+        )
         # current lengths of the utterances (alignments)
         self.current_lengths = torch.zeros(batch_size, device=device, dtype=torch.long)
 
@@ -489,15 +518,25 @@ class BatchedAlignments:
         self.labels = torch.zeros(0, device=device, dtype=torch.long)
         if self.with_alignments:
             # logits and labels; labels can contain <blank>, different from BatchedHyps
-            self.logits = torch.zeros((batch_size, self._max_length, logits_dim), device=device, dtype=float_dtype)
-            self.labels = torch.zeros((batch_size, self._max_length), device=device, dtype=torch.long)
+            self.logits = torch.zeros(
+                (batch_size, self._max_length, logits_dim),
+                device=device,
+                dtype=float_dtype,
+            )
+            self.labels = torch.zeros(
+                (batch_size, self._max_length), device=device, dtype=torch.long
+            )
 
         # empty tensor instead of None to make torch.jit.script happy
         self.frame_confidence = torch.zeros(0, device=device, dtype=float_dtype)
         if self.with_frame_confidence:
             # tensor to store frame confidence
             self.frame_confidence = torch.zeros(
-                [batch_size, self._max_length, 2] if self.with_duration_confidence else [batch_size, self._max_length],
+                (
+                    [batch_size, self._max_length, 2]
+                    if self.with_duration_confidence
+                    else [batch_size, self._max_length]
+                ),
                 device=device,
                 dtype=float_dtype,
             )
@@ -518,12 +557,18 @@ class BatchedAlignments:
         Allocate 2x space for tensors, similar to common C++ std::vector implementations
         to maintain O(1) insertion time complexity
         """
-        self.timestamps = torch.cat((self.timestamps, torch.zeros_like(self.timestamps)), dim=-1)
+        self.timestamps = torch.cat(
+            (self.timestamps, torch.zeros_like(self.timestamps)), dim=-1
+        )
         if self.with_alignments:
             self.logits = torch.cat((self.logits, torch.zeros_like(self.logits)), dim=1)
-            self.labels = torch.cat((self.labels, torch.zeros_like(self.labels)), dim=-1)
+            self.labels = torch.cat(
+                (self.labels, torch.zeros_like(self.labels)), dim=-1
+            )
         if self.with_frame_confidence:
-            self.frame_confidence = torch.cat((self.frame_confidence, torch.zeros_like(self.frame_confidence)), dim=1)
+            self.frame_confidence = torch.cat(
+                (self.frame_confidence, torch.zeros_like(self.frame_confidence)), dim=1
+            )
         self._max_length *= 2
 
     def add_results_(
@@ -586,7 +631,11 @@ class BatchedAlignments:
         if (self.current_lengths + active_mask).max() >= self._max_length:
             self._allocate_more()
         self.add_results_masked_no_checks_(
-            active_mask=active_mask, time_indices=time_indices, logits=logits, labels=labels, confidence=confidence
+            active_mask=active_mask,
+            time_indices=time_indices,
+            logits=logits,
+            labels=labels,
+            confidence=confidence,
         )
 
     def add_results_masked_no_checks_(
@@ -618,13 +667,17 @@ class BatchedAlignments:
             self.labels[self._batch_indices, self.current_lengths] = labels
 
         if self.with_frame_confidence and confidence is not None:
-            self.frame_confidence[self._batch_indices, self.current_lengths] = confidence
+            self.frame_confidence[self._batch_indices, self.current_lengths] = (
+                confidence
+            )
         # increase lengths
         self.current_lengths += active_mask
 
 
 def batched_hyps_to_hypotheses(
-    batched_hyps: BatchedHyps, alignments: Optional[BatchedAlignments] = None, batch_size=None
+    batched_hyps: BatchedHyps,
+    alignments: Optional[BatchedAlignments] = None,
+    batch_size=None,
 ) -> List[Hypothesis]:
     """
     Convert batched hypotheses to a list of Hypothesis objects.
@@ -648,12 +701,21 @@ def batched_hyps_to_hypotheses(
     hypotheses = [
         Hypothesis(
             score=batched_hyps.scores[i].item(),
-            y_sequence=batched_hyps.transcript[i, : batched_hyps.current_lengths[i]].clone(),
-            timestamp=batched_hyps.timestamps[i, : batched_hyps.current_lengths[i]].clone(),
+            y_sequence=batched_hyps.transcript[
+                i, : batched_hyps.current_lengths[i]
+            ].clone(),
+            timestamp=batched_hyps.timestamps[
+                i, : batched_hyps.current_lengths[i]
+            ].clone(),
             token_duration=(
                 durations
                 if not torch.all(
-                    (durations := batched_hyps.token_durations[i, : batched_hyps.current_lengths[i]]) == 0
+                    (
+                        durations := batched_hyps.token_durations[
+                            i, : batched_hyps.current_lengths[i]
+                        ]
+                    )
+                    == 0
                 )
                 else torch.empty(0)
             ),
@@ -684,7 +746,10 @@ def batched_hyps_to_hypotheses(
                 if alignments.with_alignments:
                     hypotheses[i].alignments.append(
                         [
-                            (alignment_logits[i, start + j], alignment_labels[i, start + j])
+                            (
+                                alignment_logits[i, start + j],
+                                alignment_labels[i, start + j],
+                            )
                             for j in range(timestamp_cnt)
                         ]
                     )

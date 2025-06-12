@@ -5,11 +5,16 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
-from ezspeech.modules.decoder.rnnt import rnnt_utils 
+from ezspeech.modules.decoder.rnnt import rnnt_utils
 from ezspeech.modules.decoder.rnnt.rnn import label_collate
 from ezspeech.modules.decoder.rnnt.rnnt import RNNTDecoder, RNNTJoint
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.tdt_loop_labels_computer import GreedyBatchedTDTLoopLabelsComputer
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.confidence_utils import ConfidenceMethodMixin
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.tdt_loop_labels_computer import (
+    GreedyBatchedTDTLoopLabelsComputer,
+)
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.confidence_utils import (
+    ConfidenceMethodMixin,
+)
+
 
 def pack_hypotheses(
     hypotheses: List[rnnt_utils.Hypothesis],
@@ -235,7 +240,6 @@ class _GreedyRNNTInfer(ConfidenceMethodMixin):
                     logits = logits.log_softmax(dim=len(logits.shape) - 1)
 
         return logits
-
 
 
 class GreedyTDTInfer(_GreedyRNNTInfer):
@@ -469,6 +473,8 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
         hypothesis.dec_state = self.decoder.batch_select_state(hypothesis.dec_state, 0)
 
         return hypothesis
+
+
 class GreedyBatchedTDTInfer(_GreedyRNNTInfer):
     """A batch level greedy TDT decoder.
     Batch level greedy decoding, performed auto-regressively.
@@ -616,7 +622,10 @@ class GreedyBatchedTDTInfer(_GreedyRNNTInfer):
 
             inseq = encoder_output  # [B, T, D]
             hypotheses = self._greedy_decode(
-                inseq, logitlen, device=inseq.device, partial_hypotheses=partial_hypotheses
+                inseq,
+                logitlen,
+                device=inseq.device,
+                partial_hypotheses=partial_hypotheses,
             )
 
             # Pack the hypotheses results
@@ -634,7 +643,9 @@ class GreedyBatchedTDTInfer(_GreedyRNNTInfer):
         device: torch.device,
         partial_hypotheses: Optional[List[rnnt_utils.Hypothesis]] = None,
     ):
-        raise NotImplementedError("masked greedy-batched decode is not supported for TDT models.")
+        raise NotImplementedError(
+            "masked greedy-batched decode is not supported for TDT models."
+        )
 
     @torch.inference_mode()
     def _greedy_decode_blank_as_pad_loop_labels(
@@ -652,9 +663,15 @@ class GreedyBatchedTDTInfer(_GreedyRNNTInfer):
         if partial_hypotheses is not None:
             raise NotImplementedError("`partial_hypotheses` support is not implemented")
 
-        batched_hyps, alignments, last_decoder_state = self._decoding_computer(x=x, out_len=out_len)
-        hyps = rnnt_utils.batched_hyps_to_hypotheses(batched_hyps, alignments, batch_size=x.shape[0])
-        for hyp, state in zip(hyps, self.decoder.batch_split_states(last_decoder_state)):
+        batched_hyps, alignments, last_decoder_state = self._decoding_computer(
+            x=x, out_len=out_len
+        )
+        hyps = rnnt_utils.batched_hyps_to_hypotheses(
+            batched_hyps, alignments, batch_size=x.shape[0]
+        )
+        for hyp, state in zip(
+            hyps, self.decoder.batch_split_states(last_decoder_state)
+        ):
             hyp.dec_state = state
         return hyps
 

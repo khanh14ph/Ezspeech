@@ -19,6 +19,8 @@ import torchaudio
 
 # from nemo.collections.asr.modules.audio_preprocessing import AudioToMelSpectrogram
 CONSTANT = 1e-5
+
+
 def splice_frames(x, frame_splicing):
     """Stacks frames together across feature dim
 
@@ -30,6 +32,8 @@ def splice_frames(x, frame_splicing):
     for n in range(1, frame_splicing):
         seq.append(torch.cat([x[:, :, :n], x[:, :, n:]], dim=2))
     return torch.cat(seq, dim=1)
+
+
 def normalize_batch(x, seq_len, normalize_type):
     x_mean = None
     x_std = None
@@ -50,7 +54,11 @@ def normalize_batch(x, seq_len, normalize_type):
                 "in torch.std() returning nan. Make sure your audio length has enough samples for a single "
                 "feature (ex. at least `hop_length` for Mel Spectrograms)."
             )
-        time_steps = torch.arange(max_time, device=x.device).unsqueeze(0).expand(batch_size, max_time)
+        time_steps = (
+            torch.arange(max_time, device=x.device)
+            .unsqueeze(0)
+            .expand(batch_size, max_time)
+        )
         valid_mask = time_steps < seq_len.unsqueeze(1)
         x_mean_numerator = torch.where(valid_mask.unsqueeze(1), x, 0.0).sum(axis=2)
         x_mean_denominator = valid_mask.sum(axis=1)
@@ -58,7 +66,10 @@ def normalize_batch(x, seq_len, normalize_type):
 
         # Subtract 1 in the denominator to correct for the bias.
         x_std = torch.sqrt(
-            torch.sum(torch.where(valid_mask.unsqueeze(1), x - x_mean.unsqueeze(2), 0.0) ** 2, axis=2)
+            torch.sum(
+                torch.where(valid_mask.unsqueeze(1), x - x_mean.unsqueeze(2), 0.0) ** 2,
+                axis=2,
+            )
             / (x_mean_denominator.unsqueeze(1) - 1.0)
         )
         # make sure x_std is not zero
@@ -77,16 +88,21 @@ def normalize_batch(x, seq_len, normalize_type):
         x_mean = torch.tensor(normalize_type["fixed_mean"], device=x.device)
         x_std = torch.tensor(normalize_type["fixed_std"], device=x.device)
         return (
-            (x - x_mean.view(x.shape[0], x.shape[1]).unsqueeze(2)) / x_std.view(x.shape[0], x.shape[1]).unsqueeze(2),
+            (x - x_mean.view(x.shape[0], x.shape[1]).unsqueeze(2))
+            / x_std.view(x.shape[0], x.shape[1]).unsqueeze(2),
             x_mean,
             x_std,
         )
     else:
         return x, x_mean, x_std
 
+
 @torch.jit.script_if_tracing
 def make_seq_mask_like(
-    lengths: torch.Tensor, like: torch.Tensor, time_dim: int = -1, valid_ones: bool = True
+    lengths: torch.Tensor,
+    like: torch.Tensor,
+    time_dim: int = -1,
+    valid_ones: bool = True,
 ) -> torch.Tensor:
     """
 
@@ -104,7 +120,11 @@ def make_seq_mask_like(
         `time_dim == -1', mask will have shape `[3, 1, 5]`.
     """
     # Mask with shape [B, T]
-    mask = torch.arange(like.shape[time_dim], device=like.device).repeat(lengths.shape[0], 1).lt(lengths.view(-1, 1))
+    mask = (
+        torch.arange(like.shape[time_dim], device=like.device)
+        .repeat(lengths.shape[0], 1)
+        .lt(lengths.view(-1, 1))
+    )
     # [B, T] -> [B, *, T] where * is any number of singleton dimensions to expand to like tensor
     for _ in range(like.dim() - mask.dim()):
         mask = mask.unsqueeze(1)
@@ -115,6 +135,8 @@ def make_seq_mask_like(
     if not valid_ones:
         mask = ~mask
     return mask
+
+
 class AudioToMelSpectrogramPreprocessor(nn.Module):
     """Featurizer module that converts wavs to mel spectrograms.
 
@@ -185,7 +207,6 @@ class AudioToMelSpectrogramPreprocessor(nn.Module):
         stft_conv: Deprecated argument, kept for compatibility with older checkpoints.
     """
 
-
     def __init__(
         self,
         sample_rate=16000,
@@ -221,10 +242,14 @@ class AudioToMelSpectrogramPreprocessor(nn.Module):
 
         self._sample_rate = sample_rate
         if window_size and n_window_size:
-            raise ValueError(f"{self} received both window_size and " f"n_window_size. Only one should be specified.")
+            raise ValueError(
+                f"{self} received both window_size and "
+                f"n_window_size. Only one should be specified."
+            )
         if window_stride and n_window_stride:
             raise ValueError(
-                f"{self} received both window_stride and " f"n_window_stride. Only one should be specified."
+                f"{self} received both window_stride and "
+                f"n_window_stride. Only one should be specified."
             )
         if window_size:
             n_window_size = int(window_size * self._sample_rate)
@@ -272,25 +297,33 @@ class AudioToMelSpectrogramPreprocessor(nn.Module):
         # output in appropriate precision. We have this empty tensor
         # here just to detect which dtype tensor this module should
         # output at the end of execution.
-        self.register_buffer("dtype_sentinel_tensor", torch.tensor((), dtype=torch.float32), persistent=False)
-
-
+        self.register_buffer(
+            "dtype_sentinel_tensor",
+            torch.tensor((), dtype=torch.float32),
+            persistent=False,
+        )
 
     def get_features(self, input_signal, length):
         return self.featurizer(input_signal, length)
+
     @torch.no_grad()
     def forward(self, input_signal, length):
         if input_signal.dtype != torch.float32:
             print(
                 f"AudioPreprocessor received an input signal of dtype {input_signal.dtype}, rather than torch.float32. In sweeps across multiple datasets, we have found that the preprocessor is not robust to low precision  mathematics. As such, it runs in float32. Your input will be cast to float32, but this is not necessarily enough to recovery full accuracy. For example, simply casting input_signal from torch.float32 to torch.bfloat16, then back to torch.float32 before running AudioPreprocessor causes drops in absolute WER of up to 0.1%. torch.bfloat16 simply does not have enough mantissa bits to represent enough values in the range [-1.0,+1.0] correctly."
             )
-        processed_signal, processed_length = self.get_features(input_signal.to(torch.float32), length)
+        processed_signal, processed_length = self.get_features(
+            input_signal.to(torch.float32), length
+        )
         processed_signal = processed_signal.to(self.dtype_sentinel_tensor.dtype)
-        processed_signal=processed_signal.transpose(1,2)
+        processed_signal = processed_signal.transpose(1, 2)
         return processed_signal, processed_length
+
     @property
     def filter_banks(self):
         return self.featurizer.filter_banks
+
+
 class FilterbankFeatures(nn.Module):
     """Featurizer that converts wavs to Mel Spectrograms.
     See AudioToMelSpectrogramPreprocessor for args.
@@ -356,20 +389,24 @@ class FilterbankFeatures(nn.Module):
         self.win_length = n_window_size
         self.hop_length = n_window_stride
         self.n_fft = n_fft or 2 ** math.ceil(math.log2(self.win_length))
-        self.stft_pad_amount = (self.n_fft - self.hop_length) // 2 if exact_pad else None
+        self.stft_pad_amount = (
+            (self.n_fft - self.hop_length) // 2 if exact_pad else None
+        )
         self.exact_pad = exact_pad
 
         if exact_pad:
             print("STFT using exact pad")
         torch_windows = {
-            'hann': torch.hann_window,
-            'hamming': torch.hamming_window,
-            'blackman': torch.blackman_window,
-            'bartlett': torch.bartlett_window,
-            'none': None,
+            "hann": torch.hann_window,
+            "hamming": torch.hamming_window,
+            "blackman": torch.blackman_window,
+            "bartlett": torch.bartlett_window,
+            "none": None,
         }
         window_fn = torch_windows.get(window, None)
-        window_tensor = window_fn(self.win_length, periodic=False) if window_fn else None
+        window_tensor = (
+            window_fn(self.win_length, periodic=False) if window_fn else None
+        )
         self.register_buffer("window", window_tensor)
 
         self.normalize = normalize
@@ -383,14 +420,21 @@ class FilterbankFeatures(nn.Module):
 
         filterbanks = torch.tensor(
             librosa.filters.mel(
-                sr=sample_rate, n_fft=self.n_fft, n_mels=nfilt, fmin=lowfreq, fmax=highfreq, norm=mel_norm
+                sr=sample_rate,
+                n_fft=self.n_fft,
+                n_mels=nfilt,
+                fmin=lowfreq,
+                fmax=highfreq,
+                norm=mel_norm,
             ),
             dtype=torch.float,
         ).unsqueeze(0)
         self.register_buffer("fb", filterbanks)
 
         # Calculate maximum sequence length
-        max_length = self.get_seq_len(torch.tensor(max_duration * sample_rate, dtype=torch.float))
+        max_length = self.get_seq_len(
+            torch.tensor(max_duration * sample_rate, dtype=torch.float)
+        )
         max_pad = pad_to - (max_length % pad_to) if pad_to > 0 else 0
         self.max_length = max_length + max_pad
         self.pad_value = pad_value
@@ -457,8 +501,14 @@ class FilterbankFeatures(nn.Module):
 
     def get_seq_len(self, seq_len):
         # Assuming that center is True is stft_pad_amount = 0
-        pad_amount = self.stft_pad_amount * 2 if self.stft_pad_amount is not None else self.n_fft // 2 * 2
-        seq_len = torch.floor_divide((seq_len + pad_amount - self.n_fft), self.hop_length) + 1
+        pad_amount = (
+            self.stft_pad_amount * 2
+            if self.stft_pad_amount is not None
+            else self.n_fft // 2 * 2
+        )
+        seq_len = (
+            torch.floor_divide((seq_len + pad_amount - self.n_fft), self.hop_length) + 1
+        )
         return seq_len.to(dtype=torch.long)
 
     @property
@@ -479,7 +529,9 @@ class FilterbankFeatures(nn.Module):
 
         # do preemphasis
         if self.preemph is not None:
-            x = torch.cat((x[:, 0].unsqueeze(1), x[:, 1:] - self.preemph * x[:, :-1]), dim=1)
+            x = torch.cat(
+                (x[:, 0].unsqueeze(1), x[:, 1:] - self.preemph * x[:, :-1]), dim=1
+            )
 
         # disable autocast to get full range of stft values
         with torch.amp.autocast(x.device.type, enabled=False):
@@ -530,11 +582,15 @@ class FilterbankFeatures(nn.Module):
         max_len = x.size(-1)
         mask = torch.arange(max_len, device=x.device)
         mask = mask.repeat(x.size(0), 1) >= seq_len.unsqueeze(1)
-        x = x.masked_fill(mask.unsqueeze(1).type(torch.bool).to(device=x.device), self.pad_value)
+        x = x.masked_fill(
+            mask.unsqueeze(1).type(torch.bool).to(device=x.device), self.pad_value
+        )
         del mask
         pad_to = self.pad_to
         if pad_to == "max":
-            x = nn.functional.pad(x, (0, self.max_length - x.size(-1)), value=self.pad_value)
+            x = nn.functional.pad(
+                x, (0, self.max_length - x.size(-1)), value=self.pad_value
+            )
         elif pad_to > 0:
             pad_amt = x.size(-1) % pad_to
             if pad_amt != 0:
@@ -577,31 +633,38 @@ class FilterbankFeaturesTA(nn.Module):
         nb_augmentation_prob: float = 0.0,  # Deprecated arguments; kept for config compatibility
         nb_max_freq: int = 4000,  # Deprecated arguments; kept for config compatibility
         mag_power: float = 2.0,  # Deprecated arguments; kept for config compatibility
-        rng: Optional[random.Random] = None,  # Deprecated arguments; kept for config compatibility
+        rng: Optional[
+            random.Random
+        ] = None,  # Deprecated arguments; kept for config compatibility
         stft_exact_pad: bool = False,  # Deprecated arguments; kept for config compatibility
         stft_conv: bool = False,  # Deprecated arguments; kept for config compatibility
     ):
         super().__init__()
         # Make sure log zero guard is supported, if given as a string
         supported_log_zero_guard_strings = {"eps", "tiny"}
-        if isinstance(log_zero_guard_value, str) and log_zero_guard_value not in supported_log_zero_guard_strings:
+        if (
+            isinstance(log_zero_guard_value, str)
+            and log_zero_guard_value not in supported_log_zero_guard_strings
+        ):
             raise ValueError(
                 f"Log zero guard value must either be a float or a member of {supported_log_zero_guard_strings}"
             )
 
         # Copied from `AudioPreprocessor` due to the ad-hoc structuring of the Mel Spec extractor class
         self.torch_windows = {
-            'hann': torch.hann_window,
-            'hamming': torch.hamming_window,
-            'blackman': torch.blackman_window,
-            'bartlett': torch.bartlett_window,
-            'ones': torch.ones,
+            "hann": torch.hann_window,
+            "hamming": torch.hamming_window,
+            "blackman": torch.blackman_window,
+            "bartlett": torch.bartlett_window,
+            "ones": torch.ones,
             None: torch.ones,
         }
 
         # Ensure we can look up the window function
         if window not in self.torch_windows:
-            raise ValueError(f"Got window value '{window}' but expected a member of {self.torch_windows.keys()}")
+            raise ValueError(
+                f"Got window value '{window}' but expected a member of {self.torch_windows.keys()}"
+            )
 
         self.win_length = n_window_size
         self.hop_length = n_window_stride
@@ -615,18 +678,20 @@ class FilterbankFeaturesTA(nn.Module):
         self.pad_to = pad_to
         self.pad_value = pad_value
         self.n_fft = n_fft
-        self._mel_spec_extractor: torchaudio.transforms.MelSpectrogram = torchaudio.transforms.MelSpectrogram(
-            sample_rate=self._sample_rate,
-            win_length=self.win_length,
-            hop_length=self.hop_length,
-            n_mels=nfilt,
-            window_fn=self.torch_windows[window],
-            mel_scale="slaney",
-            norm=mel_norm,
-            n_fft=n_fft,
-            f_max=highfreq,
-            f_min=lowfreq,
-            wkwargs={"periodic": False},
+        self._mel_spec_extractor: torchaudio.transforms.MelSpectrogram = (
+            torchaudio.transforms.MelSpectrogram(
+                sample_rate=self._sample_rate,
+                win_length=self.win_length,
+                hop_length=self.hop_length,
+                n_mels=nfilt,
+                window_fn=self.torch_windows[window],
+                mel_scale="slaney",
+                norm=mel_norm,
+                n_fft=n_fft,
+                f_max=highfreq,
+                f_min=lowfreq,
+                wkwargs={"periodic": False},
+            )
         )
 
     @property
@@ -652,15 +717,23 @@ class FilterbankFeaturesTA(nn.Module):
         return signals
 
     def _compute_output_lengths(self, input_lengths: torch.Tensor) -> torch.Tensor:
-        out_lengths = input_lengths.div(self.hop_length, rounding_mode="floor").add(1).long()
+        out_lengths = (
+            input_lengths.div(self.hop_length, rounding_mode="floor").add(1).long()
+        )
         return out_lengths
 
     def _apply_pad_to(self, features: torch.Tensor) -> torch.Tensor:
         # Only apply during training; else need to capture dynamic shape for exported models
-        if not self.training or self.pad_to == 0 or features.shape[-1] % self.pad_to == 0:
+        if (
+            not self.training
+            or self.pad_to == 0
+            or features.shape[-1] % self.pad_to == 0
+        ):
             return features
         pad_length = self.pad_to - (features.shape[-1] % self.pad_to)
-        return torch.nn.functional.pad(features, pad=(0, pad_length), value=self.pad_value)
+        return torch.nn.functional.pad(
+            features, pad=(0, pad_length), value=self.pad_value
+        )
 
     def _apply_log(self, features: torch.Tensor) -> torch.Tensor:
         if self._use_log:
@@ -670,37 +743,50 @@ class FilterbankFeaturesTA(nn.Module):
             elif self.log_zero_guard_type == "clamp":
                 features = features.clamp(min=zero_guard)
             else:
-                raise ValueError(f"Unsupported log zero guard type: '{self.log_zero_guard_type}'")
+                raise ValueError(
+                    f"Unsupported log zero guard type: '{self.log_zero_guard_type}'"
+                )
             features = features.log()
         return features
 
     def _extract_spectrograms(self, signals: torch.Tensor) -> torch.Tensor:
         # Complex FFT needs to be done in single precision
-        with torch.amp.autocast('cuda', enabled=False):
+        with torch.amp.autocast("cuda", enabled=False):
             features = self._mel_spec_extractor(waveform=signals)
         return features
 
-    def _apply_normalization(self, features: torch.Tensor, lengths: torch.Tensor, eps: float = 1e-5) -> torch.Tensor:
+    def _apply_normalization(
+        self, features: torch.Tensor, lengths: torch.Tensor, eps: float = 1e-5
+    ) -> torch.Tensor:
         # For consistency, this function always does a masked fill even if not normalizing.
-        mask: torch.Tensor = make_seq_mask_like(lengths=lengths, like=features, time_dim=-1, valid_ones=False)
+        mask: torch.Tensor = make_seq_mask_like(
+            lengths=lengths, like=features, time_dim=-1, valid_ones=False
+        )
         features = features.masked_fill(mask, 0.0)
         # Maybe don't normalize
         if self._normalize_strategy is None:
             return features
         # Use the log zero guard for the sqrt zero guard
         guard_value = self._resolve_log_zero_guard_value(features.dtype)
-        if self._normalize_strategy == "per_feature" or self._normalize_strategy == "all_features":
+        if (
+            self._normalize_strategy == "per_feature"
+            or self._normalize_strategy == "all_features"
+        ):
             # 'all_features' reduces over each sample; 'per_feature' reduces over each channel
             reduce_dim = 2
             if self._normalize_strategy == "all_features":
                 reduce_dim = [1, 2]
             # [B, D, T] -> [B, D, 1] or [B, 1, 1]
-            means = features.sum(dim=reduce_dim, keepdim=True).div(lengths.view(-1, 1, 1))
+            means = features.sum(dim=reduce_dim, keepdim=True).div(
+                lengths.view(-1, 1, 1)
+            )
             stds = (
                 features.sub(means)
                 .masked_fill(mask, 0.0)
                 .pow(2.0)
-                .sum(dim=reduce_dim, keepdim=True)  # [B, D, T] -> [B, D, 1] or [B, 1, 1]
+                .sum(
+                    dim=reduce_dim, keepdim=True
+                )  # [B, D, T] -> [B, D, 1] or [B, 1, 1]
                 .div(lengths.view(-1, 1, 1) - 1)  # assume biased estimator
                 .clamp(min=guard_value)  # avoid sqrt(0)
                 .sqrt()
@@ -712,7 +798,9 @@ class FilterbankFeaturesTA(nn.Module):
         features = features.masked_fill(mask, 0.0)
         return features
 
-    def forward(self, input_signal: torch.Tensor, length: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, input_signal: torch.Tensor, length: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         feature_lengths = self._compute_output_lengths(input_lengths=length)
         signals = self._apply_dithering(signals=input_signal)
         signals = self._apply_preemphasis(signals=signals)
@@ -720,4 +808,4 @@ class FilterbankFeaturesTA(nn.Module):
         features = self._apply_log(features=features)
         features = self._apply_normalization(features=features, lengths=feature_lengths)
         features = self._apply_pad_to(features=features)
-        return features, 
+        return (features,)

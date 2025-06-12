@@ -6,11 +6,12 @@ import torch
 from tqdm import tqdm
 
 from ezspeech.modules.decoder.rnnt.rnnt import RNNTDecoder, RNNTJoint
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_malsd_batched_computer import ModifiedALSDBatchedTDTComputer
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_malsd_batched_computer import (
+    ModifiedALSDBatchedTDTComputer,
+)
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import (
     BlankLMScoreMode,
     PruningMode,
-
 )
 from ezspeech.modules.decoder.rnnt.rnnt_utils import (
     Hypothesis,
@@ -19,7 +20,9 @@ from ezspeech.modules.decoder.rnnt.rnnt_utils import (
 )
 
 import kenlm
-def _states_to_device(dec_state, device='cpu'):
+
+
+def _states_to_device(dec_state, device="cpu"):
     """
     Transfers decoder states to the specified device.
 
@@ -39,6 +42,8 @@ def _states_to_device(dec_state, device='cpu'):
         dec_state = tuple(_states_to_device(dec_i, device) for dec_i in dec_state)
 
     return dec_state
+
+
 def pack_hypotheses(hypotheses: List[Hypothesis]) -> List[Hypothesis]:
     """
     Packs a list of hypotheses into a tensor and prepares decoder states.
@@ -61,10 +66,15 @@ def pack_hypotheses(hypotheses: List[Hypothesis]) -> List[Hypothesis]:
             hyp.dec_state = _states_to_device(hyp.dec_state)
 
         # Remove -1 from timestep
-        if hyp.timestamp is not None and len(hyp.timestamp) > 0 and hyp.timestamp[0] == -1:
+        if (
+            hyp.timestamp is not None
+            and len(hyp.timestamp) > 0
+            and hyp.timestamp[0] == -1
+        ):
             hyp.timestamp = hyp.timestamp[1:]
 
     return hypotheses
+
 
 class BeamTDTInfer:
     """
@@ -230,8 +240,7 @@ class BeamTDTInfer:
             self.maes_expansion_beta = int(maes_expansion_beta)
             self.maes_expansion_gamma = float(maes_expansion_gamma)
             self.max_candidates += self.maes_expansion_beta
-            
-            
+
             if self.maes_prefix_alpha < 0:
                 raise ValueError("`maes_prefix_alpha` must be a positive integer.")
 
@@ -287,7 +296,7 @@ class BeamTDTInfer:
 
         with torch.inference_mode():
             # Apply optional preprocessing
-              # (B, T, D)
+            # (B, T, D)
 
             self.decoder.eval()
             self.joint.eval()
@@ -329,8 +338,6 @@ class BeamTDTInfer:
                     nbest_hyps = pack_hypotheses(nbest_hyps)
 
                     hypotheses.append(nbest_hyps[0])
-
-  
 
         self.decoder.train(decoder_training_state)
         self.joint.train(joint_training_state)
@@ -949,7 +956,6 @@ class BeamBatchedTDTInfer:
         blank_lm_score_mode: Optional[
             str | BlankLMScoreMode
         ] = BlankLMScoreMode.NO_SCORE,
-        
         pruning_mode: Optional[str | PruningMode] = PruningMode.EARLY,
         allow_cuda_graphs: Optional[bool] = True,
         return_best_hypothesis: Optional[str] = True,
@@ -976,7 +982,7 @@ class BeamBatchedTDTInfer:
 
         self.durations = durations
         self._blank_index = blank_index
-        self.vocab_size=vocab_size
+        self.vocab_size = vocab_size
         self._SOS = blank_index  # Start of single index
         self.beam_size = beam_size
         self.return_best_hypothesis = return_best_hypothesis

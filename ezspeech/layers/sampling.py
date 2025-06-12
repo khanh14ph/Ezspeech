@@ -165,7 +165,7 @@ class ConvSubsampling(torch.nn.Module):
 
     def reset_parameters(self):
         # initialize weights
-    
+
         with torch.no_grad():
             # init conv
             scale = 1.0 / self._kernel_size

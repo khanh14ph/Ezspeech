@@ -11,6 +11,7 @@ import os
 from ezspeech.modules.dataset.utils.text import Tokenizer
 import shutil
 
+
 class RNNT_CTC_Training(SpeechModel):
     def __init__(self, config: DictConfig):
         super().__init__(config)
@@ -44,7 +45,6 @@ class RNNT_CTC_Training(SpeechModel):
             "joint": self.joint,
             "ctc_decoder": self.ctc_decoder,
         }
-
 
     def training_step(
         self, batch: Tuple[torch.Tensor, ...], batch_idx: int
@@ -127,24 +127,26 @@ class RNNT_CTC_Training(SpeechModel):
         loss = 0.7 * ctc_loss + 0.3 * rnnt_loss
 
         return loss, ctc_loss, rnnt_loss
-    def export_ez_checkpoint(self,export_path):
+
+    def export_ez_checkpoint(self, export_path):
         checkpoint = {
-            "state_dict":{
+            "state_dict": {
                 "preprocessor": self.preprocessor.state_dict(),
                 "encoder": self.encoder.state_dict(),
                 "ctc_decoder": self.ctc_decoder.state_dict(),
                 "decoder": self.decoder.state_dict(),
-                "joint":self.joint.state_dict()
+                "joint": self.joint.state_dict(),
             },
-            "hyper_parameters": self.config.model,        
-            
+            "hyper_parameters": self.config.model,
         }
-        
-        config=self.config
-        shutil.copy(self.config.dataset.tokenizer.spe_file,export_path)
-        OmegaConf.save(config, export_path+"/config.yaml")
-        torch.save(checkpoint,export_path+"/model.ckpt")
+
+        config = self.config
+        shutil.copy(self.config.dataset.tokenizer.spe_file, export_path)
+        OmegaConf.save(config, export_path + "/config.yaml")
+        torch.save(checkpoint, export_path + "/model.ckpt")
         print(" ")
+
+
 from typing import Tuple, List
 import time
 import torch
@@ -165,7 +167,7 @@ class RNNT_CTC_Inference(object):
         self.beam_size = 5
 
         self.device = device
-        self.tokenizer=Tokenizer(spe_file=tokenizer_path)
+        self.tokenizer = Tokenizer(spe_file=tokenizer_path)
         self.vocab = self.tokenizer.vocab
         (
             self.preprocessor,
@@ -188,7 +190,9 @@ class RNNT_CTC_Inference(object):
             hparams["preprocessor"], weights["preprocessor"], device
         )
         encoder = load_module(hparams["encoder"], weights["encoder"], device)
-        ctc_decoder = load_module(hparams["ctc_decoder"], weights["ctc_decoder"], device)
+        ctc_decoder = load_module(
+            hparams["ctc_decoder"], weights["ctc_decoder"], device
+        )
 
         predictor = load_module(hparams["decoder"], weights["decoder"], device)
         joint = load_module(hparams["joint"], weights["joint"], device)
@@ -255,15 +259,21 @@ class RNNT_CTC_Inference(object):
         new_audio_signal = torch.stack(new_audio_signal)
         audio_lengths = torch.stack(wav_lengths)
         return new_audio_signal, audio_lengths
+
+
 if __name__ == "__main__":
     config = OmegaConf.load("/home4/khanhnd/Ezspeech/config/test/test.yaml")
     model = instantiate(config.model)
     import torchaudio
 
-    audio2, sr2 = torchaudio.load("/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/train-clean-100/374/180298/374-180298-0004.flac")
-    audio1,sr1=torchaudio.load("/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/train-clean-100/374/180298/374-180298-0004.flac")
-    audio=[audio1,audio2]
-    sr=[sr1,sr2]
+    audio2, sr2 = torchaudio.load(
+        "/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/train-clean-100/374/180298/374-180298-0004.flac"
+    )
+    audio1, sr1 = torchaudio.load(
+        "/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/train-clean-100/374/180298/374-180298-0004.flac"
+    )
+    audio = [audio1, audio2]
+    sr = [sr1, sr2]
     enc, enc_length = model.forward_encoder(audio, sr)
     print(model.greedy_ctc_decode(enc, enc_length))
     print(model.greedy_tdt_decode(enc, enc_length))

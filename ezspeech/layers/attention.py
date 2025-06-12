@@ -8,7 +8,10 @@ import torch.nn.attention
 import torch.nn.functional as F
 
 from ezspeech.utils.common import avoid_float16_autocast_context
+
 INF_VAL = 10000.0
+
+
 class MultiHeadAttention(nn.Module):
     """Multi-Head Attention layer of Transformer.
     Args:
@@ -36,7 +39,9 @@ class MultiHeadAttention(nn.Module):
         if self.use_pytorch_sdpa and use_pytorch_sdpa_backends:
             use_pytorch_sdpa_backends = list(
                 map(
-                    lambda backend_name: getattr(torch.nn.attention.SDPBackend, backend_name),
+                    lambda backend_name: getattr(
+                        torch.nn.attention.SDPBackend, backend_name
+                    ),
                     use_pytorch_sdpa_backends,
                 )
             )
@@ -92,13 +97,17 @@ class MultiHeadAttention(nn.Module):
         if mask is not None:
             mask = mask.unsqueeze(1)  # (batch, 1, time1, time2)
             scores = scores.masked_fill(mask, -INF_VAL)
-            attn = torch.softmax(scores, dim=-1).masked_fill(mask, 0.0)  # (batch, head, time1, time2)
+            attn = torch.softmax(scores, dim=-1).masked_fill(
+                mask, 0.0
+            )  # (batch, head, time1, time2)
         else:
             attn = torch.softmax(scores, dim=-1)  # (batch, head, time1, time2)
 
         p_attn = self.dropout(attn)
         x = torch.matmul(p_attn, value)  # (batch, head, time1, d_k)
-        x = x.transpose(1, 2).reshape(n_batch, -1, self.h * self.d_k)  # (batch, time1, d_model)
+        x = x.transpose(1, 2).reshape(
+            n_batch, -1, self.h * self.d_k
+        )  # (batch, time1, d_model)
 
         return self.linear_out(x)  # (batch, time1, d_model)
 
@@ -115,10 +124,16 @@ class MultiHeadAttention(nn.Module):
             output (torch.Tensor): transformed `value` (batch, time1, d_model) weighted by the query dot key attention
             cache (torch.Tensor) : (batch, time_cache_next, size)
         """
-        key, value, query, cache = self.update_cache(key=key, value=value, query=query, cache=cache)
+        key, value, query, cache = self.update_cache(
+            key=key, value=value, query=query, cache=cache
+        )
 
         if torch.is_autocast_enabled():
-            query, key, value = query.to(torch.float32), key.to(torch.float32), value.to(torch.float32)
+            query, key, value = (
+                query.to(torch.float32),
+                key.to(torch.float32),
+                value.to(torch.float32),
+            )
 
         # temporary until we solve this more gracefully
         with avoid_float16_autocast_context():
@@ -147,7 +162,9 @@ class MultiHeadAttention(nn.Module):
                     all_masked_rows.unsqueeze_(-1)
                     out = out.masked_fill(all_masked_rows, 0.0)
 
-                out = out.transpose(1, 2).reshape(n_batch, -1, self.h * self.d_k)  # (batch, time1, d_model)
+                out = out.transpose(1, 2).reshape(
+                    n_batch, -1, self.h * self.d_k
+                )  # (batch, time1, d_model)
                 out = self.linear_out(out)  # (batch, time1, d_model)
             else:
                 scores = torch.matmul(q, k.transpose(-2, -1)) / self.s_d_k
@@ -162,8 +179,12 @@ class MultiHeadAttention(nn.Module):
         if cache is not None:
             key = value = torch.cat([cache, key], dim=1)
             q_keep_size = query.shape[1] - self.cache_drop_size
-            cache = torch.cat([cache[:, q_keep_size:, :], query[:, :q_keep_size, :]], dim=1)
+            cache = torch.cat(
+                [cache[:, q_keep_size:, :], query[:, :q_keep_size, :]], dim=1
+            )
         return key, value, query, cache
+
+
 class RelPositionMultiHeadAttention(MultiHeadAttention):
     """Multi-Head Attention layer of Transformer-XL with support of relative positional encoding.
     Paper: https://arxiv.org/abs/1901.02860
@@ -238,10 +259,16 @@ class RelPositionMultiHeadAttention(MultiHeadAttention):
             output (torch.Tensor): transformed `value` (batch, time1, d_model) weighted by the query dot key attention
             cache (torch.Tensor) : (batch, time_cache_next, size)
         """
-        key, value, query, cache = self.update_cache(key=key, value=value, query=query, cache=cache)
+        key, value, query, cache = self.update_cache(
+            key=key, value=value, query=query, cache=cache
+        )
 
         if torch.is_autocast_enabled():
-            query, key, value = query.to(torch.float32), key.to(torch.float32), value.to(torch.float32)
+            query, key, value = (
+                query.to(torch.float32),
+                key.to(torch.float32),
+                value.to(torch.float32),
+            )
 
         # temporary until we solve this more gracefully
         with avoid_float16_autocast_context():
@@ -280,7 +307,11 @@ class RelPositionMultiHeadAttention(MultiHeadAttention):
                 if self.use_pytorch_sdpa_backends:
                     with torch.nn.attention.sdpa_kernel(self.use_pytorch_sdpa_backends):
                         out = torch.nn.functional.scaled_dot_product_attention(
-                            q_with_bias_u, k, v, attn_mask=matrix_bd, dropout_p=dropout_rate
+                            q_with_bias_u,
+                            k,
+                            v,
+                            attn_mask=matrix_bd,
+                            dropout_p=dropout_rate,
                         )
                 else:
                     out = torch.nn.functional.scaled_dot_product_attention(
@@ -291,16 +322,22 @@ class RelPositionMultiHeadAttention(MultiHeadAttention):
                 if mask is not None:
                     all_masked_rows = torch.all(mask, dim=-1)
                     all_masked_rows.unsqueeze_(-1)
-                    all_masked_rows = all_masked_rows.expand(-1, out.size(1), -1, out.size(-1))
+                    all_masked_rows = all_masked_rows.expand(
+                        -1, out.size(1), -1, out.size(-1)
+                    )
                     out = out.masked_fill(all_masked_rows, 0.0)
 
-                out = out.transpose(1, 2).reshape(n_batch, -1, self.h * self.d_k)  # (batch, time1, d_model)
+                out = out.transpose(1, 2).reshape(
+                    n_batch, -1, self.h * self.d_k
+                )  # (batch, time1, d_model)
                 out = self.linear_out(out)  # (batch, time1, d_model)
             else:
                 # drops extra elements in the matrix_bd to match the matrix_ac's size
                 matrix_ac = torch.matmul(q_with_bias_u, k.transpose(-2, -1))
                 matrix_bd = matrix_bd[:, :, :, : matrix_ac.size(-1)]
-                scores = (matrix_ac + matrix_bd) / self.s_d_k  # (batch, head, time1, time2)
+                scores = (
+                    matrix_ac + matrix_bd
+                ) / self.s_d_k  # (batch, head, time1, time2)
                 out = self.forward_attention(v, scores, mask)
 
         if cache is None:

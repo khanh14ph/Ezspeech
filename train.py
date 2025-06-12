@@ -7,6 +7,7 @@ import torch
 from ezspeech.models.ASR import SpeechRecognitionTask
 from ezspeech.utils import color
 from tqdm import tqdm
+
 pl.seed_everything(42, workers=True)
 torch.set_float32_matmul_precision("medium")
 
@@ -15,18 +16,22 @@ torch.set_float32_matmul_precision("medium")
 def main(config: DictConfig):
     task = SpeechRecognitionTask(config)
     if config.model.get("model_pretrained") is not None:
-        checkpoint_filepath = config.model.model_pretrained.path+"/model_weights.ckpt"
-        checkpoint = torch.load(checkpoint_filepath, map_location="cpu",weights_only=False)
+        checkpoint_filepath = config.model.model_pretrained.path + "/model_weights.ckpt"
+        checkpoint = torch.load(
+            checkpoint_filepath, map_location="cpu", weights_only=False
+        )
         for attr in config.model.model_pretrained.include:
             if attr not in checkpoint["state_dict"].keys():
                 print(f"Module {attr} not exist in checkpoint")
                 continue
             if hasattr(task, attr):
-                weights=checkpoint["state_dict"][attr]
+                weights = checkpoint["state_dict"][attr]
                 # try:
                 net = getattr(task, attr)
                 net.load_state_dict(weights)
-                print(f"Modules {color.GREEN}{attr}{color.RESET} loaded successfully from checkpoint")
+                print(
+                    f"Modules {color.GREEN}{attr}{color.RESET} loaded successfully from checkpoint"
+                )
                 # except:
                 #     print(
                 #         f"***** Can't load {color.RED}{attr}{color.RESET} from {checkpoint_filepath :<20s} *****"

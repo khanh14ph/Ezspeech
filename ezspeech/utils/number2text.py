@@ -96,8 +96,5 @@ def lex_of_number_3(no: str, byNo=None, withUnion=None):
     return line.strip()
 
 
-
-
-
 if __name__ == "__main__":
     print(number2text("xin chao 23 nhe"))

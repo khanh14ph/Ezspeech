@@ -19,7 +19,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.ngram_lm import NGramGPULanguageModel
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.ngram_lm import (
+    NGramGPULanguageModel,
+)
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import (
     INACTIVE_SCORE,
     NON_EXISTENT_LABEL_VALUE,
@@ -33,7 +35,6 @@ from ezspeech.utils.cuda_python_utils import (
     run_nvrtc,
     with_conditional_node,
 )
-
 
 
 try:
@@ -63,25 +64,41 @@ class MALSDState:
     BLANK_TENSOR: torch.Tensor  # tensor for non blank constant
     INACTIVE_SCORE: torch.Tensor  # tensor for inactive score constant
 
-    encoder_output_projected: torch.Tensor  # projected output from the encoder for decoding algorithm
-    encoder_output_length: torch.Tensor  # length of the (projected) output from the encoder
+    encoder_output_projected: (
+        torch.Tensor
+    )  # projected output from the encoder for decoding algorithm
+    encoder_output_length: (
+        torch.Tensor
+    )  # length of the (projected) output from the encoder
 
     next_labels: torch.Tensor  # storage for next labels
     next_scores: torch.Tensor  # storage for next scores
     next_idx: torch.Tensor  # storage for next scores
 
-    batch_indices: torch.Tensor  # indices of elements in batch (constant, range [0, batch_size-1])
-    beam_indices: torch.Tensor  # indices of elements in batch (constant, range [0, beam_size-1])
+    batch_indices: (
+        torch.Tensor
+    )  # indices of elements in batch (constant, range [0, batch_size-1])
+    beam_indices: (
+        torch.Tensor
+    )  # indices of elements in batch (constant, range [0, beam_size-1])
 
     time_indices: torch.Tensor  # current time indices for each element in batch
-    safe_time_indices: torch.Tensor  # current time indices, but guaranteed to be < encoder_output_length
-    last_timestamps: torch.Tensor  # indices of the last timesteps for each element (encoder_output_length - 1)
+    safe_time_indices: (
+        torch.Tensor
+    )  # current time indices, but guaranteed to be < encoder_output_length
+    last_timestamps: (
+        torch.Tensor
+    )  # indices of the last timesteps for each element (encoder_output_length - 1)
     last_labels_wb: torch.Tensor  # last labels with blank
     hyp_scores: torch.Tensor  # scores for hypotheses
 
-    active_mask: torch.Tensor  # mask for active hypotheses (the decoding is finished for the utterance if it is False)
+    active_mask: (
+        torch.Tensor
+    )  # mask for active hypotheses (the decoding is finished for the utterance if it is False)
     blank_mask: torch.Tensor  # if the element is blank
-    active_mask_any: torch.Tensor  # 0-dim bool tensor, condition for outer loop ('any element is still active')
+    active_mask_any: (
+        torch.Tensor
+    )  # 0-dim bool tensor, condition for outer loop ('any element is still active')
 
     last_decoder_state: Any  # last state from the decoder, needed for the output
     decoder_state: Any  # current decoder state
@@ -97,11 +114,19 @@ class MALSDState:
     ngram_lm_batch: Optional[NGramGPULanguageModel] = None  # N-gram LM for hypotheses
     lm_scores: Optional[torch.Tensor] = None  # LM scores for hypotheses
     batch_lm_states: Optional[torch.Tensor] = None  # LM states for hypotheses
-    batch_lm_states_candidates: Optional[torch.Tensor] = None  # LM states for hypotheses candidates
-    batch_lm_states_prev: Optional[torch.Tensor] = None  # previous LM states for hypotheses
+    batch_lm_states_candidates: Optional[torch.Tensor] = (
+        None  # LM states for hypotheses candidates
+    )
+    batch_lm_states_prev: Optional[torch.Tensor] = (
+        None  # previous LM states for hypotheses
+    )
     init_lm_scores: Optional[torch.Tensor] = None  # initial LM scores for hypotheses
-    init_batch_lm_states: Optional[torch.Tensor] = None  # initial LM states for hypotheses
-    init_batch_lm_states_candidates: Optional[torch.Tensor] = None  # initial LM states for hypotheses candidates
+    init_batch_lm_states: Optional[torch.Tensor] = (
+        None  # initial LM states for hypotheses
+    )
+    init_batch_lm_states_candidates: Optional[torch.Tensor] = (
+        None  # initial LM states for hypotheses candidates
+    )
 
     def __init__(
         self,
@@ -137,9 +162,15 @@ class MALSDState:
         self.blank_index = blank_index
 
         self.ONE_TENSOR = torch.tensor(1, device=self.device, dtype=torch.long)
-        self.NON_EXISTENT_LABEL = torch.tensor(NON_EXISTENT_LABEL_VALUE, device=self.device, dtype=torch.long)
-        self.BLANK_TENSOR = torch.tensor(self.blank_index, device=self.device, dtype=torch.long)
-        self.INACTIVE_SCORE = torch.tensor(INACTIVE_SCORE, device=self.device, dtype=float_dtype)
+        self.NON_EXISTENT_LABEL = torch.tensor(
+            NON_EXISTENT_LABEL_VALUE, device=self.device, dtype=torch.long
+        )
+        self.BLANK_TENSOR = torch.tensor(
+            self.blank_index, device=self.device, dtype=torch.long
+        )
+        self.INACTIVE_SCORE = torch.tensor(
+            INACTIVE_SCORE, device=self.device, dtype=float_dtype
+        )
 
         self.encoder_output_projected = torch.zeros(
             (self.batch_size, self.max_time, encoder_dim),
@@ -150,18 +181,30 @@ class MALSDState:
             [self.batch_size, self.beam_size], dtype=torch.long, device=self.device
         )
 
-        self.next_idx = torch.zeros([self.batch_size, self.beam_size], dtype=torch.long, device=self.device)
-        self.next_labels = torch.zeros([self.batch_size, self.beam_size], dtype=torch.long, device=self.device)
-        self.next_scores = torch.zeros([self.batch_size, self.beam_size], dtype=float_dtype, device=self.device)
+        self.next_idx = torch.zeros(
+            [self.batch_size, self.beam_size], dtype=torch.long, device=self.device
+        )
+        self.next_labels = torch.zeros(
+            [self.batch_size, self.beam_size], dtype=torch.long, device=self.device
+        )
+        self.next_scores = torch.zeros(
+            [self.batch_size, self.beam_size], dtype=float_dtype, device=self.device
+        )
         self.next_label_durations = torch.zeros(
             [self.batch_size, self.beam_size], dtype=torch.long, device=self.device
         )
 
         self.last_labels_wb = torch.full(
-            [self.batch_size, self.beam_size], device=self.device, dtype=torch.long, fill_value=self.blank_index
+            [self.batch_size, self.beam_size],
+            device=self.device,
+            dtype=torch.long,
+            fill_value=self.blank_index,
         )
         self.hyp_scores = torch.full(
-            [self.batch_size, self.beam_size], fill_value=self.INACTIVE_SCORE, device=self.device, dtype=float_dtype
+            [self.batch_size, self.beam_size],
+            fill_value=self.INACTIVE_SCORE,
+            device=self.device,
+            dtype=float_dtype,
         )
 
         # indices of elements in batch and beam (constant)
@@ -171,7 +214,9 @@ class MALSDState:
             .clone()
         )  # size: batch_size x beam_size
         self.beam_indices = (
-            torch.arange(self.beam_size, dtype=torch.long, device=self.device)[None, :, None]
+            torch.arange(self.beam_size, dtype=torch.long, device=self.device)[
+                None, :, None
+            ]
             .expand(self.batch_size, -1, self.beam_size)
             .clone()
         )  # size: batch_size x beam_size x beam_size
@@ -188,7 +233,9 @@ class MALSDState:
             batch_size=batch_size,
             beam_size=self.beam_size,
             blank_index=self.blank_index,
-            init_length=max_time * (max_symbols + 1) if max_symbols is not None else max_time,
+            init_length=(
+                max_time * (max_symbols + 1) if max_symbols is not None else max_time
+            ),
             device=device,
             float_dtype=float_dtype,
             is_tdt=True,
@@ -209,9 +256,12 @@ class SeparateGraphsMALSD:
 
     before_loop: torch.cuda.CUDAGraph = field(default_factory=torch.cuda.CUDAGraph)
     loop_body: torch.cuda.CUDAGraph = field(default_factory=torch.cuda.CUDAGraph)
-    loop_update_decoder: torch.cuda.CUDAGraph = field(default_factory=torch.cuda.CUDAGraph)
+    loop_update_decoder: torch.cuda.CUDAGraph = field(
+        default_factory=torch.cuda.CUDAGraph
+    )
 
-#WithOptionalCudaGraphs
+
+# WithOptionalCudaGraphs
 class ModifiedALSDBatchedTDTComputer:
     """
     Batched Alignment-Length Synchronous Decoding adaptaion for TDT models. Callable.
@@ -224,8 +274,12 @@ class ModifiedALSDBatchedTDTComputer:
     CUDA_PROGRAM_NAME = b"while_malsd_batch_conditional_tdt.cu"
 
     class CudaGraphsMode:
-        FULL_GRAPH = "full_graph"  # Cuda graphs with conditional nodes, fastest implementation
-        NO_WHILE_LOOPS = "no_while_loops"  # Decoding with PyTorch while loops + partial Cuda graphs
+        FULL_GRAPH = (
+            "full_graph"  # Cuda graphs with conditional nodes, fastest implementation
+        )
+        NO_WHILE_LOOPS = (
+            "no_while_loops"  # Decoding with PyTorch while loops + partial Cuda graphs
+        )
         NO_GRAPHS = "no_graphs"  # decoding without graphs, stateful implementation, only for testing purposes
 
     separate_graphs: Optional[SeparateGraphsMALSD]
@@ -283,15 +337,19 @@ class ModifiedALSDBatchedTDTComputer:
         self.state = None
         self.full_graph = None
         self.separate_graphs = None
-        self.vocab_size=vocab_size
+        self.vocab_size = vocab_size
         self.cuda_graphs_mode = None
         self.maybe_enable_cuda_graphs()
 
         if ngram_lm_model is not None:
 
-            self.ngram_lm_batch = NGramGPULanguageModel.from_file(lm_path=ngram_lm_model, vocab_size=self.vocab_size)
+            self.ngram_lm_batch = NGramGPULanguageModel.from_file(
+                lm_path=ngram_lm_model, vocab_size=self.vocab_size
+            )
 
-            self.pruning_mode = PruningMode.EARLY if pruning_mode is None else PruningMode(pruning_mode)
+            self.pruning_mode = (
+                PruningMode.EARLY if pruning_mode is None else PruningMode(pruning_mode)
+            )
             self.blank_lm_score_mode = (
                 BlankLMScoreMode.LM_WEIGHTED_FULL
                 if blank_lm_score_mode is None
@@ -322,7 +380,9 @@ class ModifiedALSDBatchedTDTComputer:
             # cuda graphs are allowed
             # check basic requirements for cuda graphs
             if self.max_symbols is None:
-                print("Max symbols per step is None, which is not allowed with Cuda graphs. Setting to `10`")
+                print(
+                    "Max symbols per step is None, which is not allowed with Cuda graphs. Setting to `10`"
+                )
                 self.max_symbols = 10
             # basic requirements met, need to check while loops
             try:
@@ -382,14 +442,21 @@ class ModifiedALSDBatchedTDTComputer:
             batch_size=batch_size,
             beam_size=self.beam_size,
             blank_index=self._blank_index,
-            init_length=max_time * (self.max_symbols + 1) if self.max_symbols is not None else max_time,
+            init_length=(
+                max_time * (self.max_symbols + 1)
+                if self.max_symbols is not None
+                else max_time
+            ),
             device=device,
             float_dtype=float_dtype,
             is_tdt=True,
         )
 
         last_labels_wb = torch.full(
-            [batch_size, self.beam_size], fill_value=self._SOS, device=device, dtype=torch.long
+            [batch_size, self.beam_size],
+            fill_value=self._SOS,
+            device=device,
+            dtype=torch.long,
         )
 
         batch_beam_indices = (
@@ -404,19 +471,28 @@ class ModifiedALSDBatchedTDTComputer:
         )  # size: batch_size x beam_size x beam_size
 
         time_indices = torch.zeros_like(batch_beam_indices)
-        safe_time_indices = torch.zeros_like(time_indices)  # time indices, guaranteed to be < out_len
-        last_timesteps = (encoder_output_length - 1)[:, None].expand_as(batch_beam_indices)
+        safe_time_indices = torch.zeros_like(
+            time_indices
+        )  # time indices, guaranteed to be < out_len
+        last_timesteps = (encoder_output_length - 1)[:, None].expand_as(
+            batch_beam_indices
+        )
         active_mask = time_indices <= last_timesteps
 
         # setup N-gram LM if available
         if self.ngram_lm_batch is not None:
             self.ngram_lm_batch.to(device)
 
-            batch_lm_states = self.ngram_lm_batch.get_init_states(batch_size=batch_size * self.beam_size, bos=True)
+            batch_lm_states = self.ngram_lm_batch.get_init_states(
+                batch_size=batch_size * self.beam_size, bos=True
+            )
             lm_scores, batch_lm_states_candidates = self.ngram_lm_batch.advance(
                 states=batch_lm_states
             )  # vocab_size_no_blank
-            lm_scores = lm_scores.to(dtype=float_dtype).view(batch_size, self.beam_size, -1) * self.ngram_lm_alpha
+            lm_scores = (
+                lm_scores.to(dtype=float_dtype).view(batch_size, self.beam_size, -1)
+                * self.ngram_lm_alpha
+            )
 
         decoder_state = self.decoder.initialize_state(
             torch.empty(
@@ -429,31 +505,44 @@ class ModifiedALSDBatchedTDTComputer:
         )
 
         decoder_output, state, *_ = self.decoder.predict(
-            last_labels_wb.view(-1, 1), None, add_sos=False, batch_size=batch_size * self.beam_size
+            last_labels_wb.view(-1, 1),
+            None,
+            add_sos=False,
+            batch_size=batch_size * self.beam_size,
         )
         # do not recalculate joint projection
-        decoder_output = self.joint.project_prednet(decoder_output)  # size: [(batch_size x beam_size), 1, Dim]
+        decoder_output = self.joint.project_prednet(
+            decoder_output
+        )  # size: [(batch_size x beam_size), 1, Dim]
         self.decoder.batch_replace_states_all(state, dst_states=decoder_state)
 
         while active_mask.any():
             # step 1: get joint output + fuse with LM (if present)
             logits = (
                 self.joint.joint_after_projection(
-                    encoder_output_projected[batch_beam_indices.view(-1), safe_time_indices.view(-1)].unsqueeze(1),
+                    encoder_output_projected[
+                        batch_beam_indices.view(-1), safe_time_indices.view(-1)
+                    ].unsqueeze(1),
                     decoder_output,
                 )
                 .squeeze(1)
                 .squeeze(1)
             )
-            log_probs = F.log_softmax(logits[..., : -len(self.durations)], dim=-1, dtype=float_dtype).view(
+            log_probs = F.log_softmax(
+                logits[..., : -len(self.durations)], dim=-1, dtype=float_dtype
+            ).view(
                 batch_size, self.beam_size, -1
             )  # [(B x Beam), V]
-            duration_log_probs = F.log_softmax(logits[..., -len(self.durations) :], dim=-1, dtype=float_dtype).view(
+            duration_log_probs = F.log_softmax(
+                logits[..., -len(self.durations) :], dim=-1, dtype=float_dtype
+            ).view(
                 batch_size, self.beam_size, -1
             )  # [(B x Beam), V]
 
             if self.ngram_lm_batch is not None:
-                log_probs_top_k, labels_top_k, durations_top_k = self.topk_lm(lm_scores, log_probs, duration_log_probs)
+                log_probs_top_k, labels_top_k, durations_top_k = self.topk_lm(
+                    lm_scores, log_probs, duration_log_probs
+                )
             else:
                 total_log_probs = (
                     log_probs[:, :, :, None] + duration_log_probs[:, :, None, :]
@@ -471,14 +560,20 @@ class ModifiedALSDBatchedTDTComputer:
 
             # forcing blank to have non-zero duration
             durations_top_k = torch.where(
-                torch.logical_and(labels_top_k == self._blank_index, durations_top_k == 0), 1, durations_top_k
+                torch.logical_and(
+                    labels_top_k == self._blank_index, durations_top_k == 0
+                ),
+                1,
+                durations_top_k,
             )
 
             # step 2: Make hyps candidates. Add new scores to hyps, force blank if necessary, recombine hyps, prune
             # step 2.1: hyps candidates
             log_probs_blank = log_probs[..., -1] + duration_log_probs.max(dim=-1).values
             hyps_scores = batched_hyps.scores
-            hyps_candidates_prob = hyps_scores.unsqueeze(-1) + log_probs_top_k  # hyps from top-k (top-k-prev x top_k)
+            hyps_candidates_prob = (
+                hyps_scores.unsqueeze(-1) + log_probs_top_k
+            )  # hyps from top-k (top-k-prev x top_k)
             hyps_candidates_prob_forced_blank = (
                 hyps_scores + log_probs_blank
             )  # hyps with forced blank (top-k-prev x blank)
@@ -497,52 +592,79 @@ class ModifiedALSDBatchedTDTComputer:
                 hyps_scores,
             )
             # mark the labels corresponding to final hypotheses with negative label (e.g., -1)
-            labels_top_k = torch.where(active_mask.unsqueeze(-1), labels_top_k, NON_EXISTENT_LABEL_VALUE)
+            labels_top_k = torch.where(
+                active_mask.unsqueeze(-1), labels_top_k, NON_EXISTENT_LABEL_VALUE
+            )
 
             # step 2.3: force blank extension with respect to self.max_symbols
             if self.max_symbols is not None:
-                force_blank = (batched_hyps.last_timestamp_lasts >= self.max_symbols) & active_mask
+                force_blank = (
+                    batched_hyps.last_timestamp_lasts >= self.max_symbols
+                ) & active_mask
             else:
                 force_blank = torch.full_like(active_mask, fill_value=False)
             # mask beams if forced blank
-            hyps_candidates_prob = torch.where(force_blank.unsqueeze(-1), INACTIVE_SCORE, hyps_candidates_prob)
+            hyps_candidates_prob = torch.where(
+                force_blank.unsqueeze(-1), INACTIVE_SCORE, hyps_candidates_prob
+            )
             # keep hypotheses with forced blank at the first position in beam
             hyps_candidates_prob[..., 0] = torch.where(
-                force_blank, hyps_candidates_prob_forced_blank, hyps_candidates_prob[..., 0]
+                force_blank,
+                hyps_candidates_prob_forced_blank,
+                hyps_candidates_prob[..., 0],
             )
             # change labels to blank if forced blank
-            labels_top_k = torch.where(force_blank.unsqueeze(-1), self._blank_index, labels_top_k)
+            labels_top_k = torch.where(
+                force_blank.unsqueeze(-1), self._blank_index, labels_top_k
+            )
             # force duration 1 for forced blank
             durations_top_k = torch.where(
-                torch.logical_and(force_blank.unsqueeze(-1), durations_top_k == 0), 1, durations_top_k
+                torch.logical_and(force_blank.unsqueeze(-1), durations_top_k == 0),
+                1,
+                durations_top_k,
             )
 
             # step 2.4: final pruning - get top-beam from (beam_size x beam_size) hyps
             next_hyps_prob, hyps_candidates_indices = torch.topk(
-                hyps_candidates_prob.view(batch_size, -1), k=self.beam_size, largest=True, sorted=True
+                hyps_candidates_prob.view(batch_size, -1),
+                k=self.beam_size,
+                largest=True,
+                sorted=True,
             )
             hyps_indices = torch.gather(
-                batch_beam_beam_indices.reshape(batch_size, -1), dim=-1, index=hyps_candidates_indices
+                batch_beam_beam_indices.reshape(batch_size, -1),
+                dim=-1,
+                index=hyps_candidates_indices,
             )  # indices in beam extended with new label
             next_labels = torch.gather(
-                labels_top_k.reshape(batch_size, -1), dim=-1, index=hyps_candidates_indices
+                labels_top_k.reshape(batch_size, -1),
+                dim=-1,
+                index=hyps_candidates_indices,
             )  # labels for extended hypotheses
             next_label_durations = torch.gather(
-                durations_top_k.reshape(batch_size, -1), dim=-1, index=hyps_candidates_indices
+                durations_top_k.reshape(batch_size, -1),
+                dim=-1,
+                index=hyps_candidates_indices,
             )  # durations for extended hypotheses
 
             # step 3: store results
             if self.max_symbols is None:
-                batched_hyps.add_results_(hyps_indices, next_labels, next_hyps_prob, next_label_durations)
+                batched_hyps.add_results_(
+                    hyps_indices, next_labels, next_hyps_prob, next_label_durations
+                )
             else:
-                batched_hyps.add_results_no_checks_(hyps_indices, next_labels, next_hyps_prob, next_label_durations)
+                batched_hyps.add_results_no_checks_(
+                    hyps_indices, next_labels, next_hyps_prob, next_label_durations
+                )
 
             # step 4: recombine hypotheses: sum probabilities of identical hypotheses.
             batched_hyps.recombine_hyps()
 
             # step 5: update decoder state + decoder output (+ lm state/scores)
             # step 5.1: mask invalid value labels with blank to avoid errors (refer to step 2.2)
-            last_labels_wb = torch.where(next_labels >= 0, next_labels, self._blank_index)
+            last_labels_wb = torch.where(
+                next_labels >= 0, next_labels, self._blank_index
+            )
             preserve_state = last_labels_wb == self._blank_index
 
             # size: decoder_output [(B x Beam), 1, Dim]
@@ -552,7 +674,9 @@ class ModifiedALSDBatchedTDTComputer:
             prev_decoder_output = torch.gather(
                 decoder_output.view(batch_size, self.beam_size, 1, -1),
                 dim=1,
-                index=hyps_indices[:, :, None, None].expand(batch_size, self.beam_size, 1, decoder_output.shape[-1]),
+                index=hyps_indices[:, :, None, None].expand(
+                    batch_size, self.beam_size, 1, decoder_output.shape[-1]
+                ),
             ).view(batch_size * self.beam_size, 1, -1)
             prev_decoder_state = self.decoder.batch_aggregate_states_beam(
                 decoder_state, batch_size, self.beam_size, hyps_indices
@@ -565,12 +689,20 @@ class ModifiedALSDBatchedTDTComputer:
                 add_sos=False,
                 batch_size=batch_size * self.beam_size,
             )
-            decoder_output = self.joint.project_prednet(decoder_output)  # do not recalculate joint projection
+            decoder_output = self.joint.project_prednet(
+                decoder_output
+            )  # do not recalculate joint projection
 
             # step 5.2.3: update decoder state and output only for non-blank and active hypotheses
-            decoder_output = torch.where(preserve_state.view(-1)[:, None, None], prev_decoder_output, decoder_output)
+            decoder_output = torch.where(
+                preserve_state.view(-1)[:, None, None],
+                prev_decoder_output,
+                decoder_output,
+            )
             self.decoder.batch_replace_states_mask(
-                src_states=prev_decoder_state, dst_states=decoder_state, mask=preserve_state.view(-1)
+                src_states=prev_decoder_state,
+                dst_states=decoder_state,
+                mask=preserve_state.view(-1),
             )
 
             if self.ngram_lm_batch is not None:
@@ -584,19 +716,30 @@ class ModifiedALSDBatchedTDTComputer:
                     ),
                 )
                 batch_lm_states_prev = torch.gather(
-                    batch_lm_states.view(batch_size, self.beam_size), dim=1, index=hyps_indices
+                    batch_lm_states.view(batch_size, self.beam_size),
+                    dim=1,
+                    index=hyps_indices,
                 )
-                last_labels_wb_blank_replaced = torch.where(preserve_state, 0, last_labels_wb)
+                last_labels_wb_blank_replaced = torch.where(
+                    preserve_state, 0, last_labels_wb
+                )
 
                 batch_lm_states = torch.gather(
-                    batch_lm_states_candidates, dim=-1, index=last_labels_wb_blank_replaced.unsqueeze(-1)
+                    batch_lm_states_candidates,
+                    dim=-1,
+                    index=last_labels_wb_blank_replaced.unsqueeze(-1),
                 ).squeeze(-1)
-                batch_lm_states = torch.where(preserve_state, batch_lm_states_prev, batch_lm_states).view(-1)
+                batch_lm_states = torch.where(
+                    preserve_state, batch_lm_states_prev, batch_lm_states
+                ).view(-1)
 
                 lm_scores, batch_lm_states_candidates = self.ngram_lm_batch.advance(
                     states=batch_lm_states
                 )  # vocab_size_no_blank
-                lm_scores = lm_scores.to(dtype=float_dtype).view(batch_size, self.beam_size, -1) * self.ngram_lm_alpha
+                lm_scores = (
+                    lm_scores.to(dtype=float_dtype).view(batch_size, self.beam_size, -1)
+                    * self.ngram_lm_alpha
+                )
 
             # step 6: update time indices + active mask
             time_indices.copy_(batched_hyps.next_timestamp)
@@ -625,7 +768,9 @@ class ModifiedALSDBatchedTDTComputer:
         match self.pruning_mode, self.blank_lm_score_mode:
             case PruningMode.LATE, BlankLMScoreMode.NO_SCORE:
                 log_probs[..., :-1] += lm_scores
-                total_log_probs = log_probs[:, :, :, None] + duration_log_probs[:, :, None, :]
+                total_log_probs = (
+                    log_probs[:, :, :, None] + duration_log_probs[:, :, None, :]
+                )
 
                 log_probs_top_k, total_idx_top_k = torch.topk(
                     total_log_probs.view(batch_size, self.beam_size, -1),
@@ -639,11 +784,17 @@ class ModifiedALSDBatchedTDTComputer:
 
             case PruningMode.LATE, BlankLMScoreMode.LM_WEIGHTED_FULL:
                 blank_logprob = log_probs[..., -1]
-                non_blank_logprob = torch.log1p(-torch.clamp(torch.exp(blank_logprob), max=1.0 - 1e-6))
-                log_probs[..., :-1] += non_blank_logprob.unsqueeze(-1) * self.ngram_lm_alpha + lm_scores
+                non_blank_logprob = torch.log1p(
+                    -torch.clamp(torch.exp(blank_logprob), max=1.0 - 1e-6)
+                )
+                log_probs[..., :-1] += (
+                    non_blank_logprob.unsqueeze(-1) * self.ngram_lm_alpha + lm_scores
+                )
                 log_probs[..., -1] *= 1 + self.ngram_lm_alpha
 
-                total_log_probs = log_probs[:, :, :, None] + duration_log_probs[:, :, None, :]
+                total_log_probs = (
+                    log_probs[:, :, :, None] + duration_log_probs[:, :, None, :]
+                )
                 log_probs_top_k, total_idx_top_k = torch.topk(
                     total_log_probs.view(batch_size, self.beam_size, -1),
                     self.beam_size,
@@ -660,14 +811,19 @@ class ModifiedALSDBatchedTDTComputer:
                     log_probs, self.beam_size, dim=-1, largest=True, sorted=True
                 )
 
-                masked_labels = torch.where(labels_top_k == self._blank_index, 0, labels_top_k)
+                masked_labels = torch.where(
+                    labels_top_k == self._blank_index, 0, labels_top_k
+                )
                 log_probs_top_k = torch.where(
                     labels_top_k == self._blank_index,
                     log_probs_top_k,
-                    log_probs_top_k + torch.gather(lm_scores, dim=-1, index=masked_labels),
+                    log_probs_top_k
+                    + torch.gather(lm_scores, dim=-1, index=masked_labels),
                 )
 
-                total_log_probs = log_probs_top_k[:, :, :, None] + duration_log_probs[:, :, None, :]
+                total_log_probs = (
+                    log_probs_top_k[:, :, :, None] + duration_log_probs[:, :, None, :]
+                )
                 log_probs_top_k, total_idx_top_k = torch.topk(
                     total_log_probs.view(batch_size, self.beam_size, -1),
                     self.beam_size,
@@ -675,7 +831,9 @@ class ModifiedALSDBatchedTDTComputer:
                     largest=True,
                     sorted=True,
                 )
-                labels_top_k = torch.gather(labels_top_k, dim=-1, index=total_idx_top_k // len(self.durations))
+                labels_top_k = torch.gather(
+                    labels_top_k, dim=-1, index=total_idx_top_k // len(self.durations)
+                )
                 durations_top_k = total_idx_top_k % len(self.durations)
 
             case PruningMode.EARLY, BlankLMScoreMode.LM_WEIGHTED_FULL:
@@ -684,9 +842,13 @@ class ModifiedALSDBatchedTDTComputer:
                 )
 
                 blank_logprob = log_probs[..., -1]
-                non_blank_logprob = torch.log1p(-torch.clamp(torch.exp(blank_logprob), max=1.0 - 1e-6))
+                non_blank_logprob = torch.log1p(
+                    -torch.clamp(torch.exp(blank_logprob), max=1.0 - 1e-6)
+                )
 
-                masked_labels = torch.where(labels_top_k == self._blank_index, 0, labels_top_k)
+                masked_labels = torch.where(
+                    labels_top_k == self._blank_index, 0, labels_top_k
+                )
                 log_probs_top_k = torch.where(
                     labels_top_k == self._blank_index,
                     log_probs_top_k * (1 + self.ngram_lm_alpha),
@@ -695,7 +857,9 @@ class ModifiedALSDBatchedTDTComputer:
                     + torch.gather(lm_scores, dim=-1, index=masked_labels),
                 )
 
-                total_log_probs = log_probs_top_k[:, :, :, None] + duration_log_probs[:, :, None, :]
+                total_log_probs = (
+                    log_probs_top_k[:, :, :, None] + duration_log_probs[:, :, None, :]
+                )
                 log_probs_top_k, total_idx_top_k = torch.topk(
                     total_log_probs.view(batch_size, self.beam_size, -1),
                     self.beam_size,
@@ -703,7 +867,9 @@ class ModifiedALSDBatchedTDTComputer:
                     largest=True,
                     sorted=True,
                 )
-                labels_top_k = torch.gather(labels_top_k, dim=-1, index=total_idx_top_k // len(self.durations))
+                labels_top_k = torch.gather(
+                    labels_top_k, dim=-1, index=total_idx_top_k // len(self.durations)
+                )
                 durations_top_k = total_idx_top_k % len(self.durations)
 
             case _:
@@ -746,8 +912,12 @@ class ModifiedALSDBatchedTDTComputer:
         # set length to zero for elements outside the current batch
         self.state.encoder_output_length.fill_(0)
         # copy (projected) encoder output and lenghts
-        self.state.encoder_output_projected[:current_batch_size, :current_max_time, ...].copy_(encoder_output)
-        self.state.encoder_output_length[:current_batch_size].copy_(encoder_output_length.unsqueeze(-1))
+        self.state.encoder_output_projected[
+            :current_batch_size, :current_max_time, ...
+        ].copy_(encoder_output)
+        self.state.encoder_output_length[:current_batch_size].copy_(
+            encoder_output_length.unsqueeze(-1)
+        )
         if self.cuda_graphs_mode is self.CudaGraphsMode.FULL_GRAPH:
             self.full_graph.replay()
         elif self.cuda_graphs_mode is self.CudaGraphsMode.NO_WHILE_LOOPS:
@@ -838,16 +1008,25 @@ class ModifiedALSDBatchedTDTComputer:
         )
 
         init_decoder_output, self.state.init_decoder_state, *_ = self.decoder.predict(
-            self.state.last_labels_wb.view(-1, 1), None, add_sos=False, batch_size=batch_size * self.beam_size
+            self.state.last_labels_wb.view(-1, 1),
+            None,
+            add_sos=False,
+            batch_size=batch_size * self.beam_size,
         )
-        self.state.init_decoder_output = self.joint.project_prednet(init_decoder_output).to(
+        self.state.init_decoder_output = self.joint.project_prednet(
+            init_decoder_output
+        ).to(
             dtype=self.state.float_dtype
         )  # do not recalculate joint projection
 
-        self.decoder.batch_replace_states_all(self.state.init_decoder_state, dst_states=self.state.decoder_state)
+        self.decoder.batch_replace_states_all(
+            self.state.init_decoder_state, dst_states=self.state.decoder_state
+        )
         self.state.decoder_output = self.state.init_decoder_output.clone()
 
-        self.decoder.batch_replace_states_all(self.state.init_decoder_state, dst_states=self.state.prev_decoder_state)
+        self.decoder.batch_replace_states_all(
+            self.state.init_decoder_state, dst_states=self.state.prev_decoder_state
+        )
         self.state.prev_decoder_output = self.state.init_decoder_output.clone()
 
         if self.ngram_lm_batch is not None:
@@ -858,19 +1037,27 @@ class ModifiedALSDBatchedTDTComputer:
             self.state.init_batch_lm_states = self.ngram_lm_batch.get_init_states(
                 batch_size=self.state.batch_size * self.beam_size, bos=True
             ).view(self.state.batch_size, self.beam_size)
-            init_lm_scores, init_batch_lm_states_candidates = self.ngram_lm_batch.advance(
-                states=self.state.init_batch_lm_states.view(-1)
+            init_lm_scores, init_batch_lm_states_candidates = (
+                self.ngram_lm_batch.advance(
+                    states=self.state.init_batch_lm_states.view(-1)
+                )
             )  # vocab_size_no_blank
             self.state.init_lm_scores = (
-                init_lm_scores.to(dtype=self.state.float_dtype).view(self.state.batch_size, self.beam_size, -1)
+                init_lm_scores.to(dtype=self.state.float_dtype).view(
+                    self.state.batch_size, self.beam_size, -1
+                )
                 * self.ngram_lm_alpha
             )
-            self.state.init_batch_lm_states_candidates = init_batch_lm_states_candidates.view(
-                self.state.batch_size, self.beam_size, -1
+            self.state.init_batch_lm_states_candidates = (
+                init_batch_lm_states_candidates.view(
+                    self.state.batch_size, self.beam_size, -1
+                )
             )
 
             self.state.batch_lm_states = self.state.init_batch_lm_states.clone()
-            self.state.batch_lm_states_candidates = self.state.init_batch_lm_states_candidates.clone()
+            self.state.batch_lm_states_candidates = (
+                self.state.init_batch_lm_states_candidates.clone()
+            )
             self.state.lm_scores = self.state.init_lm_scores.clone()
             self.state.batch_lm_states_prev = self.state.init_batch_lm_states.clone()
 
@@ -894,7 +1081,9 @@ class ModifiedALSDBatchedTDTComputer:
             torch.cuda.stream(stream_for_graph),
             torch.inference_mode(),
             torch.cuda.graph(
-                self.separate_graphs.before_loop, stream=stream_for_graph, capture_error_mode="thread_local"
+                self.separate_graphs.before_loop,
+                stream=stream_for_graph,
+                capture_error_mode="thread_local",
             ),
         ):
             self._before_loop()
@@ -903,7 +1092,9 @@ class ModifiedALSDBatchedTDTComputer:
             torch.cuda.stream(stream_for_graph),
             torch.inference_mode(),
             torch.cuda.graph(
-                self.separate_graphs.loop_body, stream=stream_for_graph, capture_error_mode="thread_local"
+                self.separate_graphs.loop_body,
+                stream=stream_for_graph,
+                capture_error_mode="thread_local",
             ),
         ):
             self._loop_body()
@@ -912,7 +1103,9 @@ class ModifiedALSDBatchedTDTComputer:
             torch.cuda.stream(stream_for_graph),
             torch.inference_mode(),
             torch.cuda.graph(
-                self.separate_graphs.loop_update_decoder, stream=stream_for_graph, capture_error_mode="thread_local"
+                self.separate_graphs.loop_update_decoder,
+                stream=stream_for_graph,
+                capture_error_mode="thread_local",
             ),
         ):
             self._loop_update_decoder()
@@ -926,25 +1119,43 @@ class ModifiedALSDBatchedTDTComputer:
         with (
             torch.cuda.stream(stream_for_graph),
             torch.inference_mode(),
-            torch.cuda.graph(self.full_graph, stream=stream_for_graph, capture_error_mode="thread_local"),
+            torch.cuda.graph(
+                self.full_graph,
+                stream=stream_for_graph,
+                capture_error_mode="thread_local",
+            ),
         ):
             self._before_loop()
             capture_status, _, graph, _, _ = cu_call(
-                cudart.cudaStreamGetCaptureInfo(torch.cuda.current_stream(device=self.state.device).cuda_stream)
+                cudart.cudaStreamGetCaptureInfo(
+                    torch.cuda.current_stream(device=self.state.device).cuda_stream
+                )
             )
 
-            assert capture_status == cudart.cudaStreamCaptureStatus.cudaStreamCaptureStatusActive
+            assert (
+                capture_status
+                == cudart.cudaStreamCaptureStatus.cudaStreamCaptureStatusActive
+            )
 
             # capture: while self.active_mask_any:
-            (loop_conditional_handle,) = cu_call(cudart.cudaGraphConditionalHandleCreate(graph, 0, 0))
+            (loop_conditional_handle,) = cu_call(
+                cudart.cudaGraphConditionalHandleCreate(graph, 0, 0)
+            )
             loop_kernel = self._create_loop_body_kernel()
-            active_mask_any_ptr = np.array([self.state.active_mask_any.data_ptr()], dtype=np.uint64)
+            active_mask_any_ptr = np.array(
+                [self.state.active_mask_any.data_ptr()], dtype=np.uint64
+            )
             loop_args = np.array(
                 [loop_conditional_handle.getPtr(), active_mask_any_ptr.ctypes.data],
                 dtype=np.uint64,
             )
             # loop while there are active utterances
-            with with_conditional_node(loop_kernel, loop_args, loop_conditional_handle, device=self.state.device):
+            with with_conditional_node(
+                loop_kernel,
+                loop_args,
+                loop_conditional_handle,
+                device=self.state.device,
+            ):
                 self._loop_body()
                 self._loop_update_decoder()
 
@@ -958,7 +1169,9 @@ class ModifiedALSDBatchedTDTComputer:
         # initial state - lm
         if self.ngram_lm_batch is not None:
             self.state.batch_lm_states.copy_(self.state.init_batch_lm_states)
-            self.state.batch_lm_states_candidates.copy_(self.state.init_batch_lm_states_candidates)
+            self.state.batch_lm_states_candidates.copy_(
+                self.state.init_batch_lm_states_candidates
+            )
             self.state.lm_scores.copy_(self.state.init_lm_scores)
             self.state.batch_lm_states_prev.copy_(self.state.init_batch_lm_states)
 
@@ -970,7 +1183,9 @@ class ModifiedALSDBatchedTDTComputer:
 
         # time indices
         self.state.time_indices.fill_(0)
-        self.state.safe_time_indices.fill_(0)  # safe time indices: guaranteed to be < encoder_output_length
+        self.state.safe_time_indices.fill_(
+            0
+        )  # safe time indices: guaranteed to be < encoder_output_length
 
         torch.sub(self.state.encoder_output_length, 1, out=self.state.last_timestamps)
 
@@ -997,14 +1212,17 @@ class ModifiedALSDBatchedTDTComputer:
         logits = (
             self.joint.joint_after_projection(
                 self.state.encoder_output_projected[
-                    self.state.batch_indices.view(-1), self.state.safe_time_indices.view(-1)
+                    self.state.batch_indices.view(-1),
+                    self.state.safe_time_indices.view(-1),
                 ].unsqueeze(1),
                 self.state.decoder_output,
             )
             .squeeze(1)
             .squeeze(1)
         )
-        log_probs = F.log_softmax(logits[..., : -len(self.durations)], dim=-1, dtype=self.state.float_dtype).view(
+        log_probs = F.log_softmax(
+            logits[..., : -len(self.durations)], dim=-1, dtype=self.state.float_dtype
+        ).view(
             self.state.batch_size, self.beam_size, -1
         )  # [(batch_size x beam_size), V]
         duration_log_probs = F.log_softmax(
@@ -1018,7 +1236,9 @@ class ModifiedALSDBatchedTDTComputer:
                 self.state.lm_scores, log_probs, duration_log_probs
             )
         else:
-            total_log_probs = log_probs[:, :, :, None] + duration_log_probs[:, :, None, :]
+            total_log_probs = (
+                log_probs[:, :, :, None] + duration_log_probs[:, :, None, :]
+            )
             log_probs_top_k, total_idx_top_k = torch.topk(
                 total_log_probs.view(self.state.batch_size, self.beam_size, -1),
                 self.beam_size,
@@ -1042,7 +1262,9 @@ class ModifiedALSDBatchedTDTComputer:
         # step 2.1: hyps candidates
         log_probs_blank = log_probs[..., -1] + duration_log_probs.max(dim=-1).values
         hyps_scores = self.state.batched_hyps.scores
-        hyps_candidates_prob = hyps_scores.unsqueeze(-1) + log_probs_top_k  # hyps from top-k (top-k-prev x top_k)
+        hyps_candidates_prob = (
+            hyps_scores.unsqueeze(-1) + log_probs_top_k
+        )  # hyps from top-k (top-k-prev x top_k)
         hyps_candidates_prob_forced_blank = (
             hyps_scores + log_probs_blank
         )  # hyps with forced blank (top-k-prev x blank)
@@ -1057,21 +1279,32 @@ class ModifiedALSDBatchedTDTComputer:
         )
         # keep inactive (final hypotheses) at the first position in beam
         torch.where(
-            self.state.active_mask, hyps_candidates_prob[..., 0], hyps_scores, out=hyps_candidates_prob[..., 0]
+            self.state.active_mask,
+            hyps_candidates_prob[..., 0],
+            hyps_scores,
+            out=hyps_candidates_prob[..., 0],
         )
         # mark the labels corresponding to final hypotheses with negative label (e.g., -1)
         torch.where(
-            self.state.active_mask.unsqueeze(-1), labels_top_k, self.state.NON_EXISTENT_LABEL, out=labels_top_k
+            self.state.active_mask.unsqueeze(-1),
+            labels_top_k,
+            self.state.NON_EXISTENT_LABEL,
+            out=labels_top_k,
         )
 
         # step 2.3: force blank extension with respect to self.max_symbols
         if self.max_symbols is not None:
-            force_blank = (self.state.batched_hyps.last_timestamp_lasts >= self.max_symbols) & self.state.active_mask
+            force_blank = (
+                self.state.batched_hyps.last_timestamp_lasts >= self.max_symbols
+            ) & self.state.active_mask
         else:
             force_blank = torch.full_like(self.state.active_mask, fill_value=False)
         # mask all extensions with -inf
         torch.where(
-            force_blank.unsqueeze(-1), self.state.INACTIVE_SCORE, hyps_candidates_prob, out=hyps_candidates_prob
+            force_blank.unsqueeze(-1),
+            self.state.INACTIVE_SCORE,
+            hyps_candidates_prob,
+            out=hyps_candidates_prob,
         )
         # keep hypotheses with forced blank at the first position in beam
         torch.where(
@@ -1081,7 +1314,12 @@ class ModifiedALSDBatchedTDTComputer:
             out=hyps_candidates_prob[..., 0],
         )
         # change labels to blank if forced blank
-        torch.where(force_blank.unsqueeze(-1), self.state.BLANK_TENSOR, labels_top_k, out=labels_top_k)
+        torch.where(
+            force_blank.unsqueeze(-1),
+            self.state.BLANK_TENSOR,
+            labels_top_k,
+            out=labels_top_k,
+        )
         # force duration 1 for forced blank
         torch.where(
             torch.logical_and(force_blank.unsqueeze(-1), durations_top_k == 0),
@@ -1092,7 +1330,10 @@ class ModifiedALSDBatchedTDTComputer:
 
         # step 2.4: final pruning - get top-k from (top-k x top-k) hyps
         next_hyps_prob, hyps_candidates_indices = torch.topk(
-            hyps_candidates_prob.view(self.state.batch_size, -1), k=self.beam_size, largest=True, sorted=True
+            hyps_candidates_prob.view(self.state.batch_size, -1),
+            k=self.beam_size,
+            largest=True,
+            sorted=True,
         )
         torch.gather(
             self.state.beam_indices.reshape(self.state.batch_size, -1),
@@ -1117,11 +1358,17 @@ class ModifiedALSDBatchedTDTComputer:
         # step 3: store results
         if self.max_symbols is None:
             self.state.batched_hyps.add_results_(
-                self.state.next_idx, self.state.next_labels, self.state.next_scores, self.state.next_label_durations
+                self.state.next_idx,
+                self.state.next_labels,
+                self.state.next_scores,
+                self.state.next_label_durations,
             )
         else:
             self.state.batched_hyps.add_results_no_checks_(
-                self.state.next_idx, self.state.next_labels, self.state.next_scores, self.state.next_label_durations
+                self.state.next_idx,
+                self.state.next_labels,
+                self.state.next_scores,
+                self.state.next_label_durations,
             )
 
         # step 4: recombine hypotheses: sum probabilities of identical hypotheses.
@@ -1136,7 +1383,10 @@ class ModifiedALSDBatchedTDTComputer:
         # step 5: update decoder state + decoder output (+ lm state/scores)
         # step 5.1: mask invalid value labels with blank to avoid errors (refer to step 2.2)
         torch.where(
-            self.state.next_labels >= 0, self.state.next_labels, self.state.BLANK_TENSOR, out=self.state.last_labels_wb
+            self.state.next_labels >= 0,
+            self.state.next_labels,
+            self.state.BLANK_TENSOR,
+            out=self.state.last_labels_wb,
         )
         preserve_state = self.state.last_labels_wb == self._blank_index
 
@@ -1145,12 +1395,19 @@ class ModifiedALSDBatchedTDTComputer:
         # step 5.2: update decoder + lm state
         # step 5.2.1: storing current decoder output and states of extended hypotheses
         torch.gather(
-            self.state.decoder_output.view(self.state.batch_size, self.beam_size, 1, -1),
+            self.state.decoder_output.view(
+                self.state.batch_size, self.beam_size, 1, -1
+            ),
             dim=1,
             index=self.state.next_idx[:, :, None, None].expand(
-                self.state.batch_size, self.beam_size, 1, self.state.decoder_output.shape[-1]
+                self.state.batch_size,
+                self.beam_size,
+                1,
+                self.state.decoder_output.shape[-1],
             ),
-            out=self.state.prev_decoder_output.view(self.state.batch_size, self.beam_size, 1, -1),
+            out=self.state.prev_decoder_output.view(
+                self.state.batch_size, self.beam_size, 1, -1
+            ),
         )
         self.decoder.batch_aggregate_states_beam(
             self.state.decoder_state,
@@ -1190,14 +1447,21 @@ class ModifiedALSDBatchedTDTComputer:
                     self.state.batch_lm_states_candidates,
                     dim=1,
                     index=self.state.next_idx[:, :, None].expand(
-                        self.state.batch_size, self.beam_size, self.state.batch_lm_states_candidates.shape[-1]
+                        self.state.batch_size,
+                        self.beam_size,
+                        self.state.batch_lm_states_candidates.shape[-1],
                     ),
                 )
             )
             torch.gather(
-                self.state.batch_lm_states, dim=1, index=self.state.next_idx, out=self.state.batch_lm_states_prev
+                self.state.batch_lm_states,
+                dim=1,
+                index=self.state.next_idx,
+                out=self.state.batch_lm_states_prev,
             )
-            last_labels_wb_blank_replaced = torch.where(preserve_state, 0, self.state.last_labels_wb)
+            last_labels_wb_blank_replaced = torch.where(
+                preserve_state, 0, self.state.last_labels_wb
+            )
 
             torch.gather(
                 self.state.batch_lm_states_candidates,
@@ -1216,19 +1480,31 @@ class ModifiedALSDBatchedTDTComputer:
                 states=self.state.batch_lm_states.view(-1)
             )  # vocab_size_no_blank
             lm_scores = (
-                lm_scores.to(dtype=self.state.float_dtype).view(self.state.batch_size, self.beam_size, -1)
+                lm_scores.to(dtype=self.state.float_dtype).view(
+                    self.state.batch_size, self.beam_size, -1
+                )
                 * self.ngram_lm_alpha
             )
 
             self.state.batch_lm_states_candidates.copy_(
-                batch_lm_states_candidates.view(self.state.batch_size, self.state.beam_size, -1)
+                batch_lm_states_candidates.view(
+                    self.state.batch_size, self.state.beam_size, -1
+                )
             )
             self.state.lm_scores.copy_(lm_scores)
 
         # step 6: update time indices + active mask
         self.state.time_indices.copy_(self.state.batched_hyps.next_timestamp)
-        torch.minimum(self.state.time_indices, self.state.last_timestamps, out=self.state.safe_time_indices)
-        torch.less_equal(self.state.time_indices, self.state.last_timestamps, out=self.state.active_mask)
+        torch.minimum(
+            self.state.time_indices,
+            self.state.last_timestamps,
+            out=self.state.safe_time_indices,
+        )
+        torch.less_equal(
+            self.state.time_indices,
+            self.state.last_timestamps,
+            out=self.state.active_mask,
+        )
         torch.any(self.state.active_mask, out=self.state.active_mask_any)
 
     def __call__(
@@ -1238,6 +1514,8 @@ class ModifiedALSDBatchedTDTComputer:
     ) -> BatchedBeamHyps:
         if self.cuda_graphs_mode is not None and x.device.type == "cuda":
             with torch.amp.autocast(device_type="cuda", enabled=False):
-                return self.modified_alsd_cuda_graphs(encoder_output=x, encoder_output_length=out_len)
+                return self.modified_alsd_cuda_graphs(
+                    encoder_output=x, encoder_output_length=out_len
+                )
 
         return self.modified_alsd_torch(encoder_output=x, encoder_output_length=out_len)

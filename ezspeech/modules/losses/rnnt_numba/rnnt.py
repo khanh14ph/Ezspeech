@@ -433,7 +433,6 @@ class _TDTNumba(Function):
         if clamp < 0:
             raise ValueError("`clamp` must be 0.0 or positive float value.")
 
-
         label_grads = torch.zeros_like(label_acts) if label_acts.requires_grad else None
         duration_grads = (
             torch.zeros_like(duration_acts) if duration_acts.requires_grad else None

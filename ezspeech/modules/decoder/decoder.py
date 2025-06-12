@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from ezspeech.utils.operation import init_weights
 
+
 class PredictorNetwork(nn.Module):
     def __init__(
         self,
@@ -59,13 +60,15 @@ class CTCDecoder(nn.Module):
         super(CTCDecoder, self).__init__()
 
         self.linear1 = nn.Linear(input_dim, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, output_dim+1)
+        self.linear2 = nn.Linear(hidden_dim, output_dim + 1)
 
     def forward(self, enc_outs: torch.Tensor) -> torch.Tensor:
         ctc_outs = F.silu(self.linear1(enc_outs))
         ctc_outs = self.linear2(ctc_outs)
         ctc_outs = ctc_outs.log_softmax(2)
         return ctc_outs
+
+
 class ConvASRDecoder(nn.Module):
     """Simple ASR Decoder for use with CTC-based models such as JasperNet and QuartzNet
 
@@ -75,15 +78,26 @@ class ConvASRDecoder(nn.Module):
        https://arxiv.org/pdf/2005.04290.pdf
     """
 
-    def __init__(self, feat_in, num_classes,vocabulary=None, init_mode="xavier_uniform",add_blank=True):
+    def __init__(
+        self,
+        feat_in,
+        num_classes,
+        vocabulary=None,
+        init_mode="xavier_uniform",
+        add_blank=True,
+    ):
         super().__init__()
 
         if vocabulary is None and num_classes < 0:
-            raise ValueError("Neither of the vocabulary and num_classes are set! At least one of them need to be set.")
+            raise ValueError(
+                "Neither of the vocabulary and num_classes are set! At least one of them need to be set."
+            )
 
         if num_classes <= 0:
             num_classes = len(vocabulary)
-            print(f"num_classes of ConvASRDecoder is set to the size of the vocabulary: {num_classes}.")
+            print(
+                f"num_classes of ConvASRDecoder is set to the size of the vocabulary: {num_classes}."
+            )
 
         if vocabulary is not None:
             if num_classes != len(vocabulary):
@@ -101,8 +115,9 @@ class ConvASRDecoder(nn.Module):
         )
         self.apply(lambda x: init_weights(x, mode=init_mode))
 
-
     def forward(self, encoder_output):
         # Adapter module forward step
-        encoder_output=encoder_output.transpose(1,2)
-        return torch.nn.functional.log_softmax(self.decoder_layers(encoder_output).transpose(1, 2), dim=-1)
+        encoder_output = encoder_output.transpose(1, 2)
+        return torch.nn.functional.log_softmax(
+            self.decoder_layers(encoder_output).transpose(1, 2), dim=-1
+        )

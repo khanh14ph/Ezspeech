@@ -422,7 +422,7 @@ class ConformerEncoder(nn.Module):
         self.d_model = d_model
         self.n_layers = n_layers
         self._feat_in = feat_in
-        self._feat_out=feat_out
+        self._feat_out = feat_out
         self.att_context_style = att_context_style
         self.subsampling_factor = subsampling_factor
         self.subsampling_conv_chunking_factor = subsampling_conv_chunking_factor
@@ -446,9 +446,9 @@ class ConformerEncoder(nn.Module):
             conv_context_size=conv_context_size,
             conv_kernel_size=conv_kernel_size,
         )
-        if feat_out!=-1:
-            self.proj_out=nn.Linear(d_model,feat_out)
-        self.pre_encode= ConvSubsampling(
+        if feat_out != -1:
+            self.proj_out = nn.Linear(d_model, feat_out)
+        self.pre_encode = ConvSubsampling(
             subsampling_factor=subsampling_factor,
             feat_in=feat_in,
             feat_out=d_model,
@@ -469,7 +469,7 @@ class ConformerEncoder(nn.Module):
             xscale=None,
             dropout_rate_emb=dropout_emb,
         )
-        
+
         self.layers = nn.ModuleList()
         for i in range(n_layers):
             layer = ConformerLayer(
@@ -501,7 +501,7 @@ class ConformerEncoder(nn.Module):
             stochastic_depth_start_layer,
         )
         # will be set in self.forward() if defined in AccessMixin config
-        
+
     def forward(self, audio_signal, length):
 
         self.update_max_seq_length(
@@ -567,9 +567,9 @@ class ConformerEncoder(nn.Module):
 
         audio_signal = torch.transpose(audio_signal, 1, 2)
         length = length.to(dtype=torch.int64)
-        audio_signal=audio_signal.transpose(1, 2)
-        if self._feat_out!=-1:
-            audio_signal=self.proj_out(audio_signal)
+        audio_signal = audio_signal.transpose(1, 2)
+        if self._feat_out != -1:
+            audio_signal = self.proj_out(audio_signal)
         return audio_signal, length
 
     def update_max_seq_length(self, seq_length: int, device):

@@ -90,11 +90,6 @@ def _lengths_to_padding_mask(lengths: torch.Tensor) -> torch.Tensor:
     return padding_mask
 
 
-
-
-
-
-
 class FeedForwardBlock(nn.Module):
     def __init__(self, d_model: int, dropout: float = 0.1):
         super(FeedForwardBlock, self).__init__()

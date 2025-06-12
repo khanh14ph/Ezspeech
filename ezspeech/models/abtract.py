@@ -15,6 +15,7 @@ from ezspeech.utils import color
 from ezspeech.optims.scheduler import NoamAnnealing
 from omegaconf import OmegaConf
 
+
 class SpeechModel(LightningModule, ABC):
     def __init__(self, config: DictConfig):
         super().__init__()
@@ -40,8 +41,6 @@ class SpeechModel(LightningModule, ABC):
             self.plot_dir = f"{config.loggers.tb.save_dir}/{config.loggers.tb.version}"
             os.makedirs(self.plot_dir, exist_ok=True)
 
-    
-        
     def train_dataloader(self) -> DataLoader:
 
         loaders = self.config.dataset.loaders
@@ -67,6 +66,7 @@ class SpeechModel(LightningModule, ABC):
         )
 
         return val_dl
+
     # def on_save_checkpoint(self, checkpoint):
     #     print(checkpoint)
     @abstractmethod

@@ -18,7 +18,10 @@ import numpy as np
 import torch
 from packaging.version import Version
 
-__CUDA_PYTHON_MINIMUM_VERSION_CUDA_GRAPH_CONDITIONAL_NODES_SUPPORTED__ = (12, 3)  # 12030
+__CUDA_PYTHON_MINIMUM_VERSION_CUDA_GRAPH_CONDITIONAL_NODES_SUPPORTED__ = (
+    12,
+    3,
+)  # 12030
 
 
 def check_cuda_python_cuda_graphs_conditional_nodes_supported():
@@ -29,23 +32,34 @@ def check_cuda_python_cuda_graphs_conditional_nodes_supported():
     try:
         from cuda import cuda
     except ImportError:
-        raise ModuleNotFoundError("No `cuda-python` module. Please do `pip install cuda-python>=12.3`")
+        raise ModuleNotFoundError(
+            "No `cuda-python` module. Please do `pip install cuda-python>=12.3`"
+        )
 
     from cuda import __version__ as cuda_python_version
 
     if Version(cuda_python_version) < Version("12.3.0"):
-        raise ImportError(f"Found cuda-python {cuda_python_version}, but at least version 12.3.0 is needed.")
+        raise ImportError(
+            f"Found cuda-python {cuda_python_version}, but at least version 12.3.0 is needed."
+        )
 
     error, driver_version = cuda.cuDriverGetVersion()
     if error != cuda.CUresult.CUDA_SUCCESS:
-        raise ImportError(f"cuDriverGetVersion() returned {cuda.cuGetErrorString(error)}")
+        raise ImportError(
+            f"cuDriverGetVersion() returned {cuda.cuGetErrorString(error)}"
+        )
 
     driver_version_major = driver_version // 1000
     driver_version_minor = (driver_version % 1000) // 10
 
     driver_version = (driver_version_major, driver_version_minor)
-    if driver_version < __CUDA_PYTHON_MINIMUM_VERSION_CUDA_GRAPH_CONDITIONAL_NODES_SUPPORTED__:
-        required_version = __CUDA_PYTHON_MINIMUM_VERSION_CUDA_GRAPH_CONDITIONAL_NODES_SUPPORTED__
+    if (
+        driver_version
+        < __CUDA_PYTHON_MINIMUM_VERSION_CUDA_GRAPH_CONDITIONAL_NODES_SUPPORTED__
+    ):
+        required_version = (
+            __CUDA_PYTHON_MINIMUM_VERSION_CUDA_GRAPH_CONDITIONAL_NODES_SUPPORTED__
+        )
         raise ImportError(
             f"""Driver supports cuda toolkit version \
 {driver_version_major}.{driver_version_minor}, but the driver needs to support \
@@ -101,7 +115,9 @@ def cu_call(f_call_out):
 
 
 @contextlib.contextmanager
-def with_conditional_node(while_loop_kernel, while_loop_args, while_loop_conditional_handle, device):
+def with_conditional_node(
+    while_loop_kernel, while_loop_args, while_loop_conditional_handle, device
+):
     """
     Even though we add a conditional node only once, we need to
     capture the kernel that calls cudaGraphSetConditional() both
@@ -114,9 +130,13 @@ def with_conditional_node(while_loop_kernel, while_loop_args, while_loop_conditi
     from cuda import cuda, cudart, nvrtc
 
     capture_status, _, graph, _, _ = cu_call(
-        cudart.cudaStreamGetCaptureInfo(torch.cuda.current_stream(device=device).cuda_stream)
+        cudart.cudaStreamGetCaptureInfo(
+            torch.cuda.current_stream(device=device).cuda_stream
+        )
     )
-    assert capture_status == cudart.cudaStreamCaptureStatus.cudaStreamCaptureStatusActive
+    assert (
+        capture_status == cudart.cudaStreamCaptureStatus.cudaStreamCaptureStatusActive
+    )
 
     cuda.cuLaunchKernel(
         while_loop_kernel,
@@ -133,14 +153,20 @@ def with_conditional_node(while_loop_kernel, while_loop_args, while_loop_conditi
     )
 
     capture_status, _, graph, dependencies, _ = cu_call(
-        cudart.cudaStreamGetCaptureInfo(torch.cuda.current_stream(device=device).cuda_stream)
+        cudart.cudaStreamGetCaptureInfo(
+            torch.cuda.current_stream(device=device).cuda_stream
+        )
     )
-    assert capture_status == cudart.cudaStreamCaptureStatus.cudaStreamCaptureStatusActive
+    assert (
+        capture_status == cudart.cudaStreamCaptureStatus.cudaStreamCaptureStatusActive
+    )
 
     driver_params = cuda.CUgraphNodeParams()
     driver_params.type = cuda.CUgraphNodeType.CU_GRAPH_NODE_TYPE_CONDITIONAL
     driver_params.conditional.handle = while_loop_conditional_handle
-    driver_params.conditional.type = cuda.CUgraphConditionalNodeType.CU_GRAPH_COND_TYPE_WHILE
+    driver_params.conditional.type = (
+        cuda.CUgraphConditionalNodeType.CU_GRAPH_COND_TYPE_WHILE
+    )
     driver_params.conditional.size = 1
     if Version(cuda_python_version) == Version("12.3.0"):
         # Work around for https://github.com/NVIDIA/cuda-python/issues/55
@@ -156,7 +182,9 @@ def with_conditional_node(while_loop_kernel, while_loop_args, while_loop_conditi
     # Use driver API here because of bug in cuda-python runtime API: https://github.com/NVIDIA/cuda-python/issues/55
     # TODO: Change call to this after fix goes in (and we bump minimum cuda-python version to 12.4.0):
     # node, = cu_call(cudart.cudaGraphAddNode(graph, dependencies, len(dependencies), driver_params))
-    (node,) = cu_call(cuda.cuGraphAddNode(graph, dependencies, len(dependencies), driver_params))
+    (node,) = cu_call(
+        cuda.cuGraphAddNode(graph, dependencies, len(dependencies), driver_params)
+    )
     body_graph = driver_params.conditional.phGraph_out[0]
 
     cu_call(
@@ -184,7 +212,17 @@ def with_conditional_node(while_loop_kernel, while_loop_args, while_loop_conditi
     yield body_stream, body_graph
 
     cuda.cuLaunchKernel(
-        while_loop_kernel, 1, 1, 1, 1, 1, 1, 0, body_stream.cuda_stream, while_loop_args.ctypes.data, 0
+        while_loop_kernel,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        body_stream.cuda_stream,
+        while_loop_args.ctypes.data,
+        0,
     )
 
     cudart.cudaStreamEndCapture(body_stream.cuda_stream)
@@ -195,7 +233,9 @@ def with_conditional_node(while_loop_kernel, while_loop_args, while_loop_conditi
 def run_nvrtc(kernel_string: str, kernel_name: bytes, program_name: bytes):
     from cuda import cuda, nvrtc
 
-    err, prog = nvrtc.nvrtcCreateProgram(str.encode(kernel_string), program_name, 0, [], [])
+    err, prog = nvrtc.nvrtcCreateProgram(
+        str.encode(kernel_string), program_name, 0, [], []
+    )
     assert_drv(err)
     # Compile program
     # Not specifying --gpu-architecture will default us to a fairly low compute capability, which is a safe bet.

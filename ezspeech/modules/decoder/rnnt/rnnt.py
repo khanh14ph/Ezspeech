@@ -72,7 +72,7 @@ class RNNTDecoder(torch.nn.Module):
         normalization_mode: Optional[str] = None,
         random_state_sampling: bool = False,
         blank_as_pad: bool = True,
-        blank_idx=0
+        blank_idx=0,
     ):
         # Required arguments
         super().__init__()
@@ -80,7 +80,7 @@ class RNNTDecoder(torch.nn.Module):
         self.pred_rnn_layers = prednet["pred_rnn_layers"]
         self.blank_idx = blank_idx
         self.blank_as_pad = blank_as_pad
-        self.vocab_size=vocab_size
+        self.vocab_size = vocab_size
         # Initialize the model (blank token increases vocab size by 1)
 
         # Optional arguments
@@ -815,7 +815,7 @@ class RNNTJoint(torch.nn.Module):
 
         self._vocab_size = num_classes
         self._num_extra_outputs = num_extra_outputs
-        self._num_classes = num_classes +1+ num_extra_outputs
+        self._num_classes = num_classes + 1 + num_extra_outputs
 
         self.masking_prob = masking_prob
         if self.masking_prob > 0.0:
@@ -1029,7 +1029,7 @@ class RNNTJoint(torch.nn.Module):
         Returns:
             Logits / log softmaxed tensor of shape (B, T, U, V + 1).
         """
-        
+
         return self.joint_after_projection(
             self.project_encoder(f), self.project_prednet(g)
         )

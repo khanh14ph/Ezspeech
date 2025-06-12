@@ -8,7 +8,10 @@ import torch.nn.attention
 import torch.nn.functional as F
 
 from ezspeech.utils.common import avoid_float16_autocast_context
+
 INF_VAL = 10000.0
+
+
 class PositionalEncoding(torch.nn.Module):
     """Fixed sinusoidal positional encoding.
     Args:
@@ -19,7 +22,9 @@ class PositionalEncoding(torch.nn.Module):
         dropout_rate_emb (float): dropout rate for the positional embeddings
     """
 
-    def __init__(self, d_model, dropout_rate, max_len=5000, xscale=None, dropout_rate_emb=0.0):
+    def __init__(
+        self, d_model, dropout_rate, max_len=5000, xscale=None, dropout_rate_emb=0.0
+    ):
         """Construct an PositionalEncoding object."""
         super(PositionalEncoding, self).__init__()
         self.d_model = d_model
@@ -35,22 +40,26 @@ class PositionalEncoding(torch.nn.Module):
         pos_length = positions.size(0)
         pe = torch.zeros(pos_length, self.d_model, device=positions.device)
         div_term = torch.exp(
-            torch.arange(0, self.d_model, 2, dtype=torch.float32, device=positions.device)
+            torch.arange(
+                0, self.d_model, 2, dtype=torch.float32, device=positions.device
+            )
             * -(math.log(INF_VAL) / self.d_model)
         )
         pe[:, 0::2] = torch.sin(positions * div_term)
         pe[:, 1::2] = torch.cos(positions * div_term)
         pe = pe.unsqueeze(0).to(dtype)
-        if hasattr(self, 'pe'):
+        if hasattr(self, "pe"):
             self.pe = pe
         else:
-            self.register_buffer('pe', pe, persistent=False)
+            self.register_buffer("pe", pe, persistent=False)
 
     def extend_pe(self, length, device, dtype):
         """Reset and extend the positional encodings if needed."""
-        if hasattr(self, 'pe') and self.pe.size(1) >= length:
+        if hasattr(self, "pe") and self.pe.size(1) >= length:
             return
-        positions = torch.arange(0, length, dtype=torch.float32, device=device).unsqueeze(1)
+        positions = torch.arange(
+            0, length, dtype=torch.float32, device=device
+        ).unsqueeze(1)
         self.create_pe(positions=positions, dtype=dtype)
 
     def forward(self, x: torch.Tensor, cache_len=0):
@@ -86,11 +95,13 @@ class RelPositionalEncoding(PositionalEncoding):
     def extend_pe(self, length, device, dtype):
         """Reset and extend the positional encodings if needed."""
         needed_size = 2 * length - 1
-        if hasattr(self, 'pe') and self.pe.size(1) >= needed_size:
+        if hasattr(self, "pe") and self.pe.size(1) >= needed_size:
             return
         # positions would be from negative numbers to positive
         # positive positions would be used for left positions and negative for right positions
-        positions = torch.arange(length - 1, -length, -1, dtype=torch.float32, device=device).unsqueeze(1)
+        positions = torch.arange(
+            length - 1, -length, -1, dtype=torch.float32, device=device
+        ).unsqueeze(1)
         self.create_pe(positions=positions, dtype=dtype)
 
     def forward(self, x, cache_len=0):

@@ -1,6 +1,3 @@
-
-
-
 import enum
 
 import numpy as np

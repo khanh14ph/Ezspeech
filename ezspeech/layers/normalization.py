@@ -76,6 +76,7 @@ class MixStyleNorm(nn.Module):
 
         return xs
 
+
 class ScaleBiasNorm(nn.Module):
     def __init__(self, d_model: int):
         super(ScaleBiasNorm, self).__init__()

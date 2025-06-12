@@ -3,16 +3,18 @@ from typing import Iterable, Tuple, Union
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-def init_weights(m, mode= 'xavier_uniform'):
+
+
+def init_weights(m, mode="xavier_uniform"):
     if isinstance(m, (nn.Conv1d, nn.Linear)):
         if mode is not None:
-            if mode == 'xavier_uniform':
+            if mode == "xavier_uniform":
                 nn.init.xavier_uniform_(m.weight, gain=1.0)
-            elif mode == 'xavier_normal':
+            elif mode == "xavier_normal":
                 nn.init.xavier_normal_(m.weight, gain=1.0)
-            elif mode == 'kaiming_uniform':
+            elif mode == "kaiming_uniform":
                 nn.init.kaiming_uniform_(m.weight, nonlinearity="relu")
-            elif mode == 'kaiming_normal':
+            elif mode == "kaiming_normal":
                 nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
             else:
                 raise ValueError("Unknown Initialization mode: {0}".format(mode))
@@ -25,12 +27,12 @@ def init_weights(m, mode= 'xavier_uniform'):
             nn.init.ones_(m.weight)
             nn.init.zeros_(m.bias)
 
+
 def complex_matmul(
     a: torch.Tensor,
     b: torch.Tensor,
     groups: int = 1,
 ) -> torch.Tensor:
-
     """Multiplies two complex-valued tensors."""
     # Scalar matrix multiplication of two tensors,
     # over only the first channel dimensions.
@@ -75,6 +77,8 @@ def to_ntuple(val: Union[int, Iterable[int]], n: int) -> Tuple[int, ...]:
             raise ValueError(error)
     else:
         return n * (val,)
+
+
 def fft_convolution(
     signal: torch.Tensor,
     kernel: torch.Tensor,
@@ -84,7 +88,6 @@ def fft_convolution(
     dilation: Union[int, Iterable[int]] = 1,
     groups: int = 1,
 ) -> torch.Tensor:
-
     """
     Performs N-d convolution of Tensors using a fast fourier transform, which
     is very fast for large kernel sizes. Also, optionally adds a bias Tensor
@@ -158,8 +161,11 @@ def fft_convolution(
 
     return output
 
+
 # Copied from transformers.models.bart.modeling_bart.shift_tokens_right
-def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int, decoder_start_token_id: int):
+def shift_tokens_right(
+    input_ids: torch.Tensor, pad_token_id: int, decoder_start_token_id: int
+):
     """
     Shift input ids one token to the right.
     """
@@ -170,13 +176,15 @@ def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int, decoder_start
     if pad_token_id is None:
         raise ValueError("self.model.config.pad_token_id has to be defined.")
     # replace possible -100 values in labels by `pad_token_id`
-    
+
     shifted_input_ids.masked_fill_(shifted_input_ids == -100, pad_token_id)
 
     return shifted_input_ids
-if __name__=="__main__":
-    a=torch.tensor([1,2,3,4,5])
-    a=a.unsqueeze(0)
+
+
+if __name__ == "__main__":
+    a = torch.tensor([1, 2, 3, 4, 5])
+    a = a.unsqueeze(0)
     print(a.shape)
-    b=shift_tokens_right(a,0,9)
+    b = shift_tokens_right(a, 0, 9)
     print(b)

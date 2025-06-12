@@ -11,6 +11,8 @@ from numba import cuda
 
 
 MAX_THREAD_BUFFER = 512
+
+
 @cuda.jit()
 def spec_augment_kernel(
     x: torch.Tensor,
@@ -82,6 +84,7 @@ def spec_augment_kernel(
                     if t < x_len[bm_idx]:
                         x[bm_idx, f, t] = mask_value
 
+
 def launch_spec_augment_kernel(
     x: torch.Tensor,
     x_len: torch.Tensor,
@@ -140,6 +143,7 @@ def launch_spec_augment_kernel(
 
     return x
 
+
 class SpecAugmentNumba(nn.Module):
     """
     Zeroes out(cuts) random continuous horisontal or
@@ -163,10 +167,13 @@ class SpecAugmentNumba(nn.Module):
         rng: Ignored.
     """
 
-
-
     def __init__(
-        self, freq_masks=0, time_masks=0, freq_width=10, time_width=0.1, mask_value=0.0,
+        self,
+        freq_masks=0,
+        time_masks=0,
+        freq_width=10,
+        time_width=0.1,
+        mask_value=0.0,
     ):
         super().__init__()
         # Message to mention that numba specaugment kernel will be available
@@ -180,12 +187,13 @@ class SpecAugmentNumba(nn.Module):
 
         self.mask_value = mask_value
 
-
         if isinstance(time_width, int):
             self.adaptive_temporal_width = False
         else:
             if time_width > 1.0 or time_width < 0.0:
-                raise ValueError('If `time_width` is a float value, must be in range [0, 1]')
+                raise ValueError(
+                    "If `time_width` is a float value, must be in range [0, 1]"
+                )
 
             self.adaptive_temporal_width = True
 
@@ -193,23 +201,37 @@ class SpecAugmentNumba(nn.Module):
     def forward(self, input_spec, length):
         sh = input_spec.shape
         bs = sh[0]
-        input_spec=input_spec.transpose(1,2)
+        input_spec = input_spec.transpose(1, 2)
         # Construct the freq and time masks as well as start positions
         if self.freq_masks > 0:
             freq_starts = torch.randint(
-                0, sh[1] - self.freq_width + 1, size=[bs, self.freq_masks], device=input_spec.device
+                0,
+                sh[1] - self.freq_width + 1,
+                size=[bs, self.freq_masks],
+                device=input_spec.device,
             )
-            freq_lengths = torch.randint(0, self.freq_width + 1, size=[bs, self.freq_masks], device=input_spec.device)
+            freq_lengths = torch.randint(
+                0,
+                self.freq_width + 1,
+                size=[bs, self.freq_masks],
+                device=input_spec.device,
+            )
         else:
-            freq_starts = torch.zeros([bs, 1], dtype=torch.int64, device=input_spec.device)
-            freq_lengths = torch.zeros([bs, 1], dtype=torch.int64, device=input_spec.device)
+            freq_starts = torch.zeros(
+                [bs, 1], dtype=torch.int64, device=input_spec.device
+            )
+            freq_lengths = torch.zeros(
+                [bs, 1], dtype=torch.int64, device=input_spec.device
+            )
 
         if self.time_masks > 0:
             if self.adaptive_temporal_width:
                 time_width = (length * self.time_width).int().clamp(min=1)
             else:
                 time_width = (
-                    torch.tensor(self.time_width, dtype=torch.int32, device=input_spec.device)
+                    torch.tensor(
+                        self.time_width, dtype=torch.int32, device=input_spec.device
+                    )
                     .unsqueeze(0)
                     .repeat(sh[0])
                 )
@@ -219,19 +241,31 @@ class SpecAugmentNumba(nn.Module):
             for idx in range(sh[0]):
                 time_starts.append(
                     torch.randint(
-                        0, max(1, length[idx] - time_width[idx]), size=[1, self.time_masks], device=input_spec.device
+                        0,
+                        max(1, length[idx] - time_width[idx]),
+                        size=[1, self.time_masks],
+                        device=input_spec.device,
                     )
                 )
                 time_lengths.append(
-                    torch.randint(0, time_width[idx] + 1, size=[1, self.time_masks], device=input_spec.device)
+                    torch.randint(
+                        0,
+                        time_width[idx] + 1,
+                        size=[1, self.time_masks],
+                        device=input_spec.device,
+                    )
                 )
 
             time_starts = torch.cat(time_starts, 0)
             time_lengths = torch.cat(time_lengths, 0)
 
         else:
-            time_starts = torch.zeros([bs, 1], dtype=torch.int64, device=input_spec.device)
-            time_lengths = torch.zeros([bs, 1], dtype=torch.int64, device=input_spec.device)
+            time_starts = torch.zeros(
+                [bs, 1], dtype=torch.int64, device=input_spec.device
+            )
+            time_lengths = torch.zeros(
+                [bs, 1], dtype=torch.int64, device=input_spec.device
+            )
 
         x = launch_spec_augment_kernel(
             input_spec,
@@ -244,8 +278,10 @@ class SpecAugmentNumba(nn.Module):
             time_masks=self.time_masks,
             mask_value=self.mask_value,
         )
-        x=x.transpose(1,2)
+        x = x.transpose(1, 2)
         return x
+
+
 class SpecAugment(nn.Module):
     """
     Zeroes out(cuts) random continuous horisontal or
@@ -270,7 +306,6 @@ class SpecAugment(nn.Module):
 
     FREQ_AXIS = 1  # Frequency axis in the spectrogram tensor
     TIME_AXIS = 2  # Time axis in the spectrogram tensor
-
 
     def __init__(
         self,
@@ -299,7 +334,9 @@ class SpecAugment(nn.Module):
             self.adaptive_temporal_width = False
         else:
             if time_width > 1.0 or time_width < 0.0:
-                raise ValueError("If `time_width` is a float value, must be in range [0, 1]")
+                raise ValueError(
+                    "If `time_width` is a float value, must be in range [0, 1]"
+                )
 
             self.adaptive_temporal_width = True
 
@@ -342,7 +379,9 @@ class SpecAugment(nn.Module):
         masked_spec = input_spec.masked_fill(mask=fill_mask, value=self.mask_value)
         return masked_spec
 
-    def _forward_vectorized(self, input_spec: torch.Tensor, length: torch.Tensor) -> torch.Tensor:
+    def _forward_vectorized(
+        self, input_spec: torch.Tensor, length: torch.Tensor
+    ) -> torch.Tensor:
         # time masks
         input_spec = self._apply_masks(
             input_spec=input_spec,
@@ -392,9 +431,16 @@ class SpecAugment(nn.Module):
 
         # Generate [0-1) random numbers and then scale the tensors.
         # Use float32 dtype for begin/end mask markers before they are quantized to long.
-        mask_width = torch.rand((batch_size, num_masks), device=input_spec.device, dtype=torch.float32) * width
+        mask_width = (
+            torch.rand(
+                (batch_size, num_masks), device=input_spec.device, dtype=torch.float32
+            )
+            * width
+        )
         mask_width = mask_width.long()
-        mask_start = torch.rand((batch_size, num_masks), device=input_spec.device, dtype=torch.float32)
+        mask_start = torch.rand(
+            (batch_size, num_masks), device=input_spec.device, dtype=torch.float32
+        )
 
         if axis == self.TIME_AXIS:
             # length can only be used for the time axis
@@ -409,7 +455,9 @@ class SpecAugment(nn.Module):
         indices = torch.arange(axis_length, device=input_spec.device)
         # Create a mask_tensor with all the indices.
         # The mask_tensor shape is (batch_size, num_masks, axis_length).
-        mask_tensor = (indices >= mask_start.unsqueeze(-1)) & (indices < mask_end.unsqueeze(-1))
+        mask_tensor = (indices >= mask_start.unsqueeze(-1)) & (
+            indices < mask_end.unsqueeze(-1)
+        )
 
         # Reduce masks to one mask
         mask_tensor = mask_tensor.any(dim=1)
@@ -424,6 +472,8 @@ class SpecAugment(nn.Module):
 
         # Apply the mask value
         return input_spec.masked_fill(mask=mask, value=mask_value)
+
+
 class SpeedPerturbation:
     r"""Adjust the speed of the input by that factor.
 

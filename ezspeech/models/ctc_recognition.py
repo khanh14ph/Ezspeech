@@ -34,7 +34,7 @@ class ASR_hybrid_ctc_rnnt_training(LightningModule):
         self.ctc_decoder = instantiate(config.model.decoder)
         for param in self.ctc_decoder.parameters():
             param.requires_grad = False
-        self.ctc_decoder_extra=instantiate(config.model.decoder_extra)
+        self.ctc_decoder_extra = instantiate(config.model.decoder_extra)
 
         self.ctc_loss = instantiate(config.model.loss.ctc_loss)
 
@@ -93,9 +93,7 @@ class ASR_hybrid_ctc_rnnt_training(LightningModule):
         features, feature_lengths = self.preprocessor(wavs, wav_lengths)
         # features = self.spec_augment(features, feature_lengths)
 
-        loss = self._shared_step(
-            features, feature_lengths, targets, target_lengths
-        )
+        loss = self._shared_step(features, feature_lengths, targets, target_lengths)
 
         # Add current loss to window
         self.window_losses.append(loss.item())
@@ -108,8 +106,6 @@ class ASR_hybrid_ctc_rnnt_training(LightningModule):
             self.mean_losses.append(mean_loss)
             self.plot_losses()
 
-
-
         self.log("loss", loss, sync_dist=True, prog_bar=True)
         return loss
 
@@ -119,9 +115,7 @@ class ASR_hybrid_ctc_rnnt_training(LightningModule):
         wavs, wav_lengths, targets, target_lengths = batch
         features, feature_lengths = self.preprocessor(wavs, wav_lengths)
 
-        loss = self._shared_step(
-            features, feature_lengths, targets, target_lengths
-        )
+        loss = self._shared_step(features, feature_lengths, targets, target_lengths)
 
         self.log("val_loss", loss, sync_dist=True, prog_bar=True)
         return loss
@@ -137,7 +131,7 @@ class ASR_hybrid_ctc_rnnt_training(LightningModule):
         enc_outs, enc_lens = self.encoder(inputs, input_lengths)
         ctc_logits = self.ctc_decoder(enc_outs)
         ctc_logits_extra = self.ctc_decoder_extra(enc_outs)
-        final_ctc_logits=torch.cat([ctc_logits,ctc_logits_extra],dim=-1)
+        final_ctc_logits = torch.cat([ctc_logits, ctc_logits_extra], dim=-1)
 
         ctc_loss = self.ctc_loss(
             log_probs=final_ctc_logits,
@@ -145,7 +139,6 @@ class ASR_hybrid_ctc_rnnt_training(LightningModule):
             input_lengths=enc_lens,
             target_lengths=target_lengths,
         )
-       
 
         return ctc_loss
 
@@ -189,7 +182,7 @@ class ASR_hybrid_ctc_rnnt_training(LightningModule):
             "state_dict": {
                 "preprocessor": self.preprocessor.state_dict(),
                 "encoder": self.encoder.state_dict(),
-                "ctc_decoder": self.ctc_decoder.state_dict()
+                "ctc_decoder": self.ctc_decoder.state_dict(),
             },
             "hyper_parameters": self.hparams.config.model,
         }

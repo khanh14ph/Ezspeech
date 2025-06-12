@@ -19,7 +19,6 @@ import torch.nn.functional as F
 from torch import nn
 
 
-
 class CausalConv2D(nn.Conv2d):
     """
     A causal version of nn.Conv2d where each location in the 2D matrix would have no access to locations on its right or down
@@ -36,7 +35,7 @@ class CausalConv2D(nn.Conv2d):
         dilation: int = 1,
         groups: int = 1,
         bias: bool = True,
-        padding_mode: str = 'zeros',
+        padding_mode: str = "zeros",
         device=None,
         dtype=None,
     ) -> None:
@@ -61,9 +60,18 @@ class CausalConv2D(nn.Conv2d):
         )
 
     def forward(
-        self, x,
+        self,
+        x,
     ):
-        x = F.pad(x, pad=(self._left_padding, self._right_padding, self._left_padding, self._right_padding))
+        x = F.pad(
+            x,
+            pad=(
+                self._left_padding,
+                self._right_padding,
+                self._left_padding,
+                self._right_padding,
+            ),
+        )
         x = super().forward(x)
         return x
 
@@ -90,7 +98,7 @@ class CausalConv1D(nn.Conv1d):
         dilation: int = 1,
         groups: int = 1,
         bias: bool = True,
-        padding_mode: str = 'zeros',
+        padding_mode: str = "zeros",
         device=None,
         dtype=None,
     ) -> None:
@@ -104,7 +112,11 @@ class CausalConv1D(nn.Conv1d):
             if isinstance(padding, int):
                 self._left_padding = padding
                 self._right_padding = padding
-            elif isinstance(padding, list) and len(padding) == 2 and padding[0] + padding[1] == kernel_size - 1:
+            elif (
+                isinstance(padding, list)
+                and len(padding) == 2
+                and padding[0] + padding[1] == kernel_size - 1
+            ):
                 self._left_padding = padding[0]
                 self._right_padding = padding[1]
             else:

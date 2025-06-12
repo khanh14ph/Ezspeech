@@ -380,7 +380,7 @@ class BeamRNNTInfer:
 
         with torch.inference_mode():
             # Apply optional preprocessing
-              # (B, T, D)
+            # (B, T, D)
 
             self.decoder.eval()
             self.joint.eval()

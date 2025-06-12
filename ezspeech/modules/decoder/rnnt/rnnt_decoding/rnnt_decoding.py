@@ -35,7 +35,7 @@ class RNNTDecoding:
         blank_id = 0
 
         self.labels_map = dict([(i, vocabulary[i]) for i in range(len(vocabulary))])
-        self.vocab_size=len(self.labels_map)
+        self.vocab_size = len(self.labels_map)
         # Convert dataclass to config object
 
         self.cfg = decoding_cfg
@@ -172,7 +172,6 @@ class RNNTDecoding:
                 f"Incorrect decoding strategy supplied. Must be one of {possible_strategies}\n"
                 f"but was provided {self.cfg.strategy}"
             )
-
 
     def rnnt_decoder_predictions_tensor(
         self,

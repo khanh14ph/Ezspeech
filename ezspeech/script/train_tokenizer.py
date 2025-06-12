@@ -4,6 +4,7 @@ import random
 import json
 from tqdm import tqdm
 import re
+
 # i = re.sub('<[^>]*>', '', i)
 
 # import glob
@@ -34,8 +35,12 @@ import re
 #     # bos_id=2,
 #     # eos_id=3,
 # )
-lst=open("/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/en_upper.vocab").read().splitlines()
-lst=[i.split()[0] for i in lst]
-with open("/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/en_upper.txt","w") as f:
+lst = (
+    open("/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/en_upper.vocab")
+    .read()
+    .splitlines()
+)
+lst = [i.split()[0] for i in lst]
+with open("/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/en_upper.txt", "w") as f:
     for i in lst:
-        f.write(i+"\n")
+        f.write(i + "\n")

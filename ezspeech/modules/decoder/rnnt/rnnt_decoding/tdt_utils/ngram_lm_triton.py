@@ -1,5 +1,3 @@
-
-
 import triton
 import triton.language as tl
 
@@ -51,7 +49,9 @@ def ngram_advance_triton_kernel(
     # loop until we process start state; it should be guaranteed that in the start state we have all vocabulary tokens
     while start_state_not_processed:
         tl.debug_barrier()  # force threads synchronization
-        start_idx, end_idx = tl.load(start_end_arcs_ptr + cur_state * 2 + tl.arange(0, 2)).split()
+        start_idx, end_idx = tl.load(
+            start_end_arcs_ptr + cur_state * 2 + tl.arange(0, 2)
+        ).split()
         indices = start_idx + vocab_offsets
         mask = indices < end_idx
 
@@ -61,15 +61,26 @@ def ngram_advance_triton_kernel(
         cur_to_states = tl.load(to_states_ptr + indices, mask=mask)
 
         # store scores for arcs reached in the current state (but not processed previously)
-        not_final_mask = tl.load(new_states_ptr + batch_i * vocab_size + cur_ilabels, mask=mask, other=0) == -1
+        not_final_mask = (
+            tl.load(
+                new_states_ptr + batch_i * vocab_size + cur_ilabels, mask=mask, other=0
+            )
+            == -1
+        )
         tl.store(
             scores_ptr + batch_i * vocab_size + cur_ilabels,
             cur_weights + accumulated_backoff,
             mask=not_final_mask,
         )
-        tl.store(new_states_ptr + batch_i * vocab_size + cur_ilabels, cur_to_states, mask=not_final_mask)
+        tl.store(
+            new_states_ptr + batch_i * vocab_size + cur_ilabels,
+            cur_to_states,
+            mask=not_final_mask,
+        )
 
         start_state_not_processed = cur_state != start_state
         # process backoffs
         accumulated_backoff += tl.load(backoff_weights_ptr + cur_state)
-        cur_state = tl.load(backoff_to_states_ptr + cur_state).to(states_ptr.dtype.element_ty)
+        cur_state = tl.load(backoff_to_states_ptr + cur_state).to(
+            states_ptr.dtype.element_ty
+        )

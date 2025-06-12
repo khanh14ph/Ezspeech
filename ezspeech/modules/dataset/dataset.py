@@ -10,9 +10,12 @@ import torchaudio.transforms as T
 from ezspeech.modules.dataset.utils.text import tokenize
 from ezspeech.utils.common import load_dataset, time_reduction
 from ezspeech.modules.dataset.utils.text import Tokenizer
-vn_word_lst=open("/home4/khanhnd/Ezspeech/ezspeech/resource/vn_word_lst.txt").read().splitlines()
 
-
+vn_word_lst = (
+    open("/home4/khanhnd/Ezspeech/ezspeech/resource/vn_word_lst.txt")
+    .read()
+    .splitlines()
+)
 
 
 class SpeechRecognitionDataset(Dataset):
@@ -25,16 +28,20 @@ class SpeechRecognitionDataset(Dataset):
 
         self.dataset = load_dataset(filepaths)
 
-        self.audio_augment= []
+        self.audio_augment = []
         self.augmentation_cfg = augmentation
         if augmentation:
-            self.audio_augment= [instantiate(cfg) for cfg in self.augmentation_cfg.values()]
+            self.audio_augment = [
+                instantiate(cfg) for cfg in self.augmentation_cfg.values()
+            ]
         self.resampler = {
             8000: T.Resample(8000, 16000),
             24000: T.Resample(24000, 16000),
         }
-    def set_tokenizer(self,tokenzier):
-        self.tokenizer=tokenzier
+
+    def set_tokenizer(self, tokenzier):
+        self.tokenizer = tokenzier
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, ...]:
         data = self.dataset[idx]
         audio_filepath = data["audio_filepath"]
@@ -49,14 +56,15 @@ class SpeechRecognitionDataset(Dataset):
             speech = self.resampler[sample_rate](speech)
             sample_rate = 16000
 
-        tokens=self.tokenizer.encode(transcript)
+        tokens = self.tokenizer.encode(transcript)
         tokens = torch.tensor(tokens, dtype=torch.long)
         return speech, tokens
 
     def __len__(self) -> int:
         return len(self.dataset)
-    def collate_asr_data(self,batch: List[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
-        pad_id=0
+
+    def collate_asr_data(self, batch: List[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
+        pad_id = 0
         wavs = [b[0][0] for b in batch]
         wav_lengths = [torch.tensor(len(f)) for f in wavs]
 
@@ -67,7 +75,9 @@ class SpeechRecognitionDataset(Dataset):
         max_tokens_len = max(tokens_lengths).item()
 
         new_audio_signal, new_tokens = [], []
-        for sig, sig_len, tokens_i, tokens_i_len in zip(wavs,wav_lengths,tokens,tokens_lengths):
+        for sig, sig_len, tokens_i, tokens_i_len in zip(
+            wavs, wav_lengths, tokens, tokens_lengths
+        ):
             if sig_len < max_audio_len:
                 pad = (0, max_audio_len - sig_len)
                 sig = torch.nn.functional.pad(sig, pad)
@@ -85,6 +95,7 @@ class SpeechRecognitionDataset(Dataset):
 
         return new_audio_signal, audio_lengths, new_tokens, tokens_lengths
 
+
 class ASRDatasetBilingual(Dataset):
     def __init__(
         self,
@@ -95,15 +106,20 @@ class ASRDatasetBilingual(Dataset):
     ):
         super(SpeechRecognitionDataset, self).__init__()
         sample_rate = 16000
-        self.tokenizer=Tokenizer(vocab_file,spe_file=spe_file)
-        self.tokenizer_extra=Tokenizer("/home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/vi/vocab.txt",spe_file="/home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/vi/tokenizer.model")
-        self.blank_idx=1024
+        self.tokenizer = Tokenizer(vocab_file, spe_file=spe_file)
+        self.tokenizer_extra = Tokenizer(
+            "/home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/vi/vocab.txt",
+            spe_file="/home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/vi/tokenizer.model",
+        )
+        self.blank_idx = 1024
         self.dataset = load_dataset(filepaths)
 
-        self.audio_augment= []
+        self.audio_augment = []
         self.augmentation_cfg = augmentation
         if augmentation:
-            self.audio_augment= [instantiate(cfg) for cfg in self.augmentation_cfg.values()]
+            self.audio_augment = [
+                instantiate(cfg) for cfg in self.augmentation_cfg.values()
+            ]
         self.resampler = {
             8000: T.Resample(8000, 16000),
             24000: T.Resample(24000, 16000),
@@ -123,31 +139,34 @@ class ASRDatasetBilingual(Dataset):
             speech = self.resampler[sample_rate](speech)
             sample_rate = 16000
 
-        tokens=self.tokenize_bilingual(transcript,data["lan_id"])
-        
-        return speech, tokens
-    def tokenize_mix_word(self,word):
-        if word in vn_word_lst:
-            tokens=self.tokenizer_extra.encode(word)
-            tokens = torch.tensor(tokens, dtype=torch.long)+1025
-        else:
-            tokens=self.tokenizer.encode(word)
-            tokens = torch.tensor(tokens, dtype=torch.long)
-    def tokenize_bilingual(self,sentence,lan_id):
+        tokens = self.tokenize_bilingual(transcript, data["lan_id"])
 
-        if lan_id=="vi":
-            tokens=self.tokenizer_extra.encode(sentence)
-            tokens = torch.tensor(tokens, dtype=torch.long)+1025
+        return speech, tokens
+
+    def tokenize_mix_word(self, word):
+        if word in vn_word_lst:
+            tokens = self.tokenizer_extra.encode(word)
+            tokens = torch.tensor(tokens, dtype=torch.long) + 1025
+        else:
+            tokens = self.tokenizer.encode(word)
+            tokens = torch.tensor(tokens, dtype=torch.long)
+
+    def tokenize_bilingual(self, sentence, lan_id):
+
+        if lan_id == "vi":
+            tokens = self.tokenizer_extra.encode(sentence)
+            tokens = torch.tensor(tokens, dtype=torch.long) + 1025
             return tokens
-        elif lan_id=="en":
-            tokens=self.tokenizer.encode(sentence)
+        elif lan_id == "en":
+            tokens = self.tokenizer.encode(sentence)
             tokens = torch.tensor(tokens, dtype=torch.long)
             return tokens
         else:
-            temp=[]
-            sentence=sentence.split(sentence)
+            temp = []
+            sentence = sentence.split(sentence)
             for i in sentence:
                 temp.append(self.tokenize_mix_word(i))
             return torch.cat(temp)
+
     def __len__(self) -> int:
         return len(self.dataset)
