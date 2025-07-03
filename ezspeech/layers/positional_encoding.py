@@ -95,13 +95,11 @@ class RelPositionalEncoding(PositionalEncoding):
     def extend_pe(self, length, device, dtype):
         """Reset and extend the positional encodings if needed."""
         needed_size = 2 * length - 1
-        if hasattr(self, "pe") and self.pe.size(1) >= needed_size:
+        if hasattr(self, 'pe') and self.pe.size(1) >= needed_size:
             return
         # positions would be from negative numbers to positive
         # positive positions would be used for left positions and negative for right positions
-        positions = torch.arange(
-            length - 1, -length, -1, dtype=torch.float32, device=device
-        ).unsqueeze(1)
+        positions = torch.arange(length - 1, -length, -1, dtype=torch.float32, device=device).unsqueeze(1)
         self.create_pe(positions=positions, dtype=dtype)
 
     def forward(self, x, cache_len=0):

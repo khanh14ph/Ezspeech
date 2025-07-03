@@ -72,13 +72,12 @@ class RNNTDecoder(torch.nn.Module):
         normalization_mode: Optional[str] = None,
         random_state_sampling: bool = False,
         blank_as_pad: bool = True,
-        blank_idx=0,
     ):
         # Required arguments
         super().__init__()
         self.pred_hidden = prednet["pred_hidden"]
         self.pred_rnn_layers = prednet["pred_rnn_layers"]
-        self.blank_idx = blank_idx
+        self.blank_idx = vocab_size
         self.blank_as_pad = blank_as_pad
         self.vocab_size = vocab_size
         # Initialize the model (blank token increases vocab size by 1)
@@ -963,11 +962,12 @@ class RNNTJoint(torch.nn.Module):
 
                     # compute and preserve loss
                     loss_batch = self.loss(
-                        log_probs=sub_joint,
-                        targets=sub_transcripts,
-                        input_lengths=sub_enc_lens,
-                        target_lengths=sub_transcript_lens,
+                        sub_joint,
+                        sub_transcripts,
+                        sub_enc_lens,
+                        sub_transcript_lens,
                     )
+ 
 
                     losses.append(loss_batch)
                     target_lengths.append(sub_transcript_lens)

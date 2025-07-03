@@ -363,7 +363,7 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
         self.decoder.train(decoder_training_state)
         self.joint.train(joint_training_state)
 
-        return packed_result
+        return (packed_result,)
 
     @torch.no_grad()
     def _greedy_decode(
@@ -633,8 +633,7 @@ class GreedyBatchedTDTInfer(_GreedyRNNTInfer):
 
         self.decoder.train(decoder_training_state)
         self.joint.train(joint_training_state)
-
-        return packed_result
+        return (packed_result,)
 
     def _greedy_decode_masked(
         self,

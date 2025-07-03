@@ -24,7 +24,7 @@ def convert_nemo_to_ez(nemo_path, ez_checkpoint_folder):
     module_set = []
     for i in nemo_weights.keys():
         module_set.append(i.split(".")[0])
-    module_set = list(set(module_set))
+    module_set = sorted(list(set(module_set)))
 
     nemo_config = OmegaConf.load(temp_dir + "/model_config.yaml")
     print("module_set", module_set)
@@ -61,6 +61,6 @@ def convert_nemo_to_ez(nemo_path, ez_checkpoint_folder):
 
 if __name__ == "__main__":
     convert_nemo_to_ez(
-        "/home4/khanhnd/parakeet-tdt_ctc-110m.nemo",
-        "/home4/khanhnd/Ezspeech/checkpoint",
+        "/home4/khanhnd/cache/hub/models--nvidia--stt_en_fastconformer_hybrid_large_streaming_multi/snapshots/ae98143333690bd7ced4bc8ec16769bcb8918374/stt_en_fastconformer_hybrid_large_streaming_multi.nemo",
+        "/home4/khanhnd/exported_checkpoint/checkpoint_streaming",
     )

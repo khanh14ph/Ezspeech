@@ -804,17 +804,6 @@ class BeamTDTInfer:
                 kept_hyps[hyp_key] = hyp
         return list(kept_hyps.values())
 
-    # def set_decoding_type(self, decoding_type: str):
-    #     """
-    #     Sets decoding type. Please check train_kenlm.py in scripts/asr_language_modeling/ to find out why we need
-    #     Args:
-    #         decoding_type: decoding type
-    #     """
-    #     # TOKEN_OFFSET for BPE-based models
-    #     if decoding_type == 'subword':
-    #         from nemo.collections.asr.parts.submodules.ctc_beam_decoding import DEFAULT_TOKEN_OFFSET
-
-    #         self.token_offset = DEFAULT_TOKEN_OFFSET
 
     def prefix_search(
         self,
@@ -1005,7 +994,7 @@ class BeamBatchedTDTInfer:
                 blank_index=self._blank_index,
                 max_symbols_per_step=self.max_symbols,
                 ngram_lm_model=ngram_lm_model,
-                vocab_size=self.vocab_size,
+                # vocab_size=self.vocab_size,
                 ngram_lm_alpha=ngram_lm_alpha,
                 blank_lm_score_mode=blank_lm_score_mode,
                 pruning_mode=pruning_mode,
@@ -1059,4 +1048,4 @@ class BeamBatchedTDTInfer:
 
         self.decoder.train(decoder_training_state)
         self.joint.train(joint_training_state)
-        return [i.n_best_hypotheses[0] for i in hyps]
+        return (hyps,)

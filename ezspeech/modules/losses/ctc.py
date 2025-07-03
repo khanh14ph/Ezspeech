@@ -20,33 +20,17 @@ __all__ = ["CTCLoss"]
 
 
 class CTCLoss(nn.CTCLoss):
-    def __init__(self, blank_idx, zero_infinity=False, reduction="mean_batch"):
+    def __init__(self, blank_idx, zero_infinity=False, reduction="mean"):
         # Don't forget to properly call base constructor
         if reduction not in ["none", "mean", "sum", "mean_batch", "mean_volume"]:
             raise ValueError(
                 "`reduction` must be one of [mean, sum, mean_batch, mean_volume]"
             )
 
-        self.config_reduction = reduction
-        if reduction == "mean_batch" or reduction == "mean_volume":
-            ctc_reduction = "none"
-            self._apply_reduction = True
-        elif reduction in ["sum", "mean", "none"]:
-            ctc_reduction = reduction
-            self._apply_reduction = False
+     
         super().__init__(
-            blank=blank_idx, reduction=ctc_reduction, zero_infinity=zero_infinity
+            blank=blank_idx, reduction=reduction, zero_infinity=zero_infinity
         )
-
-    def reduce(self, losses, target_lengths):
-        if self.config_reduction == "mean_batch":
-            losses = losses.mean()  # global batch size average
-        elif self.config_reduction == "mean_volume":
-            losses = (
-                losses.sum() / target_lengths.sum()
-            )  # same as above but longer samples weigh more
-
-        return losses
 
     def forward(self, log_probs, targets, input_lengths, target_lengths):
 
@@ -61,6 +45,4 @@ class CTCLoss(nn.CTCLoss):
             input_lengths=input_lengths,
             target_lengths=target_lengths,
         )
-        if self._apply_reduction:
-            loss = self.reduce(loss, target_lengths)
         return loss

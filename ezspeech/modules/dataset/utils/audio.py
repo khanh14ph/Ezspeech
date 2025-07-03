@@ -17,7 +17,6 @@ import torch
 import torch.nn as nn
 import torchaudio
 
-# from nemo.collections.asr.modules.audio_preprocessing import AudioToMelSpectrogram
 CONSTANT = 1e-5
 
 
@@ -316,7 +315,6 @@ class AudioToMelSpectrogramPreprocessor(nn.Module):
             input_signal.to(torch.float32), length
         )
         processed_signal = processed_signal.to(self.dtype_sentinel_tensor.dtype)
-        processed_signal = processed_signal.transpose(1, 2)
         return processed_signal, processed_length
 
     @property
@@ -389,24 +387,20 @@ class FilterbankFeatures(nn.Module):
         self.win_length = n_window_size
         self.hop_length = n_window_stride
         self.n_fft = n_fft or 2 ** math.ceil(math.log2(self.win_length))
-        self.stft_pad_amount = (
-            (self.n_fft - self.hop_length) // 2 if exact_pad else None
-        )
+        self.stft_pad_amount = (self.n_fft - self.hop_length) // 2 if exact_pad else None
         self.exact_pad = exact_pad
 
         if exact_pad:
             print("STFT using exact pad")
         torch_windows = {
-            "hann": torch.hann_window,
-            "hamming": torch.hamming_window,
-            "blackman": torch.blackman_window,
-            "bartlett": torch.bartlett_window,
-            "none": None,
+            'hann': torch.hann_window,
+            'hamming': torch.hamming_window,
+            'blackman': torch.blackman_window,
+            'bartlett': torch.bartlett_window,
+            'none': None,
         }
         window_fn = torch_windows.get(window, None)
-        window_tensor = (
-            window_fn(self.win_length, periodic=False) if window_fn else None
-        )
+        window_tensor = window_fn(self.win_length, periodic=False) if window_fn else None
         self.register_buffer("window", window_tensor)
 
         self.normalize = normalize
@@ -420,21 +414,14 @@ class FilterbankFeatures(nn.Module):
 
         filterbanks = torch.tensor(
             librosa.filters.mel(
-                sr=sample_rate,
-                n_fft=self.n_fft,
-                n_mels=nfilt,
-                fmin=lowfreq,
-                fmax=highfreq,
-                norm=mel_norm,
+                sr=sample_rate, n_fft=self.n_fft, n_mels=nfilt, fmin=lowfreq, fmax=highfreq, norm=mel_norm
             ),
             dtype=torch.float,
         ).unsqueeze(0)
         self.register_buffer("fb", filterbanks)
 
         # Calculate maximum sequence length
-        max_length = self.get_seq_len(
-            torch.tensor(max_duration * sample_rate, dtype=torch.float)
-        )
+        max_length = self.get_seq_len(torch.tensor(max_duration * sample_rate, dtype=torch.float))
         max_pad = pad_to - (max_length % pad_to) if pad_to > 0 else 0
         self.max_length = max_length + max_pad
         self.pad_value = pad_value
@@ -463,15 +450,6 @@ class FilterbankFeatures(nn.Module):
         # log_zero_guard_value is the the small we want to use, we support
         # an actual number, or "tiny", or "eps"
         self.log_zero_guard_type = log_zero_guard_type
-        print(f"sr: {sample_rate}")
-        print(f"n_fft: {self.n_fft}")
-        print(f"win_length: {self.win_length}")
-        print(f"hop_length: {self.hop_length}")
-        print(f"n_mels: {nfilt}")
-        print(f"fmin: {lowfreq}")
-        print(f"fmax: {highfreq}")
-        print(f"using grads: {use_grads}")
-        print(f"nb_augmentation_prob: {nb_augmentation_prob}")
 
     def stft(self, x):
         return torch.stft(
@@ -480,7 +458,7 @@ class FilterbankFeatures(nn.Module):
             hop_length=self.hop_length,
             win_length=self.win_length,
             center=False if self.exact_pad else True,
-            window=self.window.to(dtype=torch.float),
+            window=self.window.to(dtype=torch.float, device=x.device),
             return_complex=True,
         )
 
@@ -501,14 +479,8 @@ class FilterbankFeatures(nn.Module):
 
     def get_seq_len(self, seq_len):
         # Assuming that center is True is stft_pad_amount = 0
-        pad_amount = (
-            self.stft_pad_amount * 2
-            if self.stft_pad_amount is not None
-            else self.n_fft // 2 * 2
-        )
-        seq_len = (
-            torch.floor_divide((seq_len + pad_amount - self.n_fft), self.hop_length) + 1
-        )
+        pad_amount = self.stft_pad_amount * 2 if self.stft_pad_amount is not None else self.n_fft // 2 * 2
+        seq_len = torch.floor_divide((seq_len + pad_amount - self.n_fft), self.hop_length) + 1
         return seq_len.to(dtype=torch.long)
 
     @property
@@ -516,7 +488,9 @@ class FilterbankFeatures(nn.Module):
         return self.fb
 
     def forward(self, x, seq_len, linear_spec=False):
-        seq_len = self.get_seq_len(seq_len)
+        seq_len_unfixed = self.get_seq_len(seq_len)
+        # fix for seq_len = 0 for streaming; if size was 0, it is always padded to 1, and normalizer fails
+        seq_len = torch.where(seq_len == 0, torch.zeros_like(seq_len_unfixed), seq_len_unfixed)
 
         if self.stft_pad_amount is not None:
             x = torch.nn.functional.pad(
@@ -529,9 +503,7 @@ class FilterbankFeatures(nn.Module):
 
         # do preemphasis
         if self.preemph is not None:
-            x = torch.cat(
-                (x[:, 0].unsqueeze(1), x[:, 1:] - self.preemph * x[:, :-1]), dim=1
-            )
+            x = torch.cat((x[:, 0].unsqueeze(1), x[:, 1:] - self.preemph * x[:, :-1]), dim=1)
 
         # disable autocast to get full range of stft values
         with torch.amp.autocast(x.device.type, enabled=False):
@@ -582,15 +554,11 @@ class FilterbankFeatures(nn.Module):
         max_len = x.size(-1)
         mask = torch.arange(max_len, device=x.device)
         mask = mask.repeat(x.size(0), 1) >= seq_len.unsqueeze(1)
-        x = x.masked_fill(
-            mask.unsqueeze(1).type(torch.bool).to(device=x.device), self.pad_value
-        )
+        x = x.masked_fill(mask.unsqueeze(1).type(torch.bool).to(device=x.device), self.pad_value)
         del mask
         pad_to = self.pad_to
         if pad_to == "max":
-            x = nn.functional.pad(
-                x, (0, self.max_length - x.size(-1)), value=self.pad_value
-            )
+            x = nn.functional.pad(x, (0, self.max_length - x.size(-1)), value=self.pad_value)
         elif pad_to > 0:
             pad_amt = x.size(-1) % pad_to
             if pad_amt != 0:

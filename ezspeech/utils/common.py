@@ -84,10 +84,11 @@ def load_module(
 ) -> torch.nn.Module:
 
     net = instantiate(hparams)
+    net.eval()
     net.load_state_dict(weights)
     net.to(device)
 
-    net.eval()
+    
     for param in net.parameters():
         param.requires_grad = False
 

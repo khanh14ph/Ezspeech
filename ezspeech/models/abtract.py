@@ -26,7 +26,7 @@ class SpeechModel(LightningModule, ABC):
         self.val_dataset = instantiate(self.config.dataset.val_ds, _recursive_=False)
         self.preprocessor = instantiate(config.model.preprocessor)
 
-        self.spec_augment = instantiate(config.model.spec_augment)
+        # self.spec_augment = instantiate(config.model.spec_augment)
         # Add loss tracking lists
         # Use deque with maxlen=100 to store last 100 losses
         self.window_losses = deque(maxlen=100)

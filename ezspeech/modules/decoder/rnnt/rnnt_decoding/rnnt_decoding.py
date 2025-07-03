@@ -32,7 +32,7 @@ class RNNTDecoding:
         super(RNNTDecoding, self).__init__()
 
         # we need to ensure blank is the last token in the vocab for the case of RNNT and Multi-blank RNNT.
-        blank_id = 0
+        blank_id = len(vocabulary)
 
         self.labels_map = dict([(i, vocabulary[i]) for i in range(len(vocabulary))])
         self.vocab_size = len(self.labels_map)
@@ -187,7 +187,6 @@ class RNNTDecoding:
             encoder_output: torch.Tensor of shape [B, D, T].
             encoded_lengths: torch.Tensor containing lengths of the padded encoder outputs. Shape [B].
             return_hypotheses: bool. If set to True it will return list of Hypothesis or NBestHypotheses
-            partial_hypotheses: Optional list of partial hypotheses to continue decoding from
 
         Returns:
             If `return_all_hypothesis` is set:
@@ -202,17 +201,46 @@ class RNNTDecoding:
         # Compute hypotheses
         with torch.inference_mode():
             hypotheses_list = self.decoding(
-                encoder_output=encoder_output,
-                encoded_lengths=encoded_lengths,
-                partial_hypotheses=partial_hypotheses,
+                encoder_output=encoder_output, encoded_lengths=encoded_lengths, partial_hypotheses=partial_hypotheses
             )  # type: [List[Hypothesis]]
 
-        hypotheses = self.decode_hypothesis(hypotheses_list)  # type: List[str]
+            # extract the hypotheses
+            hypotheses_list = hypotheses_list[0]  # type: List[Hypothesis]
 
-        return [
-            {"idx_sequence": h.y_sequence, "score": h.score, "timestamp": h.timestamp}
-            for h in hypotheses
-        ]
+        prediction_list = hypotheses_list
+
+        if isinstance(prediction_list[0], NBestHypotheses):
+            hypotheses = []
+            all_hypotheses = []
+
+            for nbest_hyp in prediction_list:  # type: NBestHypotheses
+                n_hyps = nbest_hyp.n_best_hypotheses  # Extract all hypotheses for this sample
+                decoded_hyps = self.decode_hypothesis(n_hyps)  # type: List[str]
+
+            
+
+                hypotheses.append(decoded_hyps[0])  # best hypothesis
+                all_hypotheses.append(decoded_hyps)
+
+            if return_hypotheses:
+                return all_hypotheses  # type: list[list[Hypothesis]]
+
+            all_hyp = [[Hypothesis(h.score, h.y_sequence, h.text) for h in hh] for hh in all_hypotheses]
+            return all_hyp
+
+        else:
+            hypotheses = self.decode_hypothesis(prediction_list)  # type: List[str]
+
+           
+            if return_hypotheses:
+                # greedy decoding, can get high-level confidence scores
+                if self.preserve_frame_confidence and (
+                    self.preserve_word_confidence or self.preserve_token_confidence
+                ):
+                    hypotheses = self.compute_confidence(hypotheses)
+                return hypotheses
+
+            return [Hypothesis(h.score, h.y_sequence, h.text) for h in hypotheses]
 
     def decode_hypothesis(
         self, hypotheses_list: List[Hypothesis]

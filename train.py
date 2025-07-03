@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 import torch
-from ezspeech.models.ASR import SpeechRecognitionTask
+from ezspeech.models.ASR import RNNT_CTC_Training
 from ezspeech.utils import color
 from tqdm import tqdm
 
@@ -12,9 +12,9 @@ pl.seed_everything(42, workers=True)
 torch.set_float32_matmul_precision("medium")
 
 
-@hydra.main(version_base=None, config_path="config", config_name="asr1")
+@hydra.main(version_base=None, config_path="config", config_name="asr")
 def main(config: DictConfig):
-    task = SpeechRecognitionTask(config)
+    task = RNNT_CTC_Training(config)
     if config.model.get("model_pretrained") is not None:
         checkpoint_filepath = config.model.model_pretrained.path + "/model_weights.ckpt"
         checkpoint = torch.load(
@@ -27,7 +27,7 @@ def main(config: DictConfig):
             if hasattr(task, attr):
                 weights = checkpoint["state_dict"][attr]
                 # try:
-                net = getattr(task, attr)
+                net = getattr(task, attr).train()
                 net.load_state_dict(weights)
                 print(
                     f"Modules {color.GREEN}{attr}{color.RESET} loaded successfully from checkpoint"

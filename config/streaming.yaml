@@ -1,11 +1,11 @@
 dataset:
   tokenizer:
     _target_: ezspeech.modules.dataset.utils.text.Tokenizer
-    spe_file: /home4/khanhnd/Ezspeech/checkpoint/tokenizer.model
+    spe_file: /home4/khanhnd/exported_checkpoint/checkpoint_streaming/tokenizer.model
   train_ds:
     _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
     filepaths:
-      - /home4/khanhnd/Ezspeech/data/vlsp2020.jsonl
+      - /home4/khanhnd/Ezspeech/data/libri.jsonl
     # augmentation:
           # speed_perturbation:
           #   _target_: ezspeech.datas.augment.SpeedPerturbation
@@ -39,10 +39,10 @@ dataset:
   val_ds:
     _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
     filepaths:
-    - /home4/khanhnd/Ezspeech/data/test.jsonl
+    - /home4/khanhnd/Ezspeech/data/libri_test.jsonl
 
   loaders:
-    batch_size: 4
+    batch_size: 2
     num_workers: 8
     pin_memory: false
 
@@ -56,8 +56,8 @@ model:
   vocab_size: &vocab_size 1024
   init_from_nemo_model:
   model_pretrained:
-    path: /home4/khanhnd/Ezspeech/checkpoint
-    include: ["preprocessor","encoder","joint","decoder","ctc_decoder"]
+    path: /home4/khanhnd/exported_checkpoint/checkpoint_streaming
+    include: ["preprocessor","encoder",ctc_decoder]
   freeze_encoder_steps: 1000
   preprocessor:
     _target_: ezspeech.modules.dataset.utils.audio.AudioToMelSpectrogramPreprocessor
@@ -72,7 +72,7 @@ model:
     dither: 1.0e-05
     pad_to: 0
   spec_augment:
-    _target_: ezspeech.modules.dataset.augment.SpecAugment
+    _target_: ezspeech.modules.dataset.augment.SpecAugmentNumba
     freq_masks: 2
     time_masks: 10
     freq_width: 27
@@ -80,35 +80,59 @@ model:
   encoder:
     _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
     feat_in: ${model.preprocessor.features}
-    feat_out: -1
+    feat_out: -1 # you may set it if you need different output size other than the default d_model
     n_layers: 17
-    d_model: *enc_hidden
-    subsampling: dw_striding
-    subsampling_factor: 8
-    subsampling_conv_channels: 256
-    causal_downsampling: false
-    reduction: null
-    reduction_position: null
-    reduction_factor: 1
+    d_model: 512
+    use_bias: True # whether to apply bias in the feedforward, MHA and convolution modules
+
+    # Sub-sampling parameters
+    subsampling: dw_striding # vggnet, striding, stacking or stacking_norm, dw_striding
+    subsampling_factor: 8 # must be power of 2 for striding and vggnet
+    subsampling_conv_channels: 256 # set to -1 to make it equal to the d_model
+    causal_downsampling: true
+
+    # Feed forward module's params
     ff_expansion_factor: 4
-    self_attention_model: rel_pos
-    n_heads: 8
-    att_context_size:
-    - -1
-    - -1
-    att_context_style: regular
-    xscaling: false
-    untie_biases: true
+
+    # Multi-headed Attention Module's params
+    self_attention_model: rel_pos # rel_pos or abs_pos
+    n_heads: 8 # may need to be lower for smaller d_models
+
+    # [left, right] specifies the number of steps to be seen from left and right of each step in self-attention
+    # for att_context_style=regular, the right context is recommended to be a small number around 0 to 3 as multiple-layers may increase the effective right context too large
+    # for att_context_style=chunked_limited, the left context need to be dividable by the right context plus one
+    # look-ahead(secs) = att_context_size[1]*subsampling_factor*window_stride, example: 13*8*0.01=1.04s
+
+    # For multi-lookahead models, you may specify a list of context sizes. During the training, different context sizes would be used randomly with the distribution specified by att_context_probs.
+    # The first item in the list would be the default during test/validation/inference.
+    # An example of settings for multi-lookahead:
+    att_context_size: [[70,13],[70,6],[70,1],[70,0]]
+    att_context_probs: [0.25, 0.25, 0.25, 0.25]
+    # att_context_size: [70, 13] # -1 means unlimited context
+    att_context_style: chunked_limited # regular or chunked_limited
+    # att_context_probs: null
+
+    xscaling: true # scales up the input embeddings by sqrt(d_model)
     pos_emb_max_len: 5000
+
+    # Convolution module's params
     conv_kernel_size: 9
-    conv_norm_type: batch_norm
-    conv_context_size: null
-    dropout: 0.1
-    dropout_pre_encoder: 0.1
-    dropout_emb: 0.0
-    dropout_att: 0.1
+    conv_norm_type: 'layer_norm' # batch_norm or layer_norm or groupnormN (N specifies the number of groups)
+
+    # conv_context_size can be"causal" or a list of two integers while conv_context_size[0]+conv_context_size[1]+1==conv_kernel_size
+    # null means [(kernel_size-1)//2, (kernel_size-1)//2], and 'causal' means [(kernel_size-1), 0]
+    # Recommend to use causal convolutions as it would increase the effective right context and therefore the look-ahead significantly
+    conv_context_size: causal
+
+    ### regularization
+    dropout: 0.1 # The dropout used in most of the Conformer Modules
+    dropout_pre_encoder: 0.1 # The dropout used before the encoder
+    dropout_emb: 0.0 # The dropout used for embeddings
+    dropout_att: 0.1 # The dropout for multi-headed attention modules
+
+    # set to non-zero to enable stochastic depth
     stochastic_depth_drop_prob: 0.0
-    stochastic_depth_mode: linear
+    stochastic_depth_mode: linear  # linear or uniform
     stochastic_depth_start_layer: 1
   ctc_decoder:
     _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
@@ -119,19 +143,21 @@ model:
 
   decoder:
     _target_: ezspeech.modules.decoder.rnnt.rnnt.RNNTDecoder
+    # _target_: nemo.collections.asr.modules.rnnt.RNNTDecoder
     vocab_size: *vocab_size
     normalization_mode: null # Currently only null is supported for export.
     random_state_sampling: false # Random state sampling: https://arxiv.org/pdf/1910.11455.pdf
     blank_as_pad: true # This flag must be set in order to support exporting of RNNT models + efficient inference.
-
     prednet:
       pred_hidden: *pred_hidden
       pred_rnn_layers: 1
       t_max: null
       dropout: 0.2
+        # this is used to set the blank index in the prediction net, which is required for TDT models
 
   joint:
     _target_: ezspeech.modules.decoder.rnnt.rnnt.RNNTJoint
+    # _target_: nemo.collections.asr.modules.rnnt.RNNTJoint
     num_classes: *vocab_size
     log_softmax: null  # 'null' would set it automatically according to CPU/GPU device
     preserve_memory: false  # dramatically slows down training, but might preserve some memory
@@ -145,7 +171,7 @@ model:
     # However, to preserve memory, this ratio can be 1:8 or even 1:16.
     # Extreme case of 1:B (i.e. fused_batch_size=1) should be avoided as training speed would be very slow.
     fuse_loss_wer: true
-    fused_batch_size: 1
+    fused_batch_size: 2
 
     jointnet:
       encoder_hidden: *enc_hidden
@@ -162,19 +188,20 @@ loss:
     _target_: ezspeech.modules.losses.ctc.CTCLoss
     blank_idx: *vocab_size
     reduction: mean
-    zero_infinity: True
+    zero_infinity: false
   rnnt_loss:
     _target_: ezspeech.modules.losses.rnnt.TDTLoss
+    # _target_: nemo.collections.asr.parts.numba.rnnt_loss.rnnt_pytorch.TDTLossNumba
     blank_idx: *vocab_size
     reduction: mean
     # FastEmit regularization: https://arxiv.org/abs/2010.11148
     # You may enable FastEmit to reduce the latency of the model for streaming
-    fastemit_lambda: 0.001  # Recommended values to be in range [1e-4, 1e-2], 0.001 is a good start.
+    fastemit_lambda: 0.000  # Recommended values to be in range [1e-4, 1e-2], 0.001 is a good start.
     clamp: -1.0  # if > 0, applies gradient clamping in range [-clamp, clamp] for the joint tensor only.
 
     # refer to https://arxiv.org/abs/2304.06795 for the meaning of the following three configs.
     durations: ${model.tdt_durations}
-    sigma: 0.05 # hyper-param for under-normalization.
+    sigma: 0.02 # hyper-param for under-normalization.
     omega: 0.1 # weight for regular RNN-T loss.
 metric:
   decoding: self.decoding,
@@ -199,11 +226,11 @@ callbacks:
   lr:
     _target_: pytorch_lightning.callbacks.LearningRateMonitor
 
-  swa:
-    _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
-    swa_lrs: 1e-6
-    swa_epoch_start: 0.8
-    annealing_epochs: 1
+  # swa:
+  #   _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
+  #   swa_lrs: 1e-6
+  #   swa_epoch_start: 0.8
+  #   annealing_epochs: 1
 
   cb:
     _target_: pytorch_lightning.callbacks.ModelCheckpoint
@@ -227,8 +254,9 @@ trainer:
   max_epochs: 200
   strategy: ddp
   accelerator: gpu
-  devices: [1]
+  devices: [0]
   accumulate_grad_batches: 1
+  # gradient_clip_val: 1
   # detect_anomaly: True
-  precision: 32
-  val_check_interval: 0.01
+  precision: bf16-mixed
+  val_check_interval: 0.5

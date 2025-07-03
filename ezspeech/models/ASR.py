@@ -3,19 +3,24 @@ import glob
 import time
 import shutil
 from typing import Tuple, List
-
+import torchaudio
 import torch
+from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 from omegaconf import DictConfig, OmegaConf
 import hydra
+import numpy as np
 from hydra.utils import instantiate
 
 from ezspeech.models.abtract import SpeechModel
 from ezspeech.modules.dataset.utils.text import Tokenizer
 from ezspeech.modules.metric.wer import WER
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_decoding import RNNTDecoding
+
 from ezspeech.utils.common import load_module
+
+
 class RNNT_CTC_Training(SpeechModel):
     def __init__(self, config: DictConfig):
         super().__init__(config)
@@ -29,8 +34,8 @@ class RNNT_CTC_Training(SpeechModel):
         self.val_dataset.set_tokenizer(self.tokenizer)
 
         self.encoder = instantiate(config.model.encoder)
-        for param in self.encoder.parameters():
-            param.requires_grad = False
+        # for param in self.encoder.parameters():
+        #     param.requires_grad = False
 
         self.ctc_decoder = instantiate(config.model.ctc_decoder)
         self.decoder = instantiate(config.model.decoder)
@@ -61,7 +66,7 @@ class RNNT_CTC_Training(SpeechModel):
                 param.requires_grad = True
         wavs, wav_lengths, targets, target_lengths = batch
         features, feature_lengths = self.preprocessor(wavs, wav_lengths)
-        features = self.spec_augment(features, feature_lengths)
+        # features = self.spec_augment(features, feature_lengths)
 
         loss, ctc_loss, rnnt_loss = self._shared_step(
             features, feature_lengths, targets, target_lengths
@@ -110,7 +115,7 @@ class RNNT_CTC_Training(SpeechModel):
 
         enc_outs, enc_lens = self.encoder(inputs, input_lengths)
         ctc_logits = self.ctc_decoder(enc_outs)
-
+        
         decoder_outputs, target_length, states = self.decoder(
             targets=targets, target_length=target_lengths
         )
@@ -119,16 +124,19 @@ class RNNT_CTC_Training(SpeechModel):
             decoder_outputs=decoder_outputs,
             encoder_lengths=enc_lens,
             transcripts=targets,
-            transcript_lengths=target_lengths,
+            transcript_lengths=target_length,
         )
-
+        for i,j in zip(enc_lens, target_lengths):
+            if i < j:
+                print("Warning: Encoder length is less than target length. This may cause issues with CTC loss calculation.")
+                print(f"Encoder length: {i}, Target length: {j}")
         ctc_loss = self.ctc_loss(
             log_probs=ctc_logits,
             targets=targets,
             input_lengths=enc_lens,
             target_lengths=target_lengths,
         )
-        loss = 0.7 * ctc_loss + 0.3 * rnnt_loss
+        loss =0.5* ctc_loss + 0.5* rnnt_loss
 
         return loss, ctc_loss, rnnt_loss
 
@@ -151,9 +159,6 @@ class RNNT_CTC_Training(SpeechModel):
         print(" ")
 
 
-
-
-
 class RNNT_CTC_Inference(object):
     def __init__(
         self, filepath: str, device: str, tokenizer_path: str = None, decoding_cfg=None
@@ -168,12 +173,12 @@ class RNNT_CTC_Inference(object):
             self.preprocessor,
             self.encoder,
             self.ctc_decoder,
-            self.predictor,
-            self.joint,
-        ) = self._load_checkpoint(filepath, device)
-        self.rnnt_decoding = RNNTDecoding(
-            decoding_cfg, self.predictor, self.joint, self.vocab
-        )
+            # self.predictor,
+            # self.joint,
+        ) = self._load_checkpoint(filepath+"/model.ckpt", device)
+        # self.rnnt_decoding = RNNTDecoding(
+        #     decoding_cfg.rnnt, self.predictor, self.joint, self.vocab
+        # )
 
     def _load_checkpoint(self, filepath: str, device: str):
         checkpoint = torch.load(filepath, map_location="cpu", weights_only=False)
@@ -185,47 +190,204 @@ class RNNT_CTC_Inference(object):
             hparams["preprocessor"], weights["preprocessor"], device
         )
         encoder = load_module(hparams["encoder"], weights["encoder"], device)
+
         ctc_decoder = load_module(
             hparams["ctc_decoder"], weights["ctc_decoder"], device
         )
 
-        predictor = load_module(hparams["decoder"], weights["decoder"], device)
-        joint = load_module(hparams["joint"], weights["joint"], device)
+        # predictor = load_module(hparams["decoder"], weights["decoder"], device).eval()
+        # joint = load_module(hparams["joint"], weights["joint"], device).eval()
 
-        return preprocessor, encoder, ctc_decoder, predictor, joint
+        # return preprocessor, encoder, ctc_decoder, predictor, joint
+        return preprocessor, encoder, ctc_decoder
 
     @torch.inference_mode()
     def forward_encoder(
-        self, speeches: List[torch.Tensor], sample_rates: List[int]
+        self, speeches: List[torch.Tensor]
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
-        xs, x_lens = self.collate_wav(speeches, sample_rates)
+        xs, x_lens = self.collate_wav(speeches)
         xs, x_lens = self.preprocessor(xs.to(self.device), x_lens.to(self.device))
         enc_outs, enc_lens = self.encoder(xs, x_lens)
-
         return enc_outs, enc_lens
 
     @torch.inference_mode()
-    def greedy_tdt_decode(
-        self, enc_outs: List[torch.Tensor], enc_lens: List[torch.Tensor]
+    def tdt_decode(
+        self,
+        enc_outs: List[torch.Tensor],
+        enc_lens: List[torch.Tensor],
+        previous_hypotheses=None,
     ):
         hypothesises = self.rnnt_decoding.rnnt_decoder_predictions_tensor(
-            encoder_output=enc_outs, encoded_lengths=enc_lens
+            encoder_output=enc_outs,
+            encoded_lengths=enc_lens,
+            partial_hypotheses=previous_hypotheses,
         )
+        print(hypothesises)
         text_token = [
-            self.idx_to_token(hypothesis["idx_sequence"]) for hypothesis in hypothesises
+            self.idx_to_token(hypothesis.y_sequence) for hypothesis in hypothesises
         ]
         text = ["".join(i).replace("|", " ") for i in text_token]
         text = [i.replace("▁", " ").strip() for i in text]
-        return text
+        return text,hypothesises
+    def decode_hybrid(self,enc_outs: List[torch.Tensor],
+        enc_lens: List[torch.Tensor],
+        previous_hypotheses=None,
+        type_decode="ctc"):
+        if type_decode=="ctc":
+            return self.ctc_decode(enc_outs,enc_lens)
+        else:
+            return self.tdt_decode(enc_outs,enc_lens,previous_hypotheses)
+    def transcribe(self, audio_lst,previous_hyp=None):
+        audios = [torchaudio.load(i) for i in audio_lst]
+        speeches = [i[0] for i in audios]
+        sample_rates = [i[1] for i in audios]
+        enc, enc_length = self.forward_encoder(speeches)
+        res = self.ctc_decode(enc, enc_length)
+        return res
+
+    def transcribe_chunk(self, audio_signal):
+        self.pre_encode_cache_size = self.encoder.streaming_cfg.pre_encode_cache_size[1]
+
+        audio_signal, audio_signal_len = self.collate_wav([audio_signal])
+
+        processed_signal, processed_signal_length = self.preprocessor(
+            input_signal=audio_signal.to(self.device),
+            length=audio_signal_len.to(self.device),
+        )
+        processed_signal = torch.cat([self.cache_pre_encode, processed_signal], dim=-1)
+        processed_signal_length += self.cache_pre_encode.shape[1]
+        self.cache_pre_encode = processed_signal[:, :, -self.pre_encode_cache_size :]
+        with torch.no_grad():
+            (
+                transcribed_texts,
+                self.cache_last_channel,
+                self.cache_last_time,
+                self.cache_last_channel_len,
+                self.previous_hypotheses,
+            ) = self.stream_step(
+                processed_signal=processed_signal,
+                processed_signal_length=processed_signal_length,
+                cache_last_channel=self.cache_last_channel,
+                cache_last_time=self.cache_last_time,
+                cache_last_channel_len=self.cache_last_channel_len,
+                keep_all_outputs=False,
+                previous_hypotheses=self.previous_hypotheses,
+                drop_extra_pre_encoded=None,
+            )
+        # step_num += 1
+
+        return transcribed_texts[0]
+
+    def stream_step(
+        self,
+        processed_signal: Tensor,
+        processed_signal_length: Tensor = None,
+        cache_last_channel: Tensor = None,
+        cache_last_time: Tensor = None,
+        cache_last_channel_len: Tensor = None,
+        keep_all_outputs: bool = True,
+        previous_hypotheses: List = None,
+        drop_extra_pre_encoded: int = None,
+    ):
+        (
+            encoded,
+            encoded_len,
+            cache_last_channel_next,
+            cache_last_time_next,
+            cache_last_channel_next_len,
+        ) = self.encoder.cache_aware_stream_step(
+            processed_signal=processed_signal,
+            processed_signal_length=processed_signal_length,
+            cache_last_channel=cache_last_channel,
+            cache_last_time=cache_last_time,
+            cache_last_channel_len=cache_last_channel_len,
+            keep_all_outputs=keep_all_outputs,
+            drop_extra_pre_encoded=drop_extra_pre_encoded,
+        )
+        best_hyp = self.decode_hybrid(
+            enc_outs=encoded,
+            enc_lens=encoded_len,
+            previous_hypotheses=previous_hypotheses,
+            type_decode="ctc"
+        )
+        result = [
+            best_hyp,
+            cache_last_channel_next,
+            cache_last_time_next,
+            cache_last_channel_next_len,
+            best_hyp,
+        ]
+        return tuple(result)
+
+    def transcribe_streaming(self, audio_file_path):
+
+        ENCODER_STEP_LENGTH = 80  # Example value, adjust as needed
+        lookahead_size = 1040  # Example value, adjust as needed
+        chunk_size = lookahead_size + ENCODER_STEP_LENGTH
+        SAMPLE_RATE = 16000
+
+        left_context_size = self.encoder.att_context_size[0]
+        self.encoder.set_default_att_context_size(
+            [left_context_size, int(lookahead_size / ENCODER_STEP_LENGTH)]
+        )
+        self.cache_last_channel, self.cache_last_time, self.cache_last_channel_len = (
+            self.encoder.get_initial_cache_state(batch_size=1)
+        )
+        self.previous_hypotheses = None
+        self.pred_out_stream = None
+        step_num = 0
+        self.pre_encode_cache_size = self.encoder.streaming_cfg.pre_encode_cache_size[1]
+        # cache-aware models require some small section of the previous processed_signal to
+        # be fed in at each timestep - we initialize this to a tensor filled with zeros
+        # so that we will do zero-padding for the very first chunk(s)
+        num_channels = 80
+        self.cache_pre_encode = torch.zeros(
+            (1, num_channels, self.pre_encode_cache_size), device=self.device
+        )
+        import numpy as np
+        import time
+
+        # Constants
+
+        waveform, sample_rate = torchaudio.load(audio_file_path)
+
+        # Ensure the sample rate matches
+        if sample_rate != SAMPLE_RATE:
+            print(
+                f"Warning: Expected sample rate {SAMPLE_RATE}, but got {sample_rate}."
+            )
+
+        print("Processing audio file...")
+
+        # Calculate the number of chunks
+        num_samples = waveform.size(1)
+        chunk_samples = int(SAMPLE_RATE * chunk_size / 1000)
+        num_chunks = num_samples // chunk_samples
+        # Process the audio in chunks
+        for i in range(num_chunks + 1):
+            start_sample = i * chunk_samples
+            end_sample = start_sample + chunk_samples
+            signal = waveform[0, start_sample:end_sample]  # Get the chunk
+
+            if signal.numel() == 0:
+                break  # End of file
+            signal = signal.unsqueeze(0)
+            text = self.transcribe_chunk(signal)  # Convert to numpy for processing
+            # print(f"\r{' ' * 100}", end="")  # Clear previous line
+            if text.strip():  # Only print if there's actual text
+                print(text, end=" ", flush=True)
+
+            time.sleep(chunk_size / 1000)  # Simulate processing time for each chunk
+
+        print("\nAudio file processing completed.")
 
     @torch.inference_mode()
-    def greedy_ctc_decode(
-        self, enc_outs: List[torch.Tensor], enc_lens: List[torch.Tensor]
-    ):
+    def ctc_decode(self, enc_outs: List[torch.Tensor], enc_lens: List[torch.Tensor]):
         logits = self.ctc_decoder(enc_outs)
         predicted_ids = torch.argmax(logits, dim=-1)
-        predicted_ids = [torch.unique_consecutive(i) for i in predicted_ids]
+        # predicted_ids = [torch.unique_consecutive(i) for i in predicted_ids]
+        print("predicted_ids:", predicted_ids)
         predicted_tokens = [self.idx_to_token(i) for i in predicted_ids]
         predicted_transcripts = ["".join(i) for i in predicted_tokens]
         predicted_transcripts = [
@@ -238,9 +400,8 @@ class RNNT_CTC_Inference(object):
         return [self.vocab[i] for i in lst]
 
     def collate_wav(
-        self, speeches: List[torch.Tensor], sample_rates: List[int]
+        self, speeches: List[torch.Tensor]
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        assert len(speeches) == len(sample_rates), "The batch is mismatch."
 
         wavs = [b[0] for b in speeches]
         wav_lengths = [torch.tensor(len(f)) for f in wavs]
@@ -257,18 +418,16 @@ class RNNT_CTC_Inference(object):
 
 
 if __name__ == "__main__":
+
     config = OmegaConf.load("/home4/khanhnd/Ezspeech/config/test/test.yaml")
     model = instantiate(config.model)
     import torchaudio
 
-    audio2, sr2 = torchaudio.load(
-        "/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/train-clean-100/374/180298/374-180298-0004.flac"
-    )
-    audio1, sr1 = torchaudio.load(
-        "/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/train-clean-100/374/180298/374-180298-0004.flac"
-    )
-    audio = [audio1, audio2]
-    sr = [sr1, sr2]
-    enc, enc_length = model.forward_encoder(audio, sr)
-    print(model.greedy_ctc_decode(enc, enc_length))
-    print(model.greedy_tdt_decode(enc, enc_length))
+    audio1 = "/home4/khanhnd/vivos/test/waves/VIVOSDEV02/VIVOSDEV02_R170.wav"
+    #THE ENGLISH FORWARDED TO THE FRENCH BASKETS OF FLOWERS OF WHICH THEY HAD MADE A PLENTIFUL PROVISION TO GREET THE ARRIVAL OF THE YOUNG PRINCESS THE FRENCH IN RETURN INVITED THE ENGLISH TO A SUPPER WHICH WAS TO BE GIVEN THE NEXT DAY
+    # audio = [audio1]
+    # audio2="/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/test-clean/6930/75918/6930-75918-0000.flac"
+    # print(model.transcribe_streaming(audio1))
+    tex1=model.transcribe([audio1])
+    print(tex1)
+    # print(model.transcribe(audio)[0]=="hear nothing thing so expezcaris flow boes theatre sus days country tele can never refer one'ssel as i have tou had little money and")

@@ -295,7 +295,6 @@ class ModifiedALSDBatchedTDTComputer:
         durations,
         blank_index: int,
         beam_size: int,
-        vocab_size: int,
         max_symbols_per_step: Optional[int] = 10,
         preserve_alignments=False,
         ngram_lm_model: Optional[str | Path] = None,
@@ -337,14 +336,13 @@ class ModifiedALSDBatchedTDTComputer:
         self.state = None
         self.full_graph = None
         self.separate_graphs = None
-        self.vocab_size = vocab_size
         self.cuda_graphs_mode = None
         self.maybe_enable_cuda_graphs()
 
         if ngram_lm_model is not None:
 
             self.ngram_lm_batch = NGramGPULanguageModel.from_file(
-                lm_path=ngram_lm_model, vocab_size=self.vocab_size
+                lm_path=ngram_lm_model, vocab_size=self._blank_index
             )
 
             self.pruning_mode = (
