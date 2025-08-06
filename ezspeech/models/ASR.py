@@ -153,7 +153,10 @@ class RNNT_CTC_Training(SpeechModel):
         }
 
         config = self.config
-        shutil.copy(self.config.dataset.tokenizer.spe_file, export_path)
+        try:
+            shutil.copy(self.config.dataset.tokenizer.spe_file, export_path)
+        except: 
+            shutil.copy(self.config.dataset.tokenizer.vocab_file, export_path)
         OmegaConf.save(config, export_path + "/config.yaml")
         torch.save(checkpoint, export_path + "/model.ckpt")
         print(" ")
@@ -167,7 +170,7 @@ class RNNT_CTC_Inference(object):
         self.beam_size = 5
 
         self.device = device
-        self.tokenizer = Tokenizer(spe_file=tokenizer_path)
+        self.tokenizer = Tokenizer(vocab_file=tokenizer_path)
         self.vocab = self.tokenizer.vocab
         (
             self.preprocessor,
@@ -386,12 +389,12 @@ class RNNT_CTC_Inference(object):
     def ctc_decode(self, enc_outs: List[torch.Tensor], enc_lens: List[torch.Tensor]):
         logits = self.ctc_decoder(enc_outs)
         predicted_ids = torch.argmax(logits, dim=-1)
-        # predicted_ids = [torch.unique_consecutive(i) for i in predicted_ids]
+        predicted_ids = [torch.unique_consecutive(i) for i in predicted_ids]
         print("predicted_ids:", predicted_ids)
         predicted_tokens = [self.idx_to_token(i) for i in predicted_ids]
         predicted_transcripts = ["".join(i) for i in predicted_tokens]
         predicted_transcripts = [
-            i.replace("▁", " ").strip() for i in predicted_transcripts
+            i.replace("_", " ").strip() for i in predicted_transcripts
         ]
         return predicted_transcripts
 
@@ -423,7 +426,7 @@ if __name__ == "__main__":
     model = instantiate(config.model)
     import torchaudio
 
-    audio1 = "/home4/khanhnd/vivos/test/waves/VIVOSDEV02/VIVOSDEV02_R170.wav"
+    audio1 = "/home4/khanhnd/vivos/test/waves/VIVOSDEV02/VIVOSDEV02_R181.wav"
     #THE ENGLISH FORWARDED TO THE FRENCH BASKETS OF FLOWERS OF WHICH THEY HAD MADE A PLENTIFUL PROVISION TO GREET THE ARRIVAL OF THE YOUNG PRINCESS THE FRENCH IN RETURN INVITED THE ENGLISH TO A SUPPER WHICH WAS TO BE GIVEN THE NEXT DAY
     # audio = [audio1]
     # audio2="/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/test-clean/6930/75918/6930-75918-0000.flac"

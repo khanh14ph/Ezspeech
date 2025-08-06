@@ -2,7 +2,7 @@ model:
   _target_: ezspeech.models.ASR.RNNT_CTC_Inference
   filepath: /home4/khanhnd/exported_checkpoint/models
   device: cuda
-  tokenizer_path: /home4/khanhnd/exported_checkpoint/models/tokenizer.model
+  tokenizer_path: /home4/khanhnd/exported_checkpoint/models/bilingual.txt
   decoding_cfg: 
     rnnt:
     # Using greedy decoding is highly recommended for TDT models. Using greedy-batch will give very bad results

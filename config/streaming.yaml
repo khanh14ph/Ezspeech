@@ -57,7 +57,7 @@ model:
   init_from_nemo_model:
   model_pretrained:
     path: /home4/khanhnd/exported_checkpoint/checkpoint_streaming
-    include: ["preprocessor","encoder",ctc_decoder]
+    include: ["preprocessor","encoder"]
   freeze_encoder_steps: 1000
   preprocessor:
     _target_: ezspeech.modules.dataset.utils.audio.AudioToMelSpectrogramPreprocessor
