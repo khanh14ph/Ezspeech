@@ -5,7 +5,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
 
-from ezspeech.models.ASR import RNNT_CTC_Training
+from ezspeech.models.ctc_recognition import ASR_ctc_training
 from ezspeech.utils import color
 
 pl.seed_everything(42, workers=True)
@@ -14,7 +14,7 @@ torch.set_float32_matmul_precision("medium")
 
 @hydra.main(version_base=None, config_path="config", config_name="ctc")
 def main(config: DictConfig):
-    task = RNNT_CTC_Training(config)
+    task = ASR_ctc_training(config)
     if config.model.get("model_pretrained") is not None:
         checkpoint_filepath = config.model.model_pretrained.path + "/model_weights.ckpt"
         checkpoint = torch.load(

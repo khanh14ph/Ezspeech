@@ -15,7 +15,7 @@ from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
 from ezspeech.models.abtract import SpeechModel
-from ezspeech.modules.dataset.utils.text import Tokenizer
+from ezspeech.modules.data.utils.text import Tokenizer
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_decoding import RNNTDecoding
 from ezspeech.modules.metric.wer import WER
 from ezspeech.utils.common import load_module

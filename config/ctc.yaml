@@ -1,30 +1,32 @@
 dataset:
-  vocab: &vocab /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/vocab.txt
+  # vocab: &vocab /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/vocab.txt
+  spe_file: /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/vi/tokenizer.model
   train_ds:
-    _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     filepaths:
-      - /home4/khanhnd/data_combine/libri.jsonl
-    vocab_file: *vocab
-    spe_file: /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/tdt_ctc_110m_nemo_spe_bpe_v1024.model
+      - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
+    
 
   val_ds:
-    _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     filepaths:
-    - /home4/khanhnd/Ezspeech/data/vivos_libri_test.jsonl
-    spe_file: /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/tdt_ctc_110m_nemo_spe_bpe_v1024.model
-    vocab_file: *vocab
-  train_loaders:
-    batch_size: 4
+    - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
+  train_loader:
+    max_batch_duration: 80
+    num_bucket: 20
     num_workers: 8
-    pin_memory: false
+    pin_memory: True
+  val_loader:
+    batch_size: 1
+    num_workers: 4
+    pin_memory: True
 
 model:
   d_model: &d_model 512
   vocab_size: &vocab_size 2049
   pretrained_weights: /home4/khanhnd/models/parakeet/ezspeech.ckpt
-  freeze_encoder_steps: 1000
   preprocessor:
-    _target_: ezspeech.modules.dataset.utils.audio.AudioToMelSpectrogramPreprocessor
+    _target_: ezspeech.modules.data.utils.audio.AudioToMelSpectrogramPreprocessor
     sample_rate: 16000
     normalize: per_feature
     window_size: 0.025
@@ -36,7 +38,7 @@ model:
     dither: 1.0e-05
     pad_to: 0
   spec_augment:
-    _target_: ezspeech.modules.dataset.augment.SpecAugment
+    _target_: ezspeech.modules.data.augment.SpecAugment
     freq_masks: 2
     time_masks: 10
     freq_width: 27
@@ -132,7 +134,7 @@ trainer:
   max_epochs: 200
   strategy: ddp
   accelerator: gpu
-  devices: [2]
+  devices: [3]
   accumulate_grad_batches: 1
   # detect_anomaly: True
   precision: 16

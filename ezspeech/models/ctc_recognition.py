@@ -9,7 +9,6 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-from ezspeech.modules.data.dataset import collate_asr_data
 from ezspeech.modules.data.sampler import DynamicBatchSampler
 from ezspeech.modules.data.utils.text import Tokenizer
 from ezspeech.optims.scheduler import NoamAnnealing
@@ -28,12 +27,11 @@ class ASR_ctc_training(LightningModule):
         self.encoder = instantiate(config.model.encoder)
 
         self.ctc_decoder = instantiate(config.model.decoder)
-        self.ctc_decoder_extra = instantiate(config.model.decoder_extra)
 
         self.ctc_loss = instantiate(config.model.loss.ctc_loss)
 
         # Initialize tokenizer for WER calculation
-        self.tokenizer = Tokenizer(vocab_file=config.dataset.train_ds.vocab_file)
+        self.tokenizer = Tokenizer(spe_file=config.dataset.spe_file)
 
         # Initialize WER accumulation for validation set
         self.val_predictions = []
@@ -41,9 +39,10 @@ class ASR_ctc_training(LightningModule):
 
     def train_dataloader(self) -> DataLoader:
         dataset = instantiate(self.hparams.config.dataset.train_ds, _recursive_=False)
+        dataset.set_tokenizer(self.tokenizer)
         sampler = DistributedSampler(dataset)
         # dataset=self.get_distributed_dataset(dataset)
-        loader = self.hparams.dataset.train_loader
+        loader = self.hparams.config.dataset.train_loader
 
         dynamic_batcher = DynamicBatchSampler(
             sampler=sampler,
@@ -53,7 +52,7 @@ class ASR_ctc_training(LightningModule):
         train_dl = DataLoader(
             dataset=dataset,
             batch_sampler=dynamic_batcher,
-            collate_fn=collate_asr_data,
+            collate_fn=dataset.collate_asr_data,
             # shuffle=True,
 
         )
@@ -61,14 +60,15 @@ class ASR_ctc_training(LightningModule):
 
     def val_dataloader(self) -> DataLoader:
         dataset = instantiate(self.hparams.config.dataset.val_ds, _recursive_=False)
-        val_loaders = self.hparams.dataset.val_loaders
+        dataset.set_tokenizer(self.tokenizer)
+        val_loader = self.hparams.config.dataset.val_loader
         sampler = DistributedSampler(dataset)
         val_dl = DataLoader(
             dataset=dataset,
             sampler=sampler,
-            collate_fn=collate_asr_data,
+            collate_fn=dataset.collate_asr_data,
             shuffle=False,
-            **val_loaders,
+            **val_loader,
         )
 
         return val_dl

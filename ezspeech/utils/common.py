@@ -121,4 +121,10 @@ def avoid_float16_autocast_context():
 
 
 if __name__ == "__main__":
-    pass
+    import pandas as pd
+    import librosa
+    df=pd.read_csv("/home4/khanhnd/Ezspeech/dataset/demo.csv",sep="|")
+    lst=[]
+    for idx,i in df.iterrows():
+        lst.append({"audio_filepath":i['audio_path'],"text":i['transcription'],"duration":librosa.get_duration(filename=i['audio_path'])})
+    save_dataset(lst,"/home4/khanhnd/Ezspeech/dataset/demo.jsonl")

@@ -27,7 +27,7 @@ class Tokenizer:
             self.vocab = self.spe_model.id_to_piece(
                 [i for i in range(len(self.spe_model))]
             )
-        if vocab_file != None:
+        else:
             self.vocab = open(vocab_file).read().splitlines()
 
     def encode(self, sentence):
