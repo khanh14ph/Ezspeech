@@ -3,10 +3,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import kenlm
 import numpy as np
 import torch
 from tqdm import tqdm
-import kenlm
+
 from ezspeech.modules.decoder.rnnt.rnnt import RNNTDecoder, RNNTJoint
 from ezspeech.modules.decoder.rnnt.rnnt_utils import Hypothesis, NBestHypotheses
 

@@ -1,7 +1,8 @@
 import math
 from typing import Callable, Optional, Tuple, Union
-from torch import nn
+
 import torch
+from torch import nn
 
 
 class WhisperAttention(nn.Module):

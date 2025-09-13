@@ -1,19 +1,16 @@
-import json
-from typing import List, Tuple, Union, OrderedDict, Optional
-import wave
-
 import contextlib
-
-
-from omegaconf import DictConfig, OmegaConf
-from hydra.utils import instantiate
-from tqdm import tqdm
-import torch
-import orjson
-import torch.nn.functional as F
-from torch.special import gammaln
-
+import json
+import wave
 from contextlib import nullcontext
+from typing import List, Optional, OrderedDict, Tuple, Union
+
+import orjson
+import torch
+import torch.nn.functional as F
+from hydra.utils import instantiate
+from omegaconf import DictConfig, OmegaConf
+from torch.special import gammaln
+from tqdm import tqdm
 
 
 def save_dataset(x: List[dict], filepath: str):
@@ -88,7 +85,6 @@ def load_module(
     net.load_state_dict(weights)
     net.to(device)
 
-    
     for param in net.parameters():
         param.requires_grad = False
 

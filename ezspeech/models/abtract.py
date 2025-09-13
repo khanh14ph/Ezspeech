@@ -1,19 +1,20 @@
-from omegaconf import DictConfig
-from typing import Tuple, Any, Dict, Optional
-from hydra.utils import instantiate
-from pytorch_lightning import LightningModule
+import os
 from abc import ABC, abstractmethod
+from collections import deque
+from typing import Any, Dict, Optional, Tuple
+
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
+from hydra.utils import instantiate
+from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning import LightningModule
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import os
-import numpy as np
-from collections import deque
-from ezspeech.utils.common import load_module
-from ezspeech.utils import color
+
 from ezspeech.optims.scheduler import NoamAnnealing
-from omegaconf import OmegaConf
+from ezspeech.utils import color
+from ezspeech.utils.common import load_module
 
 
 class SpeechModel(LightningModule, ABC):

@@ -1,20 +1,22 @@
-import sentencepiece as spm
-import orjson
-import random
 import json
-from tqdm import tqdm
+import os
+import random
 import re
 
-# i = re.sub('<[^>]*>', '', i)
+import orjson
+import sentencepiece as spm
+from tqdm import tqdm
 
 # import glob
 from ezspeech.utils.common import load_dataset
-import os
-a=load_dataset("/home4/khanhnd/Ezspeech/data/vlsp2020.jsonl")
+
+# i = re.sub('<[^>]*>', '', i)
+
+a = load_dataset("/home4/khanhnd/Ezspeech/data/vlsp2020.jsonl")
 with open("temp.txt", "w") as f:
     for i in tqdm(a):
         f.write(i["text"].strip() + "\n")
-os.makedirs("/home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/vi", exist_ok=True)    
+os.makedirs("/home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/vi", exist_ok=True)
 spm.SentencePieceTrainer.train(
     input="temp.txt",
     model_prefix="/home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/vi/tokenizer",
@@ -33,4 +35,5 @@ spm.SentencePieceTrainer.train(
     # eos_id=3,
 )
 import os
+
 os.remove("temp.txt")

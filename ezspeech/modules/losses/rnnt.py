@@ -3,13 +3,10 @@ from typing import Any, Callable, Dict, List, Optional, Set
 
 import torch
 import torch.nn as nn
-from omegaconf import DictConfig, OmegaConf
-from typing import List
-
 import torchaudio
+from omegaconf import DictConfig, OmegaConf
 
 from ezspeech.modules.losses.rnnt_numba.rnnt import _TDTNumba
-
 
 print()
 

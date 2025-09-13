@@ -19,7 +19,6 @@ import jiwer
 import torch
 from torchmetrics import Metric
 
-
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_decoding import RNNTDecoding
 
 

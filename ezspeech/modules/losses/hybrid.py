@@ -4,14 +4,13 @@ from typing import List, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchaudio.transforms as T
 import torchaudio.functional as F_audio
+import torchaudio.transforms as T
+from torch import nn
 
-from ezspeech.utils.common import make_padding_mask
 from ezspeech.modules.losses.ctc import CTCLoss
 from ezspeech.modules.losses.rnnt import TDTLoss
-import torch
-from torch import nn
+from ezspeech.utils.common import make_padding_mask
 
 
 class Hybrid_RNNT_CTC(nn.modules.loss._Loss):

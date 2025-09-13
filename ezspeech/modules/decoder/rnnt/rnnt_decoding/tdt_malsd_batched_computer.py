@@ -19,9 +19,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.ngram_lm import (
-    NGramGPULanguageModel,
-)
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import (
     INACTIVE_SCORE,
     NON_EXISTENT_LABEL_VALUE,
@@ -29,13 +26,15 @@ from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import 
     BlankLMScoreMode,
     PruningMode,
 )
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.ngram_lm import (
+    NGramGPULanguageModel,
+)
 from ezspeech.utils.cuda_python_utils import (
     check_cuda_python_cuda_graphs_conditional_nodes_supported,
     cu_call,
     run_nvrtc,
     with_conditional_node,
 )
-
 
 try:
     from cuda import cudart

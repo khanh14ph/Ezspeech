@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from enum import Enum
 from typing import Optional
 
 import torch
 
 from ezspeech.modules.decoder.rnnt.rnnt_utils import Hypothesis, NBestHypotheses
-from enum import Enum
-
 
 # Constants used for hashing text sequences.
 MULTIPLIER = 6364136223846793005

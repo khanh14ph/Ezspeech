@@ -1,22 +1,13 @@
 import random
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ezspeech.layers.block import AttentionBlock, ConvolutionBlock, FeedForwardBlock
 from ezspeech.layers.sampling import ConvolutionSubsampling
-
-from ezspeech.layers.block import (
-    AttentionBlock,
-    FeedForwardBlock,
-    ConvolutionBlock,
-)
-
-from ezspeech.utils.common import (
-    make_padding_mask,
-    time_reduction,
-)
+from ezspeech.utils.common import make_padding_mask, time_reduction
 
 # from ezspeech.modules.conformer import SumaryMixing_ConformerLayer
 

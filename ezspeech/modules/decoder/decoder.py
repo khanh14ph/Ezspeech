@@ -1,8 +1,9 @@
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from ezspeech.utils.operation import init_weights
 
 

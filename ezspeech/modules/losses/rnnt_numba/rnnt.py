@@ -30,14 +30,12 @@ import multiprocessing
 
 import torch
 from numba import cuda
+from torch.autograd import Function
+from torch.nn import Module
 
 from ezspeech.modules.losses.rnnt_numba.utils import global_constants, rnnt_helper
 from ezspeech.modules.losses.rnnt_numba.utils.cpu_utils import cpu_rnnt
 from ezspeech.modules.losses.rnnt_numba.utils.cuda_utils import gpu_rnnt
-
-import torch
-from torch.autograd import Function
-from torch.nn import Module
 
 
 def rnnt_loss_cpu(

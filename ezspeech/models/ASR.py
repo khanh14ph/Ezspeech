@@ -1,23 +1,23 @@
-import os
 import glob
-import time
+import os
 import shutil
-from typing import Tuple, List
-import torchaudio
+import time
+from typing import List, Tuple
+
+import hydra
+import numpy as np
 import torch
+import torchaudio
+from hydra.utils import instantiate
+from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
-from omegaconf import DictConfig, OmegaConf
-import hydra
-import numpy as np
-from hydra.utils import instantiate
 
 from ezspeech.models.abtract import SpeechModel
 from ezspeech.modules.dataset.utils.text import Tokenizer
-from ezspeech.modules.metric.wer import WER
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_decoding import RNNTDecoding
-
+from ezspeech.modules.metric.wer import WER
 from ezspeech.utils.common import load_module
 
 
@@ -115,7 +115,7 @@ class RNNT_CTC_Training(SpeechModel):
 
         enc_outs, enc_lens = self.encoder(inputs, input_lengths)
         ctc_logits = self.ctc_decoder(enc_outs)
-        
+
         decoder_outputs, target_length, states = self.decoder(
             targets=targets, target_length=target_lengths
         )
@@ -126,9 +126,11 @@ class RNNT_CTC_Training(SpeechModel):
             transcripts=targets,
             transcript_lengths=target_length,
         )
-        for i,j in zip(enc_lens, target_lengths):
+        for i, j in zip(enc_lens, target_lengths):
             if i < j:
-                print("Warning: Encoder length is less than target length. This may cause issues with CTC loss calculation.")
+                print(
+                    "Warning: Encoder length is less than target length. This may cause issues with CTC loss calculation."
+                )
                 print(f"Encoder length: {i}, Target length: {j}")
         ctc_loss = self.ctc_loss(
             log_probs=ctc_logits,
@@ -136,7 +138,7 @@ class RNNT_CTC_Training(SpeechModel):
             input_lengths=enc_lens,
             target_lengths=target_lengths,
         )
-        loss =0.5* ctc_loss + 0.5* rnnt_loss
+        loss = 0.5 * ctc_loss + 0.5 * rnnt_loss
 
         return loss, ctc_loss, rnnt_loss
 
@@ -155,7 +157,7 @@ class RNNT_CTC_Training(SpeechModel):
         config = self.config
         try:
             shutil.copy(self.config.dataset.tokenizer.spe_file, export_path)
-        except: 
+        except:
             shutil.copy(self.config.dataset.tokenizer.vocab_file, export_path)
         OmegaConf.save(config, export_path + "/config.yaml")
         torch.save(checkpoint, export_path + "/model.ckpt")
@@ -178,7 +180,7 @@ class RNNT_CTC_Inference(object):
             self.ctc_decoder,
             # self.predictor,
             # self.joint,
-        ) = self._load_checkpoint(filepath+"/model.ckpt", device)
+        ) = self._load_checkpoint(filepath + "/model.ckpt", device)
         # self.rnnt_decoding = RNNTDecoding(
         #     decoding_cfg.rnnt, self.predictor, self.joint, self.vocab
         # )
@@ -232,16 +234,21 @@ class RNNT_CTC_Inference(object):
         ]
         text = ["".join(i).replace("|", " ") for i in text_token]
         text = [i.replace("▁", " ").strip() for i in text]
-        return text,hypothesises
-    def decode_hybrid(self,enc_outs: List[torch.Tensor],
+        return text, hypothesises
+
+    def decode_hybrid(
+        self,
+        enc_outs: List[torch.Tensor],
         enc_lens: List[torch.Tensor],
         previous_hypotheses=None,
-        type_decode="ctc"):
-        if type_decode=="ctc":
-            return self.ctc_decode(enc_outs,enc_lens)
+        type_decode="ctc",
+    ):
+        if type_decode == "ctc":
+            return self.ctc_decode(enc_outs, enc_lens)
         else:
-            return self.tdt_decode(enc_outs,enc_lens,previous_hypotheses)
-    def transcribe(self, audio_lst,previous_hyp=None):
+            return self.tdt_decode(enc_outs, enc_lens, previous_hypotheses)
+
+    def transcribe(self, audio_lst, previous_hyp=None):
         audios = [torchaudio.load(i) for i in audio_lst]
         speeches = [i[0] for i in audios]
         sample_rates = [i[1] for i in audios]
@@ -312,7 +319,7 @@ class RNNT_CTC_Inference(object):
             enc_outs=encoded,
             enc_lens=encoded_len,
             previous_hypotheses=previous_hypotheses,
-            type_decode="ctc"
+            type_decode="ctc",
         )
         result = [
             best_hyp,
@@ -348,8 +355,9 @@ class RNNT_CTC_Inference(object):
         self.cache_pre_encode = torch.zeros(
             (1, num_channels, self.pre_encode_cache_size), device=self.device
         )
-        import numpy as np
         import time
+
+        import numpy as np
 
         # Constants
 
@@ -427,10 +435,10 @@ if __name__ == "__main__":
     import torchaudio
 
     audio1 = "/home4/khanhnd/vivos/test/waves/VIVOSDEV02/VIVOSDEV02_R181.wav"
-    #THE ENGLISH FORWARDED TO THE FRENCH BASKETS OF FLOWERS OF WHICH THEY HAD MADE A PLENTIFUL PROVISION TO GREET THE ARRIVAL OF THE YOUNG PRINCESS THE FRENCH IN RETURN INVITED THE ENGLISH TO A SUPPER WHICH WAS TO BE GIVEN THE NEXT DAY
+    # THE ENGLISH FORWARDED TO THE FRENCH BASKETS OF FLOWERS OF WHICH THEY HAD MADE A PLENTIFUL PROVISION TO GREET THE ARRIVAL OF THE YOUNG PRINCESS THE FRENCH IN RETURN INVITED THE ENGLISH TO A SUPPER WHICH WAS TO BE GIVEN THE NEXT DAY
     # audio = [audio1]
     # audio2="/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/test-clean/6930/75918/6930-75918-0000.flac"
     # print(model.transcribe_streaming(audio1))
-    tex1=model.transcribe([audio1])
+    tex1 = model.transcribe([audio1])
     print(tex1)
     # print(model.transcribe(audio)[0]=="hear nothing thing so expezcaris flow boes theatre sus days country tele can never refer one'ssel as i have tou had little money and")

@@ -1,7 +1,9 @@
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Tuple
+
 from ezspeech.layers.attention import MultiHeadSelfAttention
 from ezspeech.layers.normalization import ScaleBiasNorm
 

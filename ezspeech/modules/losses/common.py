@@ -1,5 +1,5 @@
-from torch.nn import CrossEntropyLoss
 import torch.nn as nn
+from torch.nn import CrossEntropyLoss
 
 
 class CELoss(nn.Module):

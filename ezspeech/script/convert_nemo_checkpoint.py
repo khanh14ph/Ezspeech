@@ -1,11 +1,12 @@
-import tarfile
-import os
-import torch
 import glob
-from ezspeech.utils.constant import nemo2ez_dict
+import os
 import shutil
+import tarfile
 
+import torch
 from omegaconf import OmegaConf
+
+from ezspeech.utils.constant import nemo2ez_dict
 
 
 def untar(tar_file, folder):

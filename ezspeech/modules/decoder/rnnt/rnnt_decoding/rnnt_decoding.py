@@ -8,16 +8,17 @@ from typing import Callable, Dict, List, Optional, Set, Union
 import numpy as np
 import torch
 from omegaconf import OmegaConf
+
 from ezspeech.modules.decoder.rnnt.rnnt_decoding import (
     rnnt_beam_decoding,
     rnnt_greedy_decoding,
     tdt_beam_decoding,
 )
-from ezspeech.modules.decoder.rnnt.rnnt_utils import Hypothesis, NBestHypotheses
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import (
     BlankLMScoreMode,
     PruningMode,
 )
+from ezspeech.modules.decoder.rnnt.rnnt_utils import Hypothesis, NBestHypotheses
 
 
 class RNNTDecoding:
@@ -201,7 +202,9 @@ class RNNTDecoding:
         # Compute hypotheses
         with torch.inference_mode():
             hypotheses_list = self.decoding(
-                encoder_output=encoder_output, encoded_lengths=encoded_lengths, partial_hypotheses=partial_hypotheses
+                encoder_output=encoder_output,
+                encoded_lengths=encoded_lengths,
+                partial_hypotheses=partial_hypotheses,
             )  # type: [List[Hypothesis]]
 
             # extract the hypotheses
@@ -214,10 +217,10 @@ class RNNTDecoding:
             all_hypotheses = []
 
             for nbest_hyp in prediction_list:  # type: NBestHypotheses
-                n_hyps = nbest_hyp.n_best_hypotheses  # Extract all hypotheses for this sample
+                n_hyps = (
+                    nbest_hyp.n_best_hypotheses
+                )  # Extract all hypotheses for this sample
                 decoded_hyps = self.decode_hypothesis(n_hyps)  # type: List[str]
-
-            
 
                 hypotheses.append(decoded_hyps[0])  # best hypothesis
                 all_hypotheses.append(decoded_hyps)
@@ -225,13 +228,15 @@ class RNNTDecoding:
             if return_hypotheses:
                 return all_hypotheses  # type: list[list[Hypothesis]]
 
-            all_hyp = [[Hypothesis(h.score, h.y_sequence, h.text) for h in hh] for hh in all_hypotheses]
+            all_hyp = [
+                [Hypothesis(h.score, h.y_sequence, h.text) for h in hh]
+                for hh in all_hypotheses
+            ]
             return all_hyp
 
         else:
             hypotheses = self.decode_hypothesis(prediction_list)  # type: List[str]
 
-           
             if return_hypotheses:
                 # greedy decoding, can get high-level confidence scores
                 if self.preserve_frame_confidence and (

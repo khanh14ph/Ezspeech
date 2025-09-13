@@ -1,25 +1,24 @@
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import kenlm
 import numpy as np
 import torch
 from tqdm import tqdm
 
 from ezspeech.modules.decoder.rnnt.rnnt import RNNTDecoder, RNNTJoint
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_malsd_batched_computer import (
-    ModifiedALSDBatchedTDTComputer,
-)
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.rnnt_batched_beam_utils import (
     BlankLMScoreMode,
     PruningMode,
+)
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_malsd_batched_computer import (
+    ModifiedALSDBatchedTDTComputer,
 )
 from ezspeech.modules.decoder.rnnt.rnnt_utils import (
     Hypothesis,
     NBestHypotheses,
     is_prefix,
 )
-
-import kenlm
 
 
 def _states_to_device(dec_state, device="cpu"):
@@ -803,7 +802,6 @@ class BeamTDTInfer:
             else:
                 kept_hyps[hyp_key] = hyp
         return list(kept_hyps.values())
-
 
     def prefix_search(
         self,

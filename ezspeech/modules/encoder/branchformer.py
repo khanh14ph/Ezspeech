@@ -3,8 +3,6 @@ from typing import List, Optional, Tuple, Union
 
 import numpy
 import torch
-from typeguard import typechecked
-
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
 from espnet2.asr.layers.cgmlp import ConvolutionalGatingMLP
 from espnet2.asr.layers.fastformer import FastSelfAttention
@@ -31,8 +29,8 @@ from espnet.nets.pytorch_backend.transformer.subsampling import (
     TooShortUttError,
     check_short_utt,
 )
-
 from lightspeech.utils.common import is_flash_attn_supported
+from typeguard import typechecked
 
 
 class BranchformerEncoderLayer(torch.nn.Module):

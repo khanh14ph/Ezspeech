@@ -1,18 +1,18 @@
 import hydra
 import pytorch_lightning as pl
-from omegaconf import DictConfig
-from hydra.utils import instantiate
-from omegaconf import OmegaConf
 import torch
+from hydra.utils import instantiate
+from omegaconf import DictConfig, OmegaConf
+from tqdm import tqdm
+
 from ezspeech.models.ASR import RNNT_CTC_Training
 from ezspeech.utils import color
-from tqdm import tqdm
 
 pl.seed_everything(42, workers=True)
 torch.set_float32_matmul_precision("medium")
 
 
-@hydra.main(version_base=None, config_path="config", config_name="streaming")
+@hydra.main(version_base=None, config_path="config", config_name="ctc")
 def main(config: DictConfig):
     task = RNNT_CTC_Training(config)
     if config.model.get("model_pretrained") is not None:

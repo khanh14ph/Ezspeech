@@ -27,7 +27,6 @@ class CTCLoss(nn.CTCLoss):
                 "`reduction` must be one of [mean, sum, mean_batch, mean_volume]"
             )
 
-     
         super().__init__(
             blank=blank_idx, reduction=reduction, zero_infinity=zero_infinity
         )

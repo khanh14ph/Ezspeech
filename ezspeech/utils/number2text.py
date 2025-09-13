@@ -1,6 +1,6 @@
+import math
 import random
 import sys
-import math
 
 number = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"]
 

@@ -5,14 +5,15 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
+
 from ezspeech.modules.decoder.rnnt import rnnt_utils
 from ezspeech.modules.decoder.rnnt.rnn import label_collate
 from ezspeech.modules.decoder.rnnt.rnnt import RNNTDecoder, RNNTJoint
-from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.tdt_loop_labels_computer import (
-    GreedyBatchedTDTLoopLabelsComputer,
-)
 from ezspeech.modules.decoder.rnnt.rnnt_decoding.confidence_utils import (
     ConfidenceMethodMixin,
+)
+from ezspeech.modules.decoder.rnnt.rnnt_decoding.tdt_utils.tdt_loop_labels_computer import (
+    GreedyBatchedTDTLoopLabelsComputer,
 )
 
 

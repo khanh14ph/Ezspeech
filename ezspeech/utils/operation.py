@@ -1,8 +1,8 @@
 from typing import Iterable, Tuple, Union
 
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 def init_weights(m, mode="xavier_uniform"):

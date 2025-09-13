@@ -1,7 +1,9 @@
-from ezspeech.models.ASR import RNNT_CTC_Training
+import os
+
 import torch
 
-import os
+from ezspeech.models.ASR import RNNT_CTC_Training
+
 a = RNNT_CTC_Training.load_from_checkpoint(
     "/home4/khanhnd/lightning_logs/oov/testcode2/checkpoints/last.ckpt"
 )

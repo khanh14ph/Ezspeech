@@ -1,6 +1,7 @@
 import re
-from typing import List, Dict, Optional
 from collections import defaultdict
+from typing import Dict, List, Optional
+
 from importlib_resources import files
 
 DELIMITER = "▁"

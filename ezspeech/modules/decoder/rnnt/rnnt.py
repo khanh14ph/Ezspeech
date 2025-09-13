@@ -3,8 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 from omegaconf import DictConfig
 
-from ezspeech.modules.decoder.rnnt import rnnt_utils
-from ezspeech.modules.decoder.rnnt import rnn
+from ezspeech.modules.decoder.rnnt import rnn, rnnt_utils
 
 
 class RNNTDecoder(torch.nn.Module):
@@ -967,7 +966,6 @@ class RNNTJoint(torch.nn.Module):
                         sub_enc_lens,
                         sub_transcript_lens,
                     )
- 
 
                     losses.append(loss_batch)
                     target_lengths.append(sub_transcript_lens)
