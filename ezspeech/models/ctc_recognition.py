@@ -15,9 +15,9 @@ from ezspeech.modules.data.utils.text import Tokenizer
 from ezspeech.optims.scheduler import NoamAnnealing
 
 
-class ASR_hybrid_ctc_rnnt_training(LightningModule):
+class ASR_ctc_training(LightningModule):
     def __init__(self, config: DictConfig):
-        super(ASR_hybrid_ctc_rnnt_training, self).__init__()
+        super(ASR_ctc_training, self).__init__()
 
         self.save_hyperparameters()
         self.config = config
@@ -43,20 +43,19 @@ class ASR_hybrid_ctc_rnnt_training(LightningModule):
         dataset = instantiate(self.hparams.config.dataset.train_ds, _recursive_=False)
         sampler = DistributedSampler(dataset)
         # dataset=self.get_distributed_dataset(dataset)
-        loaders = self.hparams.dataset.loaders
+        loader = self.hparams.dataset.train_loader
 
         dynamic_batcher = DynamicBatchSampler(
             sampler=sampler,
-            max_batch_duration=140,
-            num_buckets=30,
-            max_token_length=700,
+            max_batch_duration=loader.max_batch_duration,
+            num_buckets=loader.num_bucket
         )
         train_dl = DataLoader(
             dataset=dataset,
             batch_sampler=dynamic_batcher,
             collate_fn=collate_asr_data,
             # shuffle=True,
-            **loaders,
+
         )
         return train_dl
 

@@ -3,7 +3,6 @@ dataset:
   train_ds:
     _target_: ezspeech.modules.dataset.dataset.SpeechRecognitionDataset
     filepaths:
-      # - /home4/khanhnd/Ezspeech/data/vlsp2020_libri_train.jsonl
       - /home4/khanhnd/data_combine/libri.jsonl
     vocab_file: *vocab
     spe_file: /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/tdt_ctc_110m_nemo_spe_bpe_v1024.model
@@ -14,13 +13,12 @@ dataset:
     - /home4/khanhnd/Ezspeech/data/vivos_libri_test.jsonl
     spe_file: /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/tdt_ctc_110m_nemo_spe_bpe_v1024.model
     vocab_file: *vocab
-  loaders:
+  train_loaders:
     batch_size: 4
     num_workers: 8
     pin_memory: false
 
 model:
-  # variables for TDT configs.
   d_model: &d_model 512
   vocab_size: &vocab_size 2049
   pretrained_weights: /home4/khanhnd/models/parakeet/ezspeech.ckpt
@@ -80,10 +78,6 @@ model:
     _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
     feat_in: *d_model
     num_classes: 1025
-  decoder_extra:
-    _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
-    feat_in: *d_model
-    num_classes: 1024
 
     
     
