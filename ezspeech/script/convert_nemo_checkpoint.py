@@ -62,6 +62,6 @@ def convert_nemo_to_ez(nemo_path, ez_checkpoint_folder):
 
 if __name__ == "__main__":
     convert_nemo_to_ez(
-        "/home4/khanhnd/cache/hub/models--nvidia--stt_en_fastconformer_hybrid_large_streaming_multi/snapshots/ae98143333690bd7ced4bc8ec16769bcb8918374/stt_en_fastconformer_hybrid_large_streaming_multi.nemo",
-        "/home4/khanhnd/exported_checkpoint/checkpoint_streaming",
+        "/home4/khanhnd/parakeet-tdt_ctc-110m.nemo",
+        "/home4/khanhnd/arakeet-tdt_ctc-110m.ez",
     )

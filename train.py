@@ -16,7 +16,7 @@ torch.set_float32_matmul_precision("medium")
 def main(config: DictConfig):
     task = ASR_ctc_training(config)
     if config.model.get("model_pretrained") is not None:
-        checkpoint_filepath = config.model.model_pretrained.path + "/model_weights.ckpt"
+        checkpoint_filepath = config.model.model_pretrained.path
         checkpoint = torch.load(
             checkpoint_filepath, map_location="cpu", weights_only=False
         )

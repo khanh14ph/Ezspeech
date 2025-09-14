@@ -17,11 +17,12 @@ class SpeechRecognitionDataset(Dataset):
         self,
         filepaths,
         augmentation: Optional[DictConfig] = None,
+        data_dir="",
     ):
         super(SpeechRecognitionDataset, self).__init__()
 
         self.dataset = load_dataset(filepaths)
-
+        self.data_dir=data_dir
         self.audio_augment = []
         self.augmentation_cfg = augmentation
         if augmentation:
@@ -38,7 +39,7 @@ class SpeechRecognitionDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, ...]:
         data = self.dataset[idx]
-        audio_filepath = data["audio_filepath"]
+        audio_filepath = self.data_dir+data["audio_filepath"]
         transcript = data["text"]
 
         speech, sample_rate = torchaudio.load(audio_filepath)

@@ -89,9 +89,6 @@ class ASR_ctc_training(LightningModule):
     ) -> torch.Tensor:
         wavs, wav_lengths, targets, target_lengths = batch
         features, feature_lengths = self.preprocessor(wavs, wav_lengths)
-
-        loss = self._shared_step(features, feature_lengths, targets, target_lengths)
-
         # Calculate WER
         # Get CTC predictions for WER calculation
         enc_outs, enc_lens = self.encoder(features, feature_lengths)
@@ -108,9 +105,7 @@ class ASR_ctc_training(LightningModule):
         # Calculate WER for entire validation set so far
         validation_wer = wer(self.val_references, self.val_predictions)
         self.log("val_wer", validation_wer, sync_dist=True, prog_bar=True)
-
-        self.log("val_loss", loss, sync_dist=True, prog_bar=True)
-        return loss
+        return None
 
     def on_validation_start(self):
         """
