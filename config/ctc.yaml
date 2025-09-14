@@ -1,35 +1,51 @@
 dataset:
-  # vocab: &vocab /home4/khanhnd/Ezspeech/ezspeech/resource/tokenizer/en/vocab.txt
+  # Path to SentencePiece model file for tokenization
   spe_file: /home4/khanhnd/tokenizer/grapheme.model
+  # Training dataset configuration
   train_ds:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    # List of JSONL files containing training data metadata
     filepaths:
       - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
       - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
+    # Base directory for audio files (empty means use absolute paths from JSONL)
     data_dir: ""
 
+  # Validation dataset configuration
   val_ds:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    # List of JSONL files containing validation data metadata
     filepaths:
       - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
       - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
-    data_dir: ""  # add data dir where you unzip data, data_dir + audio_filepath will be the path of audio
+    # Base directory for audio files - data_dir + audio_filepath will be the full path
+    data_dir: ""
+  # Training data loader configuration
   train_loader:
+    # Maximum total duration (in seconds) of audio per batch
     max_batch_duration: 80
+    # Number of buckets for bucketing similar-length sequences
     num_bucket: 10
     num_workers: 8
     pin_memory: True
+  # Validation data loader configuration
   val_loader:
     batch_size: 8
     num_workers: 4
     pin_memory: True
 
+# Model architecture and configuration
 model:
+  # Model dimension (embedding size) - used as YAML anchor for reuse
   d_model: &d_model 512
+  # Vocabulary size including blank token - used as YAML anchor for reuse
   vocab_size: &vocab_size 2048
+  # Pretrained model configuration for transfer learning
   model_pretrained:
     # path: /home4/khanhnd/parakeet-tdt_ctc-110m-12-layer.ckpt
+    # Path to pretrained checkpoint file
     path: /home4/khanhnd/exported_checkpoint/model.ckpt
+    # Which components to load from pretrained model
     include: ["encoder"]
   preprocessor:
     _target_: ezspeech.modules.data.utils.audio.AudioToMelSpectrogramPreprocessor
