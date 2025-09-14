@@ -26,8 +26,10 @@ class ASR_ctc_training(LightningModule):
 
         self.encoder = instantiate(config.model.encoder)
 
-        self.ctc_decoder = instantiate(config.model.decoder)
-
+        self.ctc_decoder = instantiate(config.model.ctc_decoder)
+        self.check_sc=config.model.get("back_projector_sc", None)!= None
+        if self.check_sc:
+            self.back_projector_sc = instantiate(config.model.back_projector_sc)
         self.ctc_loss = instantiate(config.model.loss.ctc_loss)
 
         # Initialize tokenizer for WER calculation

@@ -56,9 +56,9 @@ class JointNetwork(nn.Module):
         return outputs
 
 
-class CTCDecoder(nn.Module):
+class CTCDecoderLinear(nn.Module):
     def __init__(self, input_dim: int, hidden_dim: int, output_dim: int):
-        super(CTCDecoder, self).__init__()
+        super(CTCDecoderLinear, self).__init__()
 
         self.linear1 = nn.Linear(input_dim, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, output_dim + 1)
@@ -69,7 +69,14 @@ class CTCDecoder(nn.Module):
         ctc_outs = ctc_outs.log_softmax(2)
         return ctc_outs
 
+class Back_projector_sc_linear(nn.Module):
+    def __init__(self, input_dim: int, output_dim: int):
+        super(Back_projector_sc_linear, self).__init__()
 
+        self.linear= nn.Linear(input_dim + 1, output_dim)
+
+    def forward(self, enc_outs: torch.Tensor) -> torch.Tensor:
+        return self.linear(enc_outs)
 class ConvASRDecoder(nn.Module):
     """Simple ASR Decoder for use with CTC-based models such as JasperNet and QuartzNet
 

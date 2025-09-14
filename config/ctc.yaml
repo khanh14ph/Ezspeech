@@ -98,12 +98,16 @@ model:
     stochastic_depth_drop_prob: 0.0
     stochastic_depth_mode: linear
     stochastic_depth_start_layer: 1
-  decoder:
+  ctc_decoder:
     _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
     feat_in: *d_model
     num_classes: *vocab_size
     add_blank: True
-
+  back_projector_sc:
+    _target_: ezspeech.modules.decoder.decoder.Back_projector_sc_linear
+    input_dim:  *vocab_size
+    out_features :  *d_model
+    add_blank: True
     
     
   loss:
