@@ -23,9 +23,9 @@ dataset:
   # Training data loader configuration
   train_loader:
     # Maximum total duration (in seconds) of audio per batch
-    max_batch_duration: 80
+    max_batch_duration: 100
     # Number of buckets for bucketing similar-length sequences
-    num_bucket: 10
+    num_bucket: 20
     num_workers: 8
     pin_memory: True
   # Validation data loader configuration
