@@ -51,3 +51,73 @@ pip install ezspeech
 git clone https://github.com/yourusername/EzSpeech.git
 cd EzSpeech
 pip install -e .
+```
+
+## 🏋️ Training
+
+EzSpeech uses Hydra for configuration management and PyTorch Lightning for training. You can train models with different architectures using the provided configuration files.
+
+### Quick Start Training
+
+```bash
+# Train a CTC model (default configuration)
+python train.py
+
+# Train with a specific config
+python train.py --config-name=ctc
+python train.py --config-name=asr     # TDT/RNN-T model
+python train.py --config-name=streaming  # Streaming TDT model
+```
+
+### Available Configurations
+
+- **`ctc.yaml`**: CTC-based ASR model with Conformer encoder
+- **`asr.yaml`**: TDT (Token-and-Duration Transducer) model for non-streaming ASR
+- **`streaming.yaml`**: Streaming TDT model for real-time applications
+
+### Configuration Override
+
+You can override any configuration parameter from the command line:
+
+```bash
+# Override training parameters
+python train.py trainer.max_epochs=100 trainer.devices=[0,1]
+
+# Override model parameters
+python train.py model.encoder.n_layers=18 model.encoder.d_model=768
+
+# Override dataset paths
+python train.py dataset.train_ds.filepaths=[/path/to/train.jsonl] dataset.val_ds.filepaths=[/path/to/val.jsonl]
+
+# Override optimizer settings
+python train.py optimizer.lr=0.001 scheduler.warmup_steps=5000
+```
+
+### Dataset Format
+
+Your dataset should be in JSONL format with the following structure:
+
+```json
+{"audio_filepath": "/path/to/audio.wav", "text": "transcription text", "duration": 3.2}
+{"audio_filepath": "/path/to/audio2.wav", "text": "another transcription", "duration": 2.1}
+```
+
+### Key Training Parameters
+
+- **Batch Configuration**: Adjust `dataset.train_loader.max_batch_duration` for memory management
+- **GPU Settings**: Set `trainer.devices` and `trainer.accelerator`
+- **Precision**: Use `trainer.precision=16` for mixed precision training
+- **Checkpointing**: Models are saved automatically based on `callbacks.cb` settings
+
+### Example Training Commands
+
+```bash
+# Multi-GPU training
+python train.py trainer.devices=[0,1,2,3] trainer.strategy=ddp
+
+# Resume from checkpoint
+python train.py trainer.resume_from_checkpoint=/path/to/checkpoint.ckpt
+
+# Train with custom dataset
+python train.py dataset.train_ds.filepaths=[/data/my_train.jsonl] \
+                dataset.val_ds.filepaths=[/data/my_val.jsonl]
