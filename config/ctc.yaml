@@ -13,11 +13,11 @@ dataset:
     - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
   train_loader:
     max_batch_duration: 80
-    num_bucket: 20
+    num_bucket: 10
     num_workers: 8
     pin_memory: True
   val_loader:
-    batch_size: 1
+    batch_size: 8
     num_workers: 4
     pin_memory: True
 
@@ -134,8 +134,9 @@ trainer:
   max_epochs: 200
   strategy: ddp
   accelerator: gpu
-  devices: [3]
+  devices: [0,1]
   accumulate_grad_batches: 1
   # detect_anomaly: True
   precision: 16
   val_check_interval: 0.5
+  use_distributed_sampler: False

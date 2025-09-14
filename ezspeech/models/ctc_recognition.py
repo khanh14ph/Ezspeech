@@ -8,7 +8,7 @@ from pytorch_lightning import LightningModule
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-
+from torch.utils.data import SequentialSampler
 from ezspeech.modules.data.sampler import DynamicBatchSampler
 from ezspeech.modules.data.utils.text import Tokenizer
 from ezspeech.optims.scheduler import NoamAnnealing
@@ -40,7 +40,7 @@ class ASR_ctc_training(LightningModule):
     def train_dataloader(self) -> DataLoader:
         dataset = instantiate(self.hparams.config.dataset.train_ds, _recursive_=False)
         dataset.set_tokenizer(self.tokenizer)
-        sampler = DistributedSampler(dataset)
+        sampler = SequentialSampler(dataset)
         # dataset=self.get_distributed_dataset(dataset)
         loader = self.hparams.config.dataset.train_loader
 
@@ -53,6 +53,8 @@ class ASR_ctc_training(LightningModule):
             dataset=dataset,
             batch_sampler=dynamic_batcher,
             collate_fn=dataset.collate_asr_data,
+            num_workers=loader.num_workers,
+            pin_memory=loader.pin_memory
             # shuffle=True,
 
         )
@@ -154,7 +156,7 @@ class ASR_ctc_training(LightningModule):
             unique_seq = torch.unique_consecutive(pred_seq)
             # Remove blank token (usually the last token in vocab)
             filtered_seq = (
-                unique_seq[unique_seq != len(self.tokenizer.vocab) - 1]
+                unique_seq[unique_seq != len(self.tokenizer.vocab)]
                 .cpu()
                 .numpy()
                 .tolist()
