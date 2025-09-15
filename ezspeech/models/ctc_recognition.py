@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import torch
+import torchaudio
 from hydra.utils import instantiate
 from jiwer import wer
 from typing import List, Tuple
@@ -269,12 +270,10 @@ class ASR_ctc_inference(object):
     def __init__(
         self, filepath: str, device: str, tokenizer_path: str = None, decoding_cfg=None
     ):
-        self.blank = 0
-        self.beam_size = 5
-
         self.device = device
-        self.tokenizer = Tokenizer(vocab_file=tokenizer_path)
+        self.tokenizer = Tokenizer(spe_file=tokenizer_path)
         self.vocab = self.tokenizer.vocab
+        self.blank = len(self.vocab)
         (
             self.preprocessor,
             self.encoder,
@@ -328,21 +327,24 @@ class ASR_ctc_inference(object):
         return res
 
     @torch.inference_mode()
-    def ctc_decode(self, enc_outs: List[torch.Tensor], enc_lens: List[torch.Tensor]):
+    def ctc_decode(self, enc_outs: torch.Tensor, enc_lens: torch.Tensor):
         logits = self.ctc_decoder(enc_outs)
         predicted_ids = torch.argmax(logits, dim=-1)
-        predicted_ids = [torch.unique_consecutive(i) for i in predicted_ids]
-        print("predicted_ids:", predicted_ids)
-        predicted_tokens = [self.idx_to_token(i) for i in predicted_ids]
-        predicted_transcripts = ["".join(i) for i in predicted_tokens]
-        predicted_transcripts = [
-            i.replace("_", " ").strip() for i in predicted_transcripts
-        ]
-        return predicted_transcripts
 
-    def idx_to_token(self, lst):
-        lst = [j for j in lst if j != len(self.vocab)]
-        return [self.vocab[i] for i in lst]
+        predicted_transcripts = []
+        for i, pred_seq in enumerate(predicted_ids):
+            seq_len = enc_lens[i].item()
+            pred_seq = pred_seq[:seq_len]
+
+            unique_seq = torch.unique_consecutive(pred_seq)
+            # Filter out blank tokens
+            filtered_seq = unique_seq[unique_seq != self.blank]
+            # Decode using tokenizer
+            tokens = self.tokenizer.decode(filtered_seq.cpu().numpy().tolist())
+            transcript = "".join(tokens).replace("_", " ").strip()
+            predicted_transcripts.append(transcript)
+
+        return predicted_transcripts
 
     def collate_wav(
         self, speeches: List[torch.Tensor]

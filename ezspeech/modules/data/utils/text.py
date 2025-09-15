@@ -15,20 +15,14 @@ def tokenize(sentence: str, vocab: List[str]) -> List[str]:
 
 
 class Tokenizer:
-    def __init__(self, vocab_file=None, spe_file=None):
+    def __init__(self,spe_file=None):
         super().__init__()
         self.spe_file = spe_file
-        self.vocab_file = vocab_file
-        assert (
-            spe_file is None or vocab_file is None
-        ), "At least one of vocab_file or spe_file must be None, you can only choose one tokenize method"
-        if self.spe_file != None:
-            self.spe_model = spm.SentencePieceProcessor(model_file=spe_file)
-            self.vocab = self.spe_model.id_to_piece(
+    
+        self.spe_model = spm.SentencePieceProcessor(model_file=spe_file)
+        self.vocab = self.spe_model.id_to_piece(
                 [i for i in range(len(self.spe_model))]
             )
-        else:
-            self.vocab = open(vocab_file).read().splitlines()
 
     def encode(self, sentence):
         if self.spe_file == None:
@@ -40,9 +34,8 @@ class Tokenizer:
             raise Exception("None tokenizer provided")
         return token_idx
 
-    def decode(self, token_idx):
-
-        return [self.vocab[token] for token in token_idx]
+    def decode(self, idx_lst):
+        return self.spe_model.decode(idx_lst)
 
     def __len__(self):
         return len(self.vocab)
