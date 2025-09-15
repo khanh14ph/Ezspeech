@@ -25,13 +25,7 @@ class Tokenizer:
             )
 
     def encode(self, sentence):
-        if self.spe_file == None:
-            tokens = tokenize(sentence, self.vocab)
-            token_idx = [self.vocab.index(token) for token in tokens]
-        elif self.vocab_file == None:
-            token_idx = self.spe_model.encode(sentence)
-        else:
-            raise Exception("None tokenizer provided")
+        token_idx = self.spe_model.encode(sentence)
         return token_idx
 
     def decode(self, idx_lst):
