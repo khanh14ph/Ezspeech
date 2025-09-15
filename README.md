@@ -12,7 +12,7 @@ Easy speech recognition toolkit built on PyTorch Lightning.
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/EzSpeech.git
+git clone https://github.com/khanh14ph/EzSpeech.git
 cd EzSpeech
 pip install -e .
 ```
