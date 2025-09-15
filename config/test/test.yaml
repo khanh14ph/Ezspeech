@@ -1,36 +1,5 @@
 model:
-  _target_: ezspeech.models.ASR.RNNT_CTC_Inference
-  filepath: /home4/khanhnd/exported_checkpoint/models
+  _target_: ezspeech.models.ctc_recognition.ASR_ctc_inference
+  filepath: /home4/khanhnd/exported_checkpoint/models.ckpt
   device: cuda
-  tokenizer_path: /home4/khanhnd/exported_checkpoint/models/bilingual.txt
-  decoding_cfg: 
-    rnnt:
-    # Using greedy decoding is highly recommended for TDT models. Using greedy-batch will give very bad results
-    # if omega is 0; even if omega is non-zero, greedy-batch results are still going to be inaccurate.
-      strategy: "greedy"
-      # model_type: "tdt"
-      # # this must not be None in order to use the TDT specific decoding method.
-      # durations: [0,1,2,3,4]
-      # # greedy strategy config
-      greedy:
-        max_symbols: 10
-      # beam strategy config
-      beam:
-        beam_size: 2
-    ctc:
-      strategy: "greedy"
-      greedy:
-        max_symbols: 10
-      beam:
-        beam_size: 2
-  # ngram_lm_model: /home4/khanhnd/exported_checkpoint/
-      # ngram_lm_model: /home4/khanhnd/exported_checkpoint/char.arpa
-# for Alignment-Length Synchronous Decoding
-# possible_strategies = [
-#             "greedy",
-#             "greedy_batch",
-#             "beam",
-#             "alsd",
-#             "maes",
-#             "malsd_batch",
-#         ]
+  tokenizer_path: /Users/khanh/dev/asr_dev/tokenizer/grapheme.model

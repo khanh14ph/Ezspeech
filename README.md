@@ -20,8 +20,8 @@ pip install -e .
 ## Training
 
 ```bash
-# Train CTC model
-python train.py --config-name=ctc
+# Train CTC_SC model
+python train.py --config-name=ctc_sc
 
 # Train TDT model
 python train.py --config-name=asr
