@@ -118,6 +118,7 @@ class DynamicBatchSampler(Sampler):
             current_bucket_batch_list=current_bucket_batch_list[self.rank::self.world_size]
 
             batch_list.extend(current_bucket_batch_list)
+        random.shuffle(batch_list)
         total_samples=0
         for i in batch_list:
             total_samples+=len(i)

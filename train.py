@@ -12,7 +12,7 @@ pl.seed_everything(42, workers=True)
 torch.set_float32_matmul_precision("medium")
 
 
-@hydra.main(version_base=None, config_path="config", config_name="ctc")
+@hydra.main(version_base=None, config_path="config", config_name="ctc_sc")
 def main(config: DictConfig):
     task = ASR_ctc_training(config)
     if config.model.get("model_pretrained") is not None:

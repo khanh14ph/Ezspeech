@@ -1,0 +1,181 @@
+dataset:
+  # Path to SentencePiece model file for tokenization
+  spe_file_grapheme: /home3/khanhnd/download/grapheme.model
+  spe_file_phoneme: /home3/khanhnd/download/ipa.model
+  # Training dataset configuration
+  train_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDatasetSC
+    # List of JSONL files containing training data metadata
+    filepaths:
+      - /home3/khanhnd/download/train_libri_clean_ipa.jsonl
+      - /home3/khanhnd/download/train_vietbud_ipa.jsonl
+    # Base directory for audio files (empty means use absolute paths from JSONL)
+    data_dir: "/home3/khanhnd/download/"
+
+  # Validation dataset configuration
+  val_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    # List of JSONL files containing validation data metadata
+    filepaths:
+      - /home3/khanhnd/download/vivos_test.jsonl
+      - /home3/khanhnd/download/test_libri_clean.jsonl
+    # Base directory for audio files - data_dir + audio_filepath will be the full path
+    data_dir: "/home3/khanhnd/download/"
+  # Training data loader configuration
+  train_loader:
+    # Maximum total duration (in seconds) of audio per batch
+    max_batch_duration: 200
+    # Number of buckets for bucketing similar-length sequences
+    num_bucket: 20
+    num_workers: 8
+    pin_memory: True
+  # Validation data loader configuration
+  val_loader:
+    batch_size: 8
+    num_workers: 4
+    pin_memory: True
+
+# Model architecture and configuration
+model:
+  # Model dimension (embedding size) - used as YAML anchor for reuse
+  d_model: &d_model 512
+  # Vocabulary size including blank token - used as YAML anchor for reuse
+  vocab_size: &vocab_size 2048
+  vocab_size_phoneme: &vocab_size_phoneme 2048
+  # Pretrained model configuration for transfer learning
+  model_pretrained:
+    path: /home4/khanhnd/parakeet-tdt_ctc-110m-12-layer.ckpt
+    # Path to pretrained checkpoint file
+    # path: /home4/khanhnd/exported_checkpoint/model.ckpt
+    # Which components to load from pretrained model
+    include: ["encoder"]
+  preprocessor:
+    _target_: ezspeech.modules.data.utils.audio.AudioToMelSpectrogramPreprocessor
+    sample_rate: 16000
+    normalize: per_feature
+    window_size: 0.025
+    window_stride: 0.01
+    window: hann
+    features: 80
+    n_fft: 512
+    frame_splicing: 1
+    dither: 1.0e-05
+    pad_to: 0
+  spec_augment:
+    _target_: ezspeech.modules.data.augment.SpecAugment
+    freq_masks: 2
+    time_masks: 10
+    freq_width: 27
+    time_width: 0.05
+  encoder:
+    _target_: ezspeech.modules.encoder.conformer_offline.ConformerOfflineEncoder
+    feat_in: ${model.preprocessor.features}
+    feat_out: -1
+    n_layers: 12
+    d_model: 512
+    sc_layers: [2,5,8]
+    sc_layers_ipa: [2,5,8]
+    subsampling: dw_striding
+    subsampling_factor: 8
+    subsampling_conv_channels: 256
+    causal_downsampling: false
+    reduction: null
+    reduction_position: null
+    reduction_factor: 1
+    ff_expansion_factor: 4
+    self_attention_model: rel_pos
+    n_heads: 8
+    att_context_size:
+    - -1
+    - -1
+    att_context_style: regular
+    xscaling: false
+    untie_biases: true
+    pos_emb_max_len: 5000
+    conv_kernel_size: 9
+    conv_norm_type: batch_norm
+    conv_context_size: null
+    dropout: 0.1
+    dropout_pre_encoder: 0.1
+    dropout_emb: 0.0
+    dropout_att: 0.1
+    stochastic_depth_drop_prob: 0.0
+    stochastic_depth_mode: linear
+    stochastic_depth_start_layer: 1
+  ctc_decoder:
+    _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
+    feat_in: *d_model
+    num_classes: *vocab_size
+    add_blank: True
+  ctc_decoder_phoneme:
+    _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
+    feat_in: *d_model
+    num_classes: *vocab_size_phoneme
+    add_blank: True
+  back_projector_sc:
+    _target_: ezspeech.modules.decoder.decoder.Back_projector_sc_linear
+    input_dim:  *vocab_size
+    output_dim :  *d_model
+  back_projector_sc_phoneme:
+    _target_: ezspeech.modules.decoder.decoder.Back_projector_sc_linear
+    input_dim:  *vocab_size_phoneme
+    output_dim :  *d_model
+    
+    
+  loss:
+    ctc_loss:
+      _target_: ezspeech.modules.losses.ctc.CTCLoss
+      blank_idx: *vocab_size
+      reduction: mean
+      zero_infinity: True
+  
+  optimizer:
+    lr: 1
+    betas: [0.9, 0.999]
+    weight_decay: 1e-2
+    eps: 1e-9
+    foreach: False
+    fused: True
+
+  scheduler:
+    d_model: *d_model
+    warmup_steps: 10000
+  
+callbacks:
+  lr:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+
+  swa:
+    _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
+    swa_lrs: 1e-6
+    swa_epoch_start: 0.8
+    annealing_epochs: 1
+
+  cb:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: step
+    save_top_k: 5
+    save_last: True
+    filename: "{epoch}-{val_wer:.5f}-{step}"
+    every_n_epochs: 1
+    mode: max
+
+loggers:
+  tb:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: ../lightning_logs
+    name: icassp
+    version: ctc
+
+    default_hp_metric: false
+
+trainer:
+  max_epochs: 30
+  strategy: ddp_find_unused_parameters_true
+  accelerator: gpu
+  devices: [1]
+  accumulate_grad_batches: 1
+  # detect_anomaly: True
+  precision: 16
+  val_check_interval: 0.5
+  use_distributed_sampler: False

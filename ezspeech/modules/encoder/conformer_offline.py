@@ -379,6 +379,8 @@ class ConformerOfflineEncoder(nn.Module):
         feat_out=-1,
         n_layers=12,
         d_model=512,
+        sc_layers=[],
+        sc_layers_ipa=[],
         subsampling="striding",
         subsampling_factor=4,
         subsampling_conv_chunking_factor=1,
@@ -405,6 +407,8 @@ class ConformerOfflineEncoder(nn.Module):
         d_ff = d_model * ff_expansion_factor
         self.d_model = d_model
         self.n_layers = n_layers
+        self.sc_layers=sc_layers
+        self.sc_layers_ipa=sc_layers_ipa
         self._feat_in = feat_in
         self._feat_out = feat_out
         self.subsampling_factor = subsampling_factor
@@ -473,31 +477,10 @@ class ConformerOfflineEncoder(nn.Module):
         self.set_max_audio_length(self.pos_emb_max_len)
         self.use_pad_mask = True
 
-    def forward(self, audio_signal, length, bypass_pre_encode=False):
-        if not bypass_pre_encode and audio_signal.shape[-2] != self._feat_in:
-            raise ValueError(
-                f"If bypass_pre_encode is False, audio_signal should have shape "
-                f"(batch, {self._feat_in}, n_frame) but got last dimension {audio_signal.shape[-2]}."
-            )
-        if bypass_pre_encode and audio_signal.shape[-1] != self.d_model:
-            raise ValueError(
-                f"If bypass_pre_encode is True, audio_signal should have shape "
-                f"(batch, n_frame, {self.d_model}) but got last dimension {audio_signal.shape[-1]}."
-            )
-
-        if bypass_pre_encode:
-            self.update_max_seq_length(
-                seq_length=audio_signal.size(2) * self.subsampling_factor,
-                device=audio_signal.device,
-            )
-        else:
-            self.update_max_seq_length(
-                seq_length=audio_signal.size(2), device=audio_signal.device
-            )
-
-        return self.forward_internal(audio_signal, length, bypass_pre_encode=bypass_pre_encode)
-
-    def forward_internal(self, audio_signal, length, bypass_pre_encode=False):
+    def forward(self, audio_signal, length, ctc_decoder_out, ctc_decoder_in,ctc_decoder_out_ipa, ctc_decoder_in_ipa):
+        self.update_max_seq_length(
+            seq_length=audio_signal.size(2), device=audio_signal.device
+        )
         """
         The `audio_signal` input supports two formats depending on the `bypass_pre_encode` boolean flag.
         This determines the required format of the input variable `audio_signal`:
@@ -508,8 +491,6 @@ class ConformerOfflineEncoder(nn.Module):
             `audio_signal` must be a tensor containing pre-encoded embeddings.
             Shape: (batch, n_frame, self.d_model)
 
-        `bypass_pre_encode=True` is used in cases where frame-level, context-independent embeddings are
-        needed to be saved or reused (e.g., speaker cache in streaming speaker diarization).
         """
         if length is None:
             length = audio_signal.new_full(
@@ -519,14 +500,13 @@ class ConformerOfflineEncoder(nn.Module):
                 device=audio_signal.device,
             )
 
-        if not bypass_pre_encode:
-            audio_signal = torch.transpose(audio_signal, 1, 2)
+        audio_signal = torch.transpose(audio_signal, 1, 2)
 
-            if isinstance(self.pre_encode, nn.Linear):
-                audio_signal = self.pre_encode(audio_signal)
-            else:
-                audio_signal, length = self.pre_encode(x=audio_signal, lengths=length)
-                length = length.to(torch.int64)
+        if isinstance(self.pre_encode, nn.Linear):
+            audio_signal = self.pre_encode(audio_signal)
+        else:
+            audio_signal, length = self.pre_encode(x=audio_signal, lengths=length)
+            length = length.to(torch.int64)
 
         max_audio_length = audio_signal.size(1)
         padding_length = length
@@ -535,19 +515,30 @@ class ConformerOfflineEncoder(nn.Module):
 
         # Create the padding mask
         pad_mask = self._create_pad_mask(padding_length, max_audio_length, audio_signal.device)
-
-        for layer in self.layers:
+        intermediate_logits=[]
+        intermediate_logits_ipa=[]
+        for idx, layer in enumerate(self.layers):
             audio_signal = layer(
                 x=audio_signal,
                 att_mask=None,  # No attention masking for offline processing
                 pos_emb=pos_emb,
                 pad_mask=pad_mask,
             )
-
+            ori_audio_signal=audio_signal
+            if idx in self.sc_layers:
+                ctc_outs = ctc_decoder_out(audio_signal)
+                intermediate_logits.append(ctc_outs)
+                decoder_in=ctc_decoder_in(ctc_outs).detach()
+                audio_signal=audio_signal+decoder_in
+            if idx in self.sc_layers_ipa:
+                ctc_outs_ipa = ctc_decoder_out_ipa(ori_audio_signal)
+                intermediate_logits_ipa.append(ctc_outs_ipa)
+                decoder_in_ipa=ctc_decoder_in_ipa(ctc_outs_ipa).detach()
+                audio_signal=audio_signal+decoder_in_ipa
         audio_signal = torch.transpose(audio_signal, 1, 2)
         length = length.to(dtype=torch.int64)
 
-        return audio_signal.transpose(1, 2), length
+        return audio_signal.transpose(1, 2), length,intermediate_logits,intermediate_logits_ipa
 
     def update_max_seq_length(self, seq_length: int, device):
         """

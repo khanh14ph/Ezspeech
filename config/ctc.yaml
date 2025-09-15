@@ -1,29 +1,29 @@
 dataset:
   # Path to SentencePiece model file for tokenization
-  spe_file: /home4/khanhnd/tokenizer/grapheme.model
+  spe_file: /home3/khanhnd/download/grapheme.model
   # Training dataset configuration
   train_ds:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     # List of JSONL files containing training data metadata
     filepaths:
-      - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
-      - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
+      - /home3/khanhnd/download/train_libri_clean.jsonl
+      - /home3/khanhnd/download/train_vietbud.jsonl
     # Base directory for audio files (empty means use absolute paths from JSONL)
-    data_dir: ""
+    data_dir: "/home3/khanhnd/download/"
 
   # Validation dataset configuration
   val_ds:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     # List of JSONL files containing validation data metadata
     filepaths:
-      - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
-      - /home4/khanhnd/Ezspeech/dataset/demo.jsonl
+      - /home3/khanhnd/download/vivos_test.jsonl
+      - /home3/khanhnd/download/test_libri_clean.jsonl
     # Base directory for audio files - data_dir + audio_filepath will be the full path
-    data_dir: ""
+    data_dir: "/home3/khanhnd/download/"
   # Training data loader configuration
   train_loader:
     # Maximum total duration (in seconds) of audio per batch
-    max_batch_duration: 100
+    max_batch_duration: 200
     # Number of buckets for bucketing similar-length sequences
     num_bucket: 20
     num_workers: 8
@@ -40,11 +40,12 @@ model:
   d_model: &d_model 512
   # Vocabulary size including blank token - used as YAML anchor for reuse
   vocab_size: &vocab_size 2048
+  sc_layer: [3,6,9]
   # Pretrained model configuration for transfer learning
   model_pretrained:
-    # path: /home4/khanhnd/parakeet-tdt_ctc-110m-12-layer.ckpt
+    path: /home4/khanhnd/parakeet-tdt_ctc-110m-12-layer.ckpt
     # Path to pretrained checkpoint file
-    path: /home4/khanhnd/exported_checkpoint/model.ckpt
+    # path: /home4/khanhnd/exported_checkpoint/model.ckpt
     # Which components to load from pretrained model
     include: ["encoder"]
   preprocessor:
@@ -66,11 +67,12 @@ model:
     freq_width: 27
     time_width: 0.05
   encoder:
-    _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
+    _target_: ezspeech.modules.encoder.conformer_offline.ConformerOfflineEncoder
     feat_in: ${model.preprocessor.features}
     feat_out: -1
     n_layers: 12
     d_model: 512
+    sc_layers: [2,5,8]
     subsampling: dw_striding
     subsampling_factor: 8
     subsampling_conv_channels: 256
@@ -106,8 +108,7 @@ model:
   back_projector_sc:
     _target_: ezspeech.modules.decoder.decoder.Back_projector_sc_linear
     input_dim:  *vocab_size
-    out_features :  *d_model
-    add_blank: True
+    output_dim :  *d_model
     
     
   loss:
@@ -158,10 +159,10 @@ loggers:
     default_hp_metric: false
 
 trainer:
-  max_epochs: 200
-  strategy: ddp
+  max_epochs: 30
+  strategy: ddp_find_unused_parameters_true
   accelerator: gpu
-  devices: [3]
+  devices: [1]
   accumulate_grad_batches: 1
   # detect_anomaly: True
   precision: 16
