@@ -112,13 +112,13 @@ def evaluate_model(config_path: str, test_jsonl: str, data_dir: str = "", output
 
 def main():
     parser = argparse.ArgumentParser(description='Evaluate ASR CTC model')
-    parser.add_argument('--config', type=str, required=True,
+    parser.add_argument('--config', type=str, default="config/test/test.yaml",
                        help='Path to model config file')
-    parser.add_argument('--test_data', type=str, required=True,
+    parser.add_argument('--test_data', type=str, default="data/vivos.jsonl",
                        help='Path to test JSONL file')
     parser.add_argument('--data_dir', type=str, default="",
                        help='Base directory for audio files')
-    parser.add_argument('--output', type=str, default=None,
+    parser.add_argument('--output', type=str, default="result.jsonl",
                        help='Output file for detailed results (JSON)')
 
     args = parser.parse_args()
