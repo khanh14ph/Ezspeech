@@ -17,7 +17,6 @@ ezspeech/layers/sampling.py
 ezspeech/models/ASR.py
 ezspeech/models/__init__.py
 ezspeech/models/abtract.py
-ezspeech/models/alignment.py
 ezspeech/models/ctc_recognition.py
 ezspeech/modules/__init__.py
 ezspeech/modules/decoder/__init__.py

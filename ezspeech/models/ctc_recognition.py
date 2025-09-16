@@ -266,9 +266,11 @@ class ASR_ctc_training(LightningModule):
         print("checkpoint")
         torch.save(checkpoint, filepath)
         print(f'Model checkpoint is saved to "{filepath}" ...')
-class ASR_ctc_inference(object):
+
+
+class ASR_ctc_inference:
     def __init__(
-        self, filepath: str, device: str, tokenizer_path: str = None, decoding_cfg=None
+        self, filepath: str, device: str, tokenizer_path: str = None
     ):
         self.device = device
         self.tokenizer = Tokenizer(spe_file=tokenizer_path)
@@ -363,19 +365,5 @@ class ASR_ctc_inference(object):
         audio_lengths = torch.stack(wav_lengths)
         return new_audio_signal, audio_lengths
 
-
 if __name__ == "__main__":
-
-    config = OmegaConf.load("/home4/khanhnd/Ezspeech/config/test/test.yaml")
-    model = instantiate(config.model)
-    import torchaudio
-
-    audio1 = "/home4/khanhnd/vivos/test/waves/VIVOSDEV02/VIVOSDEV02_R181.wav"
-    # THE ENGLISH FORWARDED TO THE FRENCH BASKETS OF FLOWERS OF WHICH THEY HAD MADE A PLENTIFUL PROVISION TO GREET THE ARRIVAL OF THE YOUNG PRINCESS THE FRENCH IN RETURN INVITED THE ENGLISH TO A SUPPER WHICH WAS TO BE GIVEN THE NEXT DAY
-    # audio = [audio1]
-    # audio2="/home4/tuannd/vbee-asr/self-condition-asr/espnet/egs2/librispeech_100/asr1/downloads/LibriSpeech/test-clean/6930/75918/6930-75918-0000.flac"
-    # print(model.transcribe_streaming(audio1))
-    tex1 = model.transcribe([audio1])
-    print(tex1)
-    # print(model.transcribe(audio)[0]=="hear nothing thing so expezcaris flow boes theatre sus days country tele can never refer one'ssel as i have tou had little money and")
-
+    a=ASR_ctc_inference()

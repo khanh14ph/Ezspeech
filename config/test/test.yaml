@@ -1,5 +1,5 @@
 model:
   _target_: ezspeech.models.ctc_recognition.ASR_ctc_inference
-  filepath: /home4/khanhnd/exported_checkpoint/models.ckpt
+  filepath: /home3/khanhnd/exported_checkpoint/model.ckpt
   device: cuda
-  tokenizer_path: /Users/khanh/dev/asr_dev/tokenizer/grapheme.model
+  tokenizer_path: /home3/khanhnd/download/grapheme.model
