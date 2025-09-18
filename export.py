@@ -5,6 +5,6 @@ import torch
 from ezspeech.models.ctc_recognition import ASR_ctc_training
 
 a = ASR_ctc_training.load_from_checkpoint(
-    "/home4/vuhl/last.ckpt"
+    "/home3/khanhnd/lightning_logs/icassp/alternate/checkpoints/last.ckpt"
 )
-a.export_checkpoint("/home3/khanhnd/exported_checkpoint/vi_ipa.ckpt")
+a.export_checkpoint("/home3/khanhnd/exported_checkpoint/alternate.ckpt")

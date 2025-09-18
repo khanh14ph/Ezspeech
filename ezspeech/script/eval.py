@@ -113,7 +113,7 @@ def main():
     parser = argparse.ArgumentParser(description='Evaluate ASR CTC model')
     parser.add_argument('--config', type=str, default="config/test/test.yaml",
                        help='Path to model config file')
-    parser.add_argument('--test_data', type=str, default="/home3/khanhnd/download/vietbud_test_ipa.jsonl",
+    parser.add_argument('--test_data', type=str, default="/home3/khanhnd/download/test_libri_clean.jsonl",
                        help='Path to test JSONL file')
     parser.add_argument('--data_dir', type=str, default="/home3/khanhnd/download/",
                        help='Base directory for audio files')
