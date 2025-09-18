@@ -88,20 +88,31 @@ python scripts/train.py --config-name=my_config
 
 ## 📊 Evaluation
 
-### Comprehensive Evaluation
+### Using Test Configuration
 
 ```bash
-python scripts/evaluate.py --config-name=eval \
-  model_checkpoint=/path/to/model.ckpt \
-  eval_datasets.test_set.filepaths=[/path/to/test.jsonl]
+# Use the pre-configured test setup
+python scripts/evaluate.py --config-name=test
 ```
 
-### Single File Evaluation
+### Custom Evaluation Configuration
+
+Create your own evaluation config (copy from `config/eval.yaml`):
 
 ```bash
-python scripts/evaluate.py --config-name=eval \
-  model_checkpoint=/path/to/model.ckpt \
-  eval_files=[{audio_path:/path/to/audio.wav,reference_text:"hello world"}]
+# Copy and modify the template
+cp config/eval.yaml config/my_eval.yaml
+# Edit config/my_eval.yaml with your paths
+python scripts/evaluate.py --config-name=my_eval
+```
+
+### Configuration Override
+
+```bash
+# Override specific values from command line
+python scripts/evaluate.py --config-name=test \
+  model_checkpoint=/path/to/different/model.ckpt \
+  output_dir=custom_results
 ```
 
 ### Metrics

@@ -533,18 +533,45 @@ trainer:
             <section id="evaluation" class="section">
                 <h2>📊 Evaluation</h2>
 
-                <h3>Comprehensive Dataset Evaluation</h3>
+                <h3>Using Pre-configured Test Setup</h3>
                 <div class="code-block" data-lang="bash">
-                    <pre>python scripts/evaluate.py --config-name=eval \
-  model_checkpoint=/path/to/model.ckpt \
-  eval_datasets.test_set.filepaths=[/path/to/test.jsonl]</pre>
+                    <pre># Use the test configuration with all paths pre-defined
+python scripts/evaluate.py --config-name=test</pre>
                 </div>
 
-                <h3>Single File Evaluation</h3>
+                <h3>Custom Evaluation Configuration</h3>
                 <div class="code-block" data-lang="bash">
-                    <pre>python scripts/evaluate.py --config-name=eval \
-  model_checkpoint=/path/to/model.ckpt \
-  eval_files=[{audio_path:/path/to/audio.wav,reference_text:"hello world"}]</pre>
+                    <pre># Copy and modify the template
+cp config/eval.yaml config/my_eval.yaml
+# Edit config/my_eval.yaml with your paths
+python scripts/evaluate.py --config-name=my_eval</pre>
+                </div>
+
+                <h3>Configuration Override</h3>
+                <div class="code-block" data-lang="bash">
+                    <pre># Override specific values from command line
+python scripts/evaluate.py --config-name=test \
+  model_checkpoint=/path/to/different/model.ckpt \
+  output_dir=custom_results</pre>
+                </div>
+
+                <h3>Evaluation Configuration Format</h3>
+                <div class="code-block" data-lang="yaml">
+                    <pre># config/test.yaml example
+model_checkpoint: /path/to/model.ckpt
+
+eval_datasets:
+  test_set:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    filepaths:
+      - /path/to/test.jsonl
+    data_dir: /path/to/audio/
+
+eval_files:
+  - audio_path: /path/to/sample.wav
+    reference_text: "expected transcription"
+
+output_dir: outputs/evaluation</pre>
                 </div>
 
                 <h3>Available Metrics</h3>

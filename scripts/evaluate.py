@@ -151,34 +151,83 @@ def main(config: DictConfig) -> None:
     """Main evaluation function."""
     logger.info("Starting ASR evaluation...")
 
+    # Validate configuration
+    if not config.get('model_checkpoint'):
+        raise ValueError("model_checkpoint must be specified in config")
+
+    model_path = config.model_checkpoint
+    if not Path(model_path).exists():
+        raise FileNotFoundError(f"Model checkpoint not found: {model_path}")
+
     # Initialize evaluator
     evaluator = ASREvaluator(
-        model_path=config.model_checkpoint,
+        model_path=model_path,
         config=config
     )
 
     results = {}
 
+    # Validate dataset paths
+    if hasattr(config, 'eval_datasets'):
+        for dataset_name, dataset_config in config.eval_datasets.items():
+            # Check if dataset files exist
+            for filepath in dataset_config.get('filepaths', []):
+                if not Path(filepath).exists():
+                    logger.warning(f"Dataset file not found: {filepath}")
+
     # Evaluate on test datasets
     if hasattr(config, 'eval_datasets'):
         for dataset_name, dataset_config in config.eval_datasets.items():
             logger.info(f"Evaluating on dataset: {dataset_name}")
-            dataset_results = evaluator.evaluate_dataset(dataset_config)
-            results[dataset_name] = dataset_results
+            try:
+                dataset_results = evaluator.evaluate_dataset(dataset_config)
+                results[dataset_name] = dataset_results
 
-            logger.info(f"Results for {dataset_name}:")
-            logger.info(f"  WER: {dataset_results['word_error_rate']:.4f}")
-            logger.info(f"  CER: {dataset_results['character_error_rate']:.4f}")
+                logger.info(f"Results for {dataset_name}:")
+                logger.info(f"  WER: {dataset_results['word_error_rate']:.4f}")
+                logger.info(f"  CER: {dataset_results['character_error_rate']:.4f}")
+            except Exception as e:
+                logger.error(f"Failed to evaluate dataset {dataset_name}: {e}")
+                results[dataset_name] = {"error": str(e)}
 
     # Evaluate single files if specified
     if hasattr(config, 'eval_files'):
         single_file_results = []
-        for file_config in config.eval_files:
-            result = evaluator.evaluate_single_audio(
-                audio_path=file_config.audio_path,
-                reference_text=file_config.get('reference_text')
-            )
-            single_file_results.append(result)
+        for i, file_config in enumerate(config.eval_files):
+            audio_path = file_config.audio_path
+            reference_text = file_config.get('reference_text')
+
+            # Check if audio file exists
+            if not Path(audio_path).exists():
+                logger.warning(f"Audio file not found: {audio_path}")
+                single_file_results.append({
+                    "audio_path": audio_path,
+                    "error": "File not found"
+                })
+                continue
+
+            try:
+                logger.info(f"Evaluating single file {i+1}/{len(config.eval_files)}: {audio_path}")
+                result = evaluator.evaluate_single_audio(
+                    audio_path=audio_path,
+                    reference_text=reference_text
+                )
+                single_file_results.append(result)
+
+                if reference_text:
+                    logger.info(f"  Prediction: {result['prediction']}")
+                    logger.info(f"  Reference: {result['reference']}")
+                    logger.info(f"  WER: {result.get('wer', 'N/A'):.4f}")
+                    logger.info(f"  CER: {result.get('cer', 'N/A'):.4f}")
+                else:
+                    logger.info(f"  Prediction: {result['prediction']}")
+
+            except Exception as e:
+                logger.error(f"Failed to evaluate file {audio_path}: {e}")
+                single_file_results.append({
+                    "audio_path": audio_path,
+                    "error": str(e)
+                })
 
         results['single_files'] = single_file_results
 

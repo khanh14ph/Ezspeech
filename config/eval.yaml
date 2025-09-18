@@ -1,6 +1,7 @@
-# Evaluation configuration for EzSpeech models
+# Evaluation configuration template for EzSpeech models
+# Copy this file and update paths for your specific evaluation setup
 
-# Model checkpoint to evaluate
+# Model checkpoint to evaluate (REQUIRED - update this path)
 model_checkpoint: /path/to/your/model.ckpt
 
 # Evaluation settings
@@ -8,7 +9,7 @@ eval_batch_size: 8
 eval_num_workers: 4
 output_dir: outputs/evaluation
 
-# Datasets to evaluate on
+# Datasets to evaluate on (update these paths)
 eval_datasets:
   test_set:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
@@ -22,7 +23,7 @@ eval_datasets:
       - /path/to/val.jsonl
     data_dir: /path/to/audio/files
 
-# Individual files to evaluate (optional)
+# Individual files to evaluate (optional - update these paths)
 eval_files:
   - audio_path: /path/to/sample1.wav
     reference_text: "hello world"
