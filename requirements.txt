@@ -1,14 +1,58 @@
-torchaudio
-torch
-librosa
-pytorch-lightning
-hydra-core
-tensorboardX
-pandas
-transformers[torch]
-datasets
-jiwer
-orjson
-num2words
-einops
-editdistance
+# Core deep learning and PyTorch ecosystem
+torch>=2.0.0
+torchaudio>=2.0.0
+pytorch-lightning>=2.0.0
+
+# Configuration management
+hydra-core>=1.3.0
+omegaconf>=2.3.0
+
+# Audio processing and ASR metrics
+librosa>=0.10.0
+soundfile>=0.12.0
+jiwer>=3.0.0
+
+# Data processing and utilities
+numpy>=1.21.0
+pandas>=1.5.0
+scipy>=1.9.0
+einops>=0.6.0
+
+# Tokenization and text processing
+sentencepiece>=0.1.99
+transformers[torch]>=4.20.0
+datasets>=2.0.0
+num2words>=0.5.12
+
+# Utilities
+orjson>=3.8.0
+editdistance>=0.6.0
+tqdm>=4.64.0
+
+# Logging and monitoring
+tensorboardX>=2.5.0
+colorlog>=6.7.0
+
+# WebSocket server dependencies
+websockets>=11.0.0
+pyaudio>=0.2.11  # For microphone input
+asyncio>=3.4.3
+
+# Development and testing (optional)
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=22.0.0
+isort>=5.10.0
+flake8>=5.0.0
+
+# Optional: Visualization and analysis
+matplotlib>=3.5.0
+seaborn>=0.11.0
+scikit-learn>=1.1.0
+
+# Optional: Alternative logging
+wandb>=0.13.0
+
+# Optional: Model export and optimization (install separately if needed)
+# onnx>=1.12.0
+# onnxruntime>=1.12.0

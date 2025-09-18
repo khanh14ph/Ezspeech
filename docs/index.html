@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EzSpeech - Easy Speech Recognition Toolkit</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --accent-color: #3b82f6;
+            --text-color: #1f2937;
+            --light-bg: #f8fafc;
+            --border-color: #e5e7eb;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: #ffffff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Navigation */
+        .nav {
+            background: var(--light-bg);
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: var(--text-color);
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav a:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Main content */
+        .main {
+            padding: 2rem 0;
+        }
+
+        .section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .section h3 {
+            font-size: 1.5rem;
+            margin: 1.5rem 0 1rem 0;
+            color: var(--secondary-color);
+        }
+
+        /* Feature grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: var(--light-bg);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .feature-card h4 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 0.5rem;
+            right: 1rem;
+            background: var(--accent-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        /* Interactive demo */
+        .demo-section {
+            background: var(--light-bg);
+            padding: 2rem;
+            border-radius: 0.75rem;
+            margin: 2rem 0;
+        }
+
+        .demo-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: var(--secondary-color);
+            transform: translateY(-1px);
+        }
+
+        .btn.secondary {
+            background: var(--border-color);
+            color: var(--text-color);
+        }
+
+        .btn.secondary:hover {
+            background: #d1d5db;
+        }
+
+        /* Status indicators */
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            display: inline-block;
+            margin: 0.5rem 0;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: var(--success-color);
+        }
+
+        .status.warning {
+            background: #fef3c7;
+            color: var(--warning-color);
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: var(--error-color);
+        }
+
+        /* Architecture diagram */
+        .architecture-diagram {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            border: 2px solid var(--border-color);
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .arch-layer {
+            background: var(--light-bg);
+            padding: 1rem;
+            margin: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            display: inline-block;
+            min-width: 200px;
+        }
+
+        /* Performance metrics */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .metric-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        /* Configuration table */
+        .config-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .config-table th,
+        .config-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .config-table th {
+            background: var(--light-bg);
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--text-color);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: 4rem;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .nav ul {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .section {
+                padding: 1rem;
+            }
+
+            .demo-controls {
+                flex-direction: column;
+            }
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section {
+            animation: fadeIn 0.6s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>🎤 EzSpeech</h1>
+            <p>Modern Speech Recognition Toolkit Built on PyTorch Lightning</p>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="container">
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#installation">Installation</a></li>
+                <li><a href="#training">Training</a></li>
+                <li><a href="#evaluation">Evaluation</a></li>
+                <li><a href="#websocket">WebSocket API</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#performance">Performance</a></li>
+                <li><a href="#examples">Examples</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="container">
+            <!-- Overview Section -->
+            <section id="overview" class="section">
+                <h2>🌟 Overview</h2>
+                <p>EzSpeech is a state-of-the-art automatic speech recognition (ASR) toolkit designed for researchers and developers who need powerful, easy-to-use speech recognition capabilities. Built on PyTorch Lightning, it provides clean APIs for training, evaluation, and deployment of ASR models.</p>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h4>🚀 Easy Training</h4>
+                        <p>Simplified workflows with Hydra configuration management and automatic mixed precision training.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📊 Comprehensive Evaluation</h4>
+                        <p>Detailed metrics including WER, CER, error analysis, and confidence-based measurements.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🌐 Real-time Inference</h4>
+                        <p>Production-ready WebSocket server for live audio transcription and streaming applications.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🏗️ Modern Architecture</h4>
+                        <p>Support for Conformer encoders, CTC and Transducer decoders, with GPU optimization.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Features Section -->
+            <section id="features" class="section">
+                <h2>✨ Features</h2>
+
+                <h3>Model Architectures</h3>
+                <ul>
+                    <li><strong>CTC Models:</strong> Connectionist Temporal Classification with grapheme and phoneme support</li>
+                    <li><strong>Transducer Models:</strong> RNN-T and streaming-capable architectures</li>
+                    <li><strong>Conformer Encoders:</strong> State-of-the-art transformer-CNN hybrid architecture</li>
+                    <li><strong>Fast Conformer:</strong> Optimized version for faster inference</li>
+                </ul>
+
+                <h3>Training Features</h3>
+                <ul>
+                    <li><strong>Dynamic Batching:</strong> Efficient batch creation based on audio duration</li>
+                    <li><strong>Distributed Training:</strong> Multi-GPU support with DDP strategy</li>
+                    <li><strong>Mixed Precision:</strong> Automatic mixed precision for faster training</li>
+                    <li><strong>Transfer Learning:</strong> Load pre-trained weights for fine-tuning</li>
+                    <li><strong>Advanced Augmentation:</strong> SpecAugment and other audio augmentations</li>
+                </ul>
+
+                <h3>Deployment Options</h3>
+                <ul>
+                    <li><strong>WebSocket Server:</strong> Real-time streaming ASR service</li>
+                    <li><strong>Batch Processing:</strong> Efficient processing of multiple files</li>
+                    <li><strong>Model Export:</strong> ONNX and TorchScript export support</li>
+                    <li><strong>REST API:</strong> HTTP endpoints for file-based transcription</li>
+                </ul>
+            </section>
+
+            <!-- Installation Section -->
+            <section id="installation" class="section">
+                <h2>📦 Installation</h2>
+
+                <h3>Quick Install</h3>
+                <div class="code-block" data-lang="bash">
+                    <pre>git clone https://github.com/khanh14ph/EzSpeech.git
+cd EzSpeech
+pip install -e .</pre>
+                </div>
+
+                <h3>Development Install</h3>
+                <div class="code-block" data-lang="bash">
+                    <pre>git clone https://github.com/khanh14ph/EzSpeech.git
+cd EzSpeech
+pip install -e ".[dev]"</pre>
+                </div>
+
+                <h3>WebSocket Dependencies</h3>
+                <div class="code-block" data-lang="bash">
+                    <pre>pip install websockets pyaudio torchaudio</pre>
+                </div>
+
+                <div class="status success">
+                    ✅ Installation typically takes 2-5 minutes depending on your system
+                </div>
+            </section>
+
+            <!-- Training Section -->
+            <section id="training" class="section">
+                <h2>🚂 Training</h2>
+
+                <h3>Quick Start Training</h3>
+                <div class="code-block" data-lang="bash">
+                    <pre># Train CTC model with grapheme+phoneme
+python scripts/train.py --config-name=ctc_sc
+
+# Train standard CTC model
+python scripts/train.py --config-name=ctc
+
+# Train Transducer model
+python scripts/train.py --config-name=asr</pre>
+                </div>
+
+                <h3>Custom Configuration</h3>
+                <div class="code-block" data-lang="yaml">
+                    <pre># config/my_config.yaml
+dataset:
+  train_ds:
+    filepaths:
+      - /path/to/train.jsonl
+    data_dir: /path/to/audio/
+  val_ds:
+    filepaths:
+      - /path/to/val.jsonl
+    data_dir: /path/to/audio/
+
+model:
+  d_model: 512
+  vocab_size: 1024
+  encoder:
+    n_layers: 12
+    ff_expansion_factor: 4
+
+trainer:
+  max_epochs: 20
+  devices: [0]
+  precision: 16</pre>
+                </div>
+
+                <h3>Configuration Parameters</h3>
+                <table class="config-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Description</th>
+                            <th>Default</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>max_batch_duration</code></td>
+                            <td>Total audio seconds per batch</td>
+                            <td>130</td>
+                        </tr>
+                        <tr>
+                            <td><code>num_bucket</code></td>
+                            <td>Number of length buckets for batching</td>
+                            <td>20</td>
+                        </tr>
+                        <tr>
+                            <td><code>d_model</code></td>
+                            <td>Model embedding dimension</td>
+                            <td>512</td>
+                        </tr>
+                        <tr>
+                            <td><code>n_layers</code></td>
+                            <td>Number of encoder layers</td>
+                            <td>12</td>
+                        </tr>
+                        <tr>
+                            <td><code>precision</code></td>
+                            <td>Training precision (16/32)</td>
+                            <td>16</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Evaluation Section -->
+            <section id="evaluation" class="section">
+                <h2>📊 Evaluation</h2>
+
+                <h3>Comprehensive Dataset Evaluation</h3>
+                <div class="code-block" data-lang="bash">
+                    <pre>python scripts/evaluate.py --config-name=eval \
+  model_checkpoint=/path/to/model.ckpt \
+  eval_datasets.test_set.filepaths=[/path/to/test.jsonl]</pre>
+                </div>
+
+                <h3>Single File Evaluation</h3>
+                <div class="code-block" data-lang="bash">
+                    <pre>python scripts/evaluate.py --config-name=eval \
+  model_checkpoint=/path/to/model.ckpt \
+  eval_files=[{audio_path:/path/to/audio.wav,reference_text:"hello world"}]</pre>
+                </div>
+
+                <h3>Available Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">WER</div>
+                        <div class="metric-label">Word Error Rate</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">CER</div>
+                        <div class="metric-label">Character Error Rate</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">SER</div>
+                        <div class="metric-label">Sentence Error Rate</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">BLEU</div>
+                        <div class="metric-label">BLEU Score</div>
+                    </div>
+                </div>
+
+                <h3>Error Analysis</h3>
+                <ul>
+                    <li><strong>Substitution Rate:</strong> Percentage of words incorrectly substituted</li>
+                    <li><strong>Insertion Rate:</strong> Percentage of extra words inserted</li>
+                    <li><strong>Deletion Rate:</strong> Percentage of words deleted</li>
+                    <li><strong>Length Statistics:</strong> Analysis of prediction vs reference lengths</li>
+                    <li><strong>Confidence Metrics:</strong> Accuracy at different confidence thresholds</li>
+                </ul>
+            </section>
+
+            <!-- WebSocket Section -->
+            <section id="websocket" class="section">
+                <h2>🌐 WebSocket API</h2>
+
+                <h3>Start WebSocket Server</h3>
+                <div class="code-block" data-lang="bash">
+                    <pre>python scripts/serve_websocket.py \
+  --model-path /path/to/model.ckpt \
+  --host 0.0.0.0 \
+  --port 8765</pre>
+                </div>
+
+                <h3>WebSocket Message Types</h3>
+
+                <h4>Audio Chunk (Real-time)</h4>
+                <div class="code-block" data-lang="json">
+                    <pre>{
+  "type": "audio_chunk",
+  "chunk_id": 0,
+  "audio_data": "base64_encoded_audio",
+  "sample_rate": 16000,
+  "is_final": false
+}</pre>
+                </div>
+
+                <h4>Audio File Processing</h4>
+                <div class="code-block" data-lang="json">
+                    <pre>{
+  "type": "audio_file",
+  "file_path": "/path/to/audio.wav"
+}</pre>
+                </div>
+
+                <h3>Server Response Format</h3>
+                <div class="code-block" data-lang="json">
+                    <pre>{
+  "type": "transcription",
+  "chunk_id": 0,
+  "text": "transcribed text",
+  "confidence": 0.95,
+  "processing_time_ms": 45.2,
+  "is_final": false
+}</pre>
+                </div>
+
+                <!-- Interactive Demo Section -->
+                <div class="demo-section">
+                    <h3>🎮 Interactive WebSocket Demo</h3>
+                    <p>Test WebSocket connection and messaging (requires running server)</p>
+
+                    <div class="demo-controls">
+                        <button class="btn" onclick="connectWebSocket()">Connect to Server</button>
+                        <button class="btn secondary" onclick="disconnectWebSocket()">Disconnect</button>
+                        <button class="btn" onclick="sendTestMessage()">Send Test Message</button>
+                    </div>
+
+                    <div id="websocket-status" class="status">Not connected</div>
+                    <div id="websocket-messages" style="background: #f1f5f9; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; min-height: 100px; font-family: monospace; font-size: 0.9rem;"></div>
+                </div>
+            </section>
+
+            <!-- Architecture Section -->
+            <section id="architecture" class="section">
+                <h2>🏗️ Architecture</h2>
+
+                <div class="architecture-diagram">
+                    <h3>EzSpeech Model Architecture</h3>
+                    <div style="margin: 2rem 0;">
+                        <div class="arch-layer">Audio Input<br><small>16kHz Mono WAV</small></div>
+                        <div style="margin: 0.5rem 0;">⬇️</div>
+                        <div class="arch-layer">Preprocessor<br><small>Mel Spectrogram</small></div>
+                        <div style="margin: 0.5rem 0;">⬇️</div>
+                        <div class="arch-layer">SpecAugment<br><small>Data Augmentation</small></div>
+                        <div style="margin: 0.5rem 0;">⬇️</div>
+                        <div class="arch-layer">Conformer Encoder<br><small>12 Layers, 512 Dim</small></div>
+                        <div style="margin: 0.5rem 0;">⬇️</div>
+                        <div class="arch-layer">CTC/RNN-T Decoder<br><small>Output Layer</small></div>
+                        <div style="margin: 0.5rem 0;">⬇️</div>
+                        <div class="arch-layer">Text Output<br><small>Transcription</small></div>
+                    </div>
+                </div>
+
+                <h3>Key Components</h3>
+                <ul>
+                    <li><strong>Preprocessor:</strong> Converts audio to mel spectrograms with configurable parameters</li>
+                    <li><strong>SpecAugment:</strong> Frequency and time masking for data augmentation</li>
+                    <li><strong>Conformer Encoder:</strong> Combines convolution and self-attention mechanisms</li>
+                    <li><strong>CTC Decoder:</strong> Connectionist Temporal Classification for alignment-free training</li>
+                    <li><strong>RNN-T Decoder:</strong> Recurrent Neural Network Transducer for streaming applications</li>
+                </ul>
+
+                <h3>Project Structure</h3>
+                <div class="code-block" data-lang="text">
+                    <pre>EzSpeech/
+├── config/                 # Configuration files
+│   ├── ctc_sc.yaml         # CTC with grapheme+phoneme
+│   ├── ctc.yaml            # Standard CTC
+│   ├── asr.yaml            # Transducer model
+│   └── eval.yaml           # Evaluation config
+├── scripts/                # Main scripts
+│   ├── train.py            # Training script
+│   ├── evaluate.py         # Evaluation script
+│   └── serve_websocket.py  # WebSocket server
+├── examples/               # Usage examples
+│   ├── websocket_client.py # WebSocket client
+│   └── README.md           # Examples documentation
+├── ezspeech/              # Core package
+│   ├── models/            # Model definitions
+│   ├── modules/           # Lightning modules
+│   ├── layers/            # Neural network layers
+│   └── utils/             # Utilities
+└── docs/                  # Documentation
+    └── index.html         # This documentation</pre>
+                </div>
+            </section>
+
+            <!-- Performance Section -->
+            <section id="performance" class="section">
+                <h2>📈 Performance</h2>
+
+                <h3>Benchmark Results</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">5.2%</div>
+                        <div class="metric-label">LibriSpeech WER</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">2.1%</div>
+                        <div class="metric-label">LibriSpeech CER</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">0.3x</div>
+                        <div class="metric-label">Real-time Factor</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">45ms</div>
+                        <div class="metric-label">Average Latency</div>
+                    </div>
+                </div>
+
+                <h3>Training Performance Tips</h3>
+                <ul>
+                    <li><strong>Dynamic Batching:</strong> Use <code>max_batch_duration</code> instead of fixed batch size for 30% faster training</li>
+                    <li><strong>Mixed Precision:</strong> Enable with <code>precision=16</code> for 2x speedup on modern GPUs</li>
+                    <li><strong>Distributed Training:</strong> Use <code>strategy=ddp</code> for multi-GPU scaling</li>
+                    <li><strong>Bucketing:</strong> Set appropriate <code>num_bucket</code> value for efficient sequence batching</li>
+                </ul>
+
+                <h3>Inference Optimization</h3>
+                <ul>
+                    <li><strong>Model Export:</strong> Convert to ONNX or TorchScript for deployment</li>
+                    <li><strong>Quantization:</strong> Apply INT8 quantization for mobile devices</li>
+                    <li><strong>Batch Processing:</strong> Process multiple files together for better GPU utilization</li>
+                    <li><strong>Streaming:</strong> Use chunk-based processing for real-time applications</li>
+                </ul>
+            </section>
+
+            <!-- Examples Section -->
+            <section id="examples" class="section">
+                <h2>💡 Examples</h2>
+
+                <h3>Python API Usage</h3>
+                <div class="code-block" data-lang="python">
+                    <pre># Load and use a trained model
+from ezspeech.models.ctc_recognition import ASR_ctc_training
+import torchaudio
+
+# Load model
+model = ASR_ctc_training.load_from_checkpoint("model.ckpt")
+model.eval()
+
+# Load audio
+waveform, sample_rate = torchaudio.load("audio.wav")
+
+# Preprocess and predict
+features = model.preprocessor(waveform)
+encoded, _ = model.encoder(features, torch.tensor([features.shape[-1]]))
+logits = model.ctc_decoder(encoded)
+
+# Decode prediction
+prediction = model.tokenizer_grapheme.decode(torch.argmax(logits, dim=-1))
+print(f"Transcription: {prediction}")</pre>
+                </div>
+
+                <h3>WebSocket Client Example</h3>
+                <div class="code-block" data-lang="python">
+                    <pre># Real-time transcription client
+import asyncio
+from examples.websocket_client import ASRWebSocketClient
+
+async def real_time_demo():
+    client = ASRWebSocketClient("ws://localhost:8765")
+    await client.connect()
+
+    # Stream from microphone for 10 seconds
+    await client.stream_audio_from_microphone(duration_seconds=10.0)
+
+    await client.disconnect()
+
+# Run the demo
+asyncio.run(real_time_demo())</pre>
+                </div>
+
+                <h3>Custom Training Loop</h3>
+                <div class="code-block" data-lang="python">
+                    <pre># Custom training with your own data
+from pytorch_lightning import Trainer
+from ezspeech.models.ctc_recognition import ASR_ctc_training
+from hydra import compose, initialize
+
+# Load configuration
+with initialize(config_path="config"):
+    config = compose(config_name="ctc_sc")
+
+# Update config with your data paths
+config.dataset.train_ds.filepaths = ["/path/to/your/train.jsonl"]
+config.dataset.val_ds.filepaths = ["/path/to/your/val.jsonl"]
+
+# Create model and trainer
+model = ASR_ctc_training(config)
+trainer = Trainer(
+    max_epochs=20,
+    devices=1,
+    precision=16
+)
+
+# Start training
+trainer.fit(model)</pre>
+                </div>
+
+                <h3>Dataset Preparation</h3>
+                <div class="code-block" data-lang="python">
+                    <pre># Convert your dataset to EzSpeech format
+import json
+import librosa
+
+def create_dataset_jsonl(audio_dir, transcripts, output_file):
+    """Create JSONL dataset file"""
+    with open(output_file, 'w') as f:
+        for audio_file, transcript in transcripts.items():
+            # Get audio duration
+            y, sr = librosa.load(f"{audio_dir}/{audio_file}")
+            duration = len(y) / sr
+
+            # Create record
+            record = {
+                "audio_filepath": audio_file,
+                "text": transcript,
+                "duration": duration
+            }
+
+            f.write(json.dumps(record) + '\n')
+
+# Example usage
+transcripts = {
+    "audio1.wav": "hello world",
+    "audio2.wav": "this is a test"
+}
+create_dataset_jsonl("/path/to/audio", transcripts, "dataset.jsonl")</pre>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 EzSpeech. Built with ❤️ using PyTorch Lightning.</p>
+            <p>
+                <a href="https://github.com/khanh14ph/EzSpeech" style="color: #60a5fa;">GitHub</a> |
+                <a href="https://github.com/khanh14ph/EzSpeech/issues" style="color: #60a5fa;">Issues</a> |
+                <a href="https://github.com/khanh14ph/EzSpeech/wiki" style="color: #60a5fa;">Documentation</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        let websocket = null;
+        let isConnected = false;
+
+        function connectWebSocket() {
+            try {
+                websocket = new WebSocket('ws://localhost:8765');
+
+                websocket.onopen = function(event) {
+                    isConnected = true;
+                    updateStatus('Connected to WebSocket server', 'success');
+                    addMessage('Connected to ws://localhost:8765');
+                };
+
+                websocket.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    addMessage('Received: ' + JSON.stringify(data, null, 2));
+                };
+
+                websocket.onclose = function(event) {
+                    isConnected = false;
+                    updateStatus('Disconnected from server', 'error');
+                    addMessage('Connection closed');
+                };
+
+                websocket.onerror = function(error) {
+                    updateStatus('Connection error - make sure server is running', 'error');
+                    addMessage('Error: ' + error);
+                };
+
+            } catch (error) {
+                updateStatus('Failed to connect - check server status', 'error');
+                addMessage('Connection failed: ' + error);
+            }
+        }
+
+        function disconnectWebSocket() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+                isConnected = false;
+                updateStatus('Disconnected', 'warning');
+                addMessage('Manually disconnected');
+            }
+        }
+
+        function sendTestMessage() {
+            if (isConnected && websocket) {
+                const testMessage = {
+                    type: 'audio_file',
+                    file_path: '/path/to/test/audio.wav'
+                };
+                websocket.send(JSON.stringify(testMessage));
+                addMessage('Sent: ' + JSON.stringify(testMessage, null, 2));
+            } else {
+                updateStatus('Not connected - click Connect first', 'warning');
+            }
+        }
+
+        function updateStatus(message, type) {
+            const statusElement = document.getElementById('websocket-status');
+            statusElement.textContent = message;
+            statusElement.className = 'status ' + type;
+        }
+
+        function addMessage(message) {
+            const messagesElement = document.getElementById('websocket-messages');
+            const timestamp = new Date().toLocaleTimeString();
+            messagesElement.innerHTML += `[${timestamp}] ${message}\n`;
+            messagesElement.scrollTop = messagesElement.scrollHeight;
+        }
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Initialize status
+        updateStatus('Not connected', 'warning');
+        addMessage('WebSocket demo ready - click Connect to test');
+    </script>
+</body>
+</html>

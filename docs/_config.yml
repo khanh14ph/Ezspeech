@@ -1,0 +1,62 @@
+# Jekyll configuration for GitHub Pages
+title: EzSpeech Documentation
+description: Modern Speech Recognition Toolkit Built on PyTorch Lightning
+url: "https://khanh14ph.github.io"
+baseurl: "/Ezspeech"
+
+# Theme
+theme: minima
+
+# Markdown processor
+markdown: kramdown
+highlighter: rouge
+
+# Plugin configuration
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# Exclude files from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+
+# Include files
+include:
+  - _pages
+
+# Collections
+collections:
+  pages:
+    output: true
+    permalink: /:name/
+
+# Default front matter
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "page"
+
+# SEO settings
+author: khanh14ph
+twitter:
+  username: khanh14ph
+facebook:
+  app_id:
+  publisher:
+  admins:
+
+# Social links
+github_username: khanh14ph
+linkedin_username:
+
+# Google Analytics (optional)
+# google_analytics: UA-NNNNNNNN-N
