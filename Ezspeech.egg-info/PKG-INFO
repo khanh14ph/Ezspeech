@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: Ezspeech
 Version: 0.1.0
 Summary: A simple speech recognition and text-to-speech library
@@ -25,3 +25,10 @@ Requires-Dist: orjson
 Requires-Dist: num2words
 Requires-Dist: einops
 Requires-Dist: editdistance
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: requires-dist
+Dynamic: summary

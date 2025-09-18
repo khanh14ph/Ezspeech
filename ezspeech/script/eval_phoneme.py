@@ -12,23 +12,9 @@ from jiwer import wer, cer
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
 from tqdm import tqdm
+from ezspeech.utils.common import load_dataset
 
 
-
-def load_test_data(jsonl_path: str, data_dir: str = "") -> List[Dict[str, Any]]:
-    """Load test data from JSONL file"""
-    test_data = []
-    with open(jsonl_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            data = json.loads(line.strip())
-            # Construct full audio path
-            audio_path = os.path.join(data_dir, data['audio_filepath']) if data_dir else data['audio_filepath']
-            test_data.append({
-                'audio_path': audio_path,
-                'text': data['text'],
-                'duration': data.get('duration', 0)
-            })
-    return test_data
 
 
 def evaluate_model(config_path: str, test_jsonl: str, data_dir: str = "", output_file: str = None) -> Dict[str, float]:
@@ -41,7 +27,7 @@ def evaluate_model(config_path: str, test_jsonl: str, data_dir: str = "", output
     model = instantiate(config.model)
 
     # Load test data
-    test_data = load_test_data(test_jsonl, data_dir)
+    test_data = load_dataset(test_jsonl)
 
     print(f"Loaded {len(test_data)} test samples")
 
@@ -54,28 +40,31 @@ def evaluate_model(config_path: str, test_jsonl: str, data_dir: str = "", output
     for sample in tqdm(test_data):
         try:
             # Transcribe audio
-            transcription = model.transcribe([sample['audio_path']])[0]
+            transcription = model.transcribe_phoneme([data_dir+sample['audio_filepath']])[0]
             predictions.append(transcription)
-            references.append(sample['text'])
-
+            references.append(sample['text_ipa'])
+            print("references:",sample['text_ipa'])
+            print("predictions:",transcription)
+            print("____")
             # Store individual result
             result = {
-                'audio_path': sample['audio_path'],
-                'reference': sample['text'],
+                'audio_filepath': sample['audio_filepath'],
+                'reference': sample['text_ipa'],
                 'prediction': transcription,
                 'duration': sample['duration']
             }
             results.append(result)
 
         except Exception as e:
-            print(f"Error processing {sample['audio_path']}: {e}")
+            print(f"Error processing {sample['audio_filepath']}: {e}")
             continue
 
     # Calculate metrics
     if predictions and references:
         word_error_rate = wer(references, predictions)
         character_error_rate = cer(references, predictions)
-
+        
+        
         metrics = {
             'wer': word_error_rate,
             'cer': character_error_rate,
@@ -113,7 +102,7 @@ def main():
     parser = argparse.ArgumentParser(description='Evaluate ASR CTC model')
     parser.add_argument('--config', type=str, default="config/test/test.yaml",
                        help='Path to model config file')
-    parser.add_argument('--test_data', type=str, default="/home3/khanhnd/download/vietbud_test_ipa.jsonl",
+    parser.add_argument('--test_data', type=str, default="/home3/khanhnd/download/test_libri_clean_ipa.jsonl",
                        help='Path to test JSONL file')
     parser.add_argument('--data_dir', type=str, default="/home3/khanhnd/download/",
                        help='Base directory for audio files')

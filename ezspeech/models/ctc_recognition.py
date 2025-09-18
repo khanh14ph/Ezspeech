@@ -152,7 +152,6 @@ class ASR_ctc_training(LightningModule):
         # Decode predictions and targets to text
         predictions = self._ctc_decode_predictions(ctc_logits, enc_lens)
         references = self._targets_to_text(targets, target_lengths)
-
         # Accumulate predictions and references for validation set WER
         self.val_predictions.extend(predictions)
         self.val_references.extend(references)
@@ -270,10 +269,11 @@ class ASR_ctc_training(LightningModule):
 
 class ASR_ctc_inference:
     def __init__(
-        self, filepath: str, device: str, tokenizer_path: str = None
+        self, filepath: str, device: str, tokenizer_path: str = None,tokenizer_phoneme_path=None
     ):
         self.device = device
         self.tokenizer = Tokenizer(spe_file=tokenizer_path)
+        self.tokenizer_phoneme=Tokenizer(spe_file=tokenizer_phoneme_path)
         self.vocab = self.tokenizer.vocab
         self.blank = len(self.vocab)
         (
@@ -317,15 +317,22 @@ class ASR_ctc_inference:
 
         xs, x_lens = self.collate_wav(speeches)
         xs, x_lens = self.preprocessor(xs.to(self.device), x_lens.to(self.device))
-        enc_outs, enc_lens, _, _ = self.encoder(xs, x_lens, self.ctc_decoder, self.back_projector_sc, self.ctc_decoder_phoneme, self.back_projector_sc_phoneme)
-        return enc_outs, enc_lens
+        enc_outs, enc_lens, _, phoneme_logits_lst = self.encoder(xs, x_lens, self.ctc_decoder, self.back_projector_sc, self.ctc_decoder_phoneme, self.back_projector_sc_phoneme)
+        return enc_outs, enc_lens,phoneme_logits_lst
     
     def transcribe(self, audio_lst):
         audios = [torchaudio.load(i) for i in audio_lst]
         speeches = [i[0] for i in audios]
         sample_rates = [i[1] for i in audios]
-        enc, enc_length = self.forward_encoder(speeches)
+        enc, enc_length,_ = self.forward_encoder(speeches)
         res = self.ctc_decode(enc, enc_length)
+        return res
+    def transcribe_phoneme(self, audio_lst):
+        audios = [torchaudio.load(i) for i in audio_lst]
+        speeches = [i[0] for i in audios]
+        sample_rates = [i[1] for i in audios]
+        enc, enc_length, phoneme_logits_lst = self.forward_encoder(speeches)
+        res = self.ctc_decode_phoneme(phoneme_logits_lst[-1], enc_length)
         return res
 
     @torch.inference_mode()
@@ -343,6 +350,23 @@ class ASR_ctc_inference:
             filtered_seq = unique_seq[unique_seq != self.blank]
             # Decode using tokenizer
             tokens = self.tokenizer.decode(filtered_seq.cpu().numpy().tolist())
+            transcript = "".join(tokens).replace("_", " ").strip()
+            predicted_transcripts.append(transcript)
+        return predicted_transcripts
+    @torch.inference_mode()
+    def ctc_decode_phoneme(self, logits: torch.Tensor, enc_lens: torch.Tensor):
+        predicted_ids = torch.argmax(logits, dim=-1)
+
+        predicted_transcripts = []
+        for i, pred_seq in enumerate(predicted_ids):
+            seq_len = enc_lens[i].item()
+            pred_seq = pred_seq[:seq_len]
+
+            unique_seq = torch.unique_consecutive(pred_seq)
+            # Filter out blank tokens
+            filtered_seq = unique_seq[unique_seq != self.blank]
+            # Decode using tokenizer
+            tokens = self.tokenizer_phoneme.decode(filtered_seq.cpu().numpy().tolist())
             transcript = "".join(tokens).replace("_", " ").strip()
             predicted_transcripts.append(transcript)
 
