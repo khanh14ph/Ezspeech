@@ -379,6 +379,8 @@ class ConformerOfflineEncoder(nn.Module):
         feat_out=-1,
         n_layers=12,
         d_model=512,
+        sc_layers=[],
+        sc_layers_ipa=[],
         subsampling="striding",
         subsampling_factor=4,
         subsampling_conv_chunking_factor=1,
@@ -405,6 +407,8 @@ class ConformerOfflineEncoder(nn.Module):
         d_ff = d_model * ff_expansion_factor
         self.d_model = d_model
         self.n_layers = n_layers
+        self.sc_layers=sc_layers
+        self.sc_layers_ipa=sc_layers_ipa
         self._feat_in = feat_in
         self._feat_out = feat_out
         self.subsampling_factor = subsampling_factor
@@ -473,7 +477,7 @@ class ConformerOfflineEncoder(nn.Module):
         self.set_max_audio_length(self.pos_emb_max_len)
         self.use_pad_mask = True
 
-    def forward(self, audio_signal, length):
+    def forward(self, audio_signal, length, ctc_decoder_out, ctc_decoder_in,ctc_decoder_out_ipa, ctc_decoder_in_ipa):
         self.update_max_seq_length(
             seq_length=audio_signal.size(2), device=audio_signal.device
         )
@@ -511,6 +515,8 @@ class ConformerOfflineEncoder(nn.Module):
 
         # Create the padding mask
         pad_mask = self._create_pad_mask(padding_length, max_audio_length, audio_signal.device)
+        intermediate_logits=[]
+        intermediate_logits_ipa=[]
         for idx, layer in enumerate(self.layers):
             audio_signal = layer(
                 x=audio_signal,
@@ -518,10 +524,21 @@ class ConformerOfflineEncoder(nn.Module):
                 pos_emb=pos_emb,
                 pad_mask=pad_mask,
             )
+            ori_audio_signal=audio_signal
+            if idx in self.sc_layers:
+                ctc_outs = ctc_decoder_out(audio_signal)
+                intermediate_logits.append(ctc_outs)
+                decoder_in=ctc_decoder_in(ctc_outs).detach()
+                audio_signal=audio_signal+decoder_in
+            if idx in self.sc_layers_ipa:
+                ctc_outs_ipa = ctc_decoder_out_ipa(ori_audio_signal)
+                intermediate_logits_ipa.append(ctc_outs_ipa)
+                decoder_in_ipa=ctc_decoder_in_ipa(ctc_outs_ipa).detach()
+                audio_signal=audio_signal+decoder_in_ipa
         audio_signal = torch.transpose(audio_signal, 1, 2)
         length = length.to(dtype=torch.int64)
 
-        return audio_signal.transpose(1, 2), length
+        return audio_signal.transpose(1, 2), length,intermediate_logits,intermediate_logits_ipa
 
     def update_max_seq_length(self, seq_length: int, device):
         """

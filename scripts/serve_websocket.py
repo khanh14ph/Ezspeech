@@ -16,7 +16,7 @@ import websockets
 from hydra import compose, initialize
 from omegaconf import DictConfig
 
-from ezspeech.models.ctc_recognition import ASR_ctc_training
+from Ezspeech.ezspeech.models.ctc import ASR_ctc_training
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

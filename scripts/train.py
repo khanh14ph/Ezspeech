@@ -21,7 +21,7 @@ from pytorch_lightning.callbacks import (
 )
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from ezspeech.models.ctc_recognition import ASR_ctc_training
+from ezspeech.models.ctc import ASR_ctc_training
 from ezspeech.utils import color
 from ezspeech.utils.training import setup_callbacks, setup_loggers, load_pretrained_weights
 
@@ -62,7 +62,7 @@ def setup_model(config: DictConfig) -> ASR_ctc_training:
     return model
 
 
-@hydra.main(version_base=None, config_path="../config", config_name="ctc_sc")
+@hydra.main(version_base=None, config_path="../config", config_name="ctc")
 def main(config: DictConfig) -> None:
     """Main training function."""
     logger.info("Starting EzSpeech training...")

@@ -1,6 +1,6 @@
 dataset:
   # Path to SentencePiece model file for tokenization
-  spe_file: /home3/khanhnd/download/grapheme.model
+  spe_file_grapheme: /home3/khanhnd/download/grapheme.model
   # Training dataset configuration
   train_ds:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
@@ -162,7 +162,7 @@ trainer:
   max_epochs: 30
   strategy: ddp_find_unused_parameters_true
   accelerator: gpu
-  devices: [1]
+  devices: [3]
   accumulate_grad_batches: 1
   # detect_anomaly: True
   precision: 16
