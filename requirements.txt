@@ -35,6 +35,7 @@ colorlog>=6.7.0
 
 # WebSocket server dependencies
 websockets>=11.0.0
+aiohttp>=3.8.0  # For health check endpoints
 pyaudio>=0.2.11  # For microphone input
 asyncio>=3.4.3
 

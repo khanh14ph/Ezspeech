@@ -9,6 +9,7 @@ import logging
 import time
 from pathlib import Path
 from typing import Dict, Optional
+from aiohttp import web
 
 import torch
 import torchaudio
@@ -46,6 +47,11 @@ class ASRWebSocketServer:
         self.sample_rate = 16000
         self.chunk_duration = 1.0  # Process 1 second chunks
         self.chunk_samples = int(self.sample_rate * self.chunk_duration)
+
+        # Health status
+        self.is_ready = True
+        self.start_time = time.time()
+        self.request_count = 0
 
         logger.info("ASR WebSocket server initialized successfully")
 
@@ -109,6 +115,7 @@ class ASRWebSocketServer:
     async def process_audio_chunk(self, websocket, data: Dict, client_id: str):
         """Process real-time audio chunk."""
         start_time = time.time()
+        self.request_count += 1
 
         try:
             # Extract audio data (assuming base64 encoded)
@@ -270,25 +277,106 @@ class ASRWebSocketServer:
             }))
 
 
+async def health_check(request):
+    """Health check endpoint for AWS ECS/ALB."""
+    return web.json_response({
+        "status": "healthy",
+        "timestamp": time.time()
+    })
+
+
+async def readiness_check(request):
+    """Readiness check endpoint for AWS ECS/ALB."""
+    server = request.app['asr_server']
+
+    if not server.is_ready:
+        return web.json_response({
+            "status": "not_ready",
+            "message": "Model is still loading"
+        }, status=503)
+
+    return web.json_response({
+        "status": "ready",
+        "uptime_seconds": time.time() - server.start_time,
+        "device": str(server.device),
+        "request_count": server.request_count
+    })
+
+
+async def metrics(request):
+    """Metrics endpoint for monitoring."""
+    server = request.app['asr_server']
+
+    return web.json_response({
+        "uptime_seconds": time.time() - server.start_time,
+        "device": str(server.device),
+        "request_count": server.request_count,
+        "sample_rate": server.sample_rate,
+        "chunk_duration": server.chunk_duration,
+        "model_loaded": server.model is not None
+    })
+
+
+async def start_health_server(asr_server, health_port=8080):
+    """Start HTTP server for health checks."""
+    app = web.Application()
+    app['asr_server'] = asr_server
+
+    app.router.add_get('/health', health_check)
+    app.router.add_get('/ready', readiness_check)
+    app.router.add_get('/metrics', metrics)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', health_port)
+    await site.start()
+
+    logger.info(f"Health check server started on port {health_port}")
+    return runner
+
+
 async def main():
     """Main function to start the WebSocket server."""
     import argparse
+    import os
 
     parser = argparse.ArgumentParser(description="ASR WebSocket Server")
-    parser.add_argument("--model-path", required=True, help="Path to model checkpoint")
-    parser.add_argument("--config-path", default="../config", help="Path to config directory")
-    parser.add_argument("--config-name", default="ctc_sc", help="Config file name")
-    parser.add_argument("--host", default="localhost", help="Server host")
-    parser.add_argument("--port", type=int, default=8765, help="Server port")
+    parser.add_argument("--model-path",
+                       default=os.getenv("MODEL_PATH", ""),
+                       help="Path to model checkpoint")
+    parser.add_argument("--config-path",
+                       default=os.getenv("CONFIG_PATH", "../config"),
+                       help="Path to config directory")
+    parser.add_argument("--config-name",
+                       default=os.getenv("CONFIG_NAME", "ctc_sc"),
+                       help="Config file name")
+    parser.add_argument("--host",
+                       default=os.getenv("SERVER_HOST", "0.0.0.0"),
+                       help="Server host")
+    parser.add_argument("--port",
+                       type=int,
+                       default=int(os.getenv("SERVER_PORT", "8765")),
+                       help="WebSocket server port")
+    parser.add_argument("--health-port",
+                       type=int,
+                       default=int(os.getenv("HEALTH_PORT", "8080")),
+                       help="Health check server port")
 
     args = parser.parse_args()
 
-    # Initialize server
+    if not args.model_path:
+        logger.error("Model path is required. Use --model-path or set MODEL_PATH env variable")
+        return
+
+    # Initialize ASR server
     server = ASRWebSocketServer(
         model_path=args.model_path,
         config_path=args.config_path,
         config_name=args.config_name
     )
+
+    # Start health check server
+    health_runner = await start_health_server(server, args.health_port)
 
     # Start WebSocket server
     logger.info(f"Starting ASR WebSocket server on {args.host}:{args.port}")
