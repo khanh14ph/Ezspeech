@@ -173,6 +173,61 @@ async def real_time_demo():
 asyncio.run(real_time_demo())
 ```
 
+## 🚀 Deployment
+
+### Quick Deploy to AWS
+
+Deploy EzSpeech to AWS with auto-scaling, load balancing, and monitoring:
+
+```bash
+# 1. Configure infrastructure
+cd aws/terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your AWS settings
+
+# 2. Deploy infrastructure
+cd ../..
+./aws/scripts/deploy.sh
+
+# 3. Build and push Docker image
+./aws/scripts/build-and-push.sh
+
+# 4. Upload your model
+./aws/scripts/upload-model.sh /path/to/model.ckpt
+
+# 5. Update ECS service
+./aws/scripts/update-service.sh
+```
+
+**Architecture**: ECS Fargate + ALB + Auto-scaling + CloudWatch
+
+**See detailed guides:**
+- **[AWS Deployment Guide](aws/README.md)** - Complete AWS setup
+- **[Deployment Options](DEPLOYMENT.md)** - All deployment methods
+- **[Online Tutorial](https://khanh14ph.github.io/Ezspeech/deployment)** - Interactive guide
+
+### Local Testing with Docker
+
+```bash
+# Test locally before deploying
+docker-compose up -d
+
+# Check health
+curl http://localhost:8080/health
+
+# View logs
+docker-compose logs -f
+```
+
+### Deployment Options
+
+- **AWS ECS Fargate** (Recommended for production) - Auto-scaling, managed infrastructure
+- **Docker Compose** (Local development) - Quick local setup
+- **Kubernetes** (Advanced deployments) - Full orchestration
+- **Manual Docker** (Simple deployments) - Direct container deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for all options.
+
 ## 📁 Dataset Format
 
 EzSpeech uses JSONL format for datasets:
@@ -215,6 +270,14 @@ EzSpeech/
 │   ├── modules/           # Lightning modules
 │   ├── layers/            # Neural network layers
 │   └── utils/             # Utilities
+├── aws/                   # AWS deployment
+│   ├── terraform/         # Infrastructure as Code
+│   ├── scripts/           # Deployment scripts
+│   ├── nginx/             # Reverse proxy config
+│   └── README.md          # AWS deployment guide
+├── docs/                  # GitHub Pages documentation
+├── Dockerfile             # Optimized container image
+├── docker-compose.yml     # Local development
 └── tests/                 # Unit tests
 ```
 
@@ -315,8 +378,15 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 - Hydra team for configuration management
 - The speech recognition research community
 
+## 🎯 Quick Links
+
+- **[📚 Online Documentation](https://khanh14ph.github.io/Ezspeech)** - Interactive guides and tutorials
+- **[☁️ AWS Deployment](aws/README.md)** - Production deployment on AWS
+- **[🐳 Deployment Options](DEPLOYMENT.md)** - All deployment methods
+- **[💡 Examples](examples/)** - Code samples and usage examples
+
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/khanh14ph/EzSpeech/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/khanh14ph/EzSpeech/discussions)
-- **Documentation**: [Wiki](https://github.com/khanh14ph/EzSpeech/wiki)
+- **Documentation**: [Online Docs](https://khanh14ph.github.io/Ezspeech)
