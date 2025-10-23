@@ -353,6 +353,7 @@
                 <li><a href="#overview">Overview</a></li>
                 <li><a href="#features">Features</a></li>
                 <li><a href="#installation">Installation</a></li>
+                <li><a href="#deployment">Deployment</a></li>
                 <li><a href="#training">Training</a></li>
                 <li><a href="#evaluation">Evaluation</a></li>
                 <li><a href="#websocket">WebSocket API</a></li>
@@ -445,6 +446,87 @@ pip install -e ".[dev]"</pre>
 
                 <div class="status success">
                     ✅ Installation typically takes 2-5 minutes depending on your system
+                </div>
+            </section>
+
+            <!-- Deployment Section -->
+            <section id="deployment" class="section">
+                <h2>🚀 Deployment</h2>
+                <p>Deploy EzSpeech ASR server to production with multiple options. Choose the deployment method that best fits your needs.</p>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h4>☁️ AWS Deployment</h4>
+                        <p><strong>Recommended for production</strong></p>
+                        <p>Auto-scaling with ECS Fargate, load balancing, monitoring, and cost optimization.</p>
+                        <p><a href="aws-deployment.html">📖 AWS Tutorial</a></p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🐳 Docker Compose</h4>
+                        <p><strong>Perfect for local development</strong></p>
+                        <p>Quick setup with Docker Compose for testing and development environments.</p>
+                        <p><a href="deployment.html#docker-compose">📖 Docker Guide</a></p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>☸️ Kubernetes</h4>
+                        <p><strong>Advanced orchestration</strong></p>
+                        <p>Full Kubernetes deployment with HPA, ingress, and service meshes.</p>
+                        <p><a href="deployment.html#kubernetes">📖 K8s Guide</a></p>
+                    </div>
+                </div>
+
+                <h3>Quick AWS Deployment</h3>
+                <div class="code-block" data-lang="bash">
+                    <pre># 1. Configure infrastructure
+cd aws/terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your AWS settings
+
+# 2. Deploy infrastructure
+cd ../..
+./aws/scripts/deploy.sh
+
+# 3. Build and push Docker image
+./aws/scripts/build-and-push.sh
+
+# 4. Upload your model
+./aws/scripts/upload-model.sh /path/to/model.ckpt
+
+# 5. Update ECS service
+./aws/scripts/update-service.sh</pre>
+                </div>
+
+                <h3>Local Testing with Docker</h3>
+                <div class="code-block" data-lang="bash">
+                    <pre># Test locally before deploying
+docker-compose up -d
+
+# Check health
+curl http://localhost:8080/health
+
+# View logs
+docker-compose logs -f</pre>
+                </div>
+
+                <div class="demo-section">
+                    <h3>Deployment Architecture</h3>
+                    <p><strong>AWS ECS Fargate Architecture:</strong></p>
+                    <ul>
+                        <li>✅ Application Load Balancer (ALB) with WebSocket support</li>
+                        <li>✅ ECS Fargate cluster (auto-scaling 1-10 tasks)</li>
+                        <li>✅ S3 for model storage</li>
+                        <li>✅ CloudWatch for logging and monitoring</li>
+                        <li>✅ VPC with public/private subnets</li>
+                        <li>✅ Security groups and IAM roles</li>
+                    </ul>
+                    <p><strong>Estimated Monthly Cost:</strong> $400-1,500 depending on usage</p>
+                </div>
+
+                <div class="status info">
+                    💡 <strong>Tip:</strong> Start with Docker Compose for development, then deploy to AWS for production. Full guides available:
+                    <br>• <a href="aws-deployment.html">Complete AWS Tutorial</a>
+                    <br>• <a href="deployment.html">All Deployment Options</a>
+                    <br>• <a href="https://github.com/khanh14ph/Ezspeech/blob/main/aws/README.md">AWS Documentation (GitHub)</a>
                 </div>
             </section>
 
