@@ -61,7 +61,7 @@ def check_end_word(token: str, vocab: List[str]):
 
 
 
-
+special_symbol=open("ezspeech/resource/special_char.txt").read().splitlines()
 def normalize(x):
 
     for i in special_symbol:

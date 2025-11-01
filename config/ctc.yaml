@@ -6,10 +6,9 @@ dataset:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     # List of JSONL files containing training data metadata
     filepaths:
-      - /home3/khanhnd/download/train_libri_clean.jsonl
-      - /home3/khanhnd/download/train_vietbud.jsonl
+      - /home3/khanhnd/public.jsonl
     # Base directory for audio files (empty means use absolute paths from JSONL)
-    data_dir: "/home3/khanhnd/download/"
+    data_dir: ""
 
   # Validation dataset configuration
   val_ds:
@@ -17,13 +16,12 @@ dataset:
     # List of JSONL files containing validation data metadata
     filepaths:
       - /home3/khanhnd/download/vivos_test.jsonl
-      - /home3/khanhnd/download/test_libri_clean.jsonl
     # Base directory for audio files - data_dir + audio_filepath will be the full path
     data_dir: "/home3/khanhnd/download/"
   # Training data loader configuration
   train_loader:
     # Maximum total duration (in seconds) of audio per batch
-    max_batch_duration: 200
+    max_batch_duration: 350
     # Number of buckets for bucketing similar-length sequences
     num_bucket: 20
     num_workers: 8
@@ -40,7 +38,6 @@ model:
   d_model: &d_model 512
   # Vocabulary size including blank token - used as YAML anchor for reuse
   vocab_size: &vocab_size 2048
-  sc_layer: [3,6,9]
   # Pretrained model configuration for transfer learning
   model_pretrained:
     path: /home4/khanhnd/parakeet-tdt_ctc-110m-12-layer.ckpt
@@ -72,7 +69,6 @@ model:
     feat_out: -1
     n_layers: 12
     d_model: 512
-    sc_layers: [2,5,8]
     subsampling: dw_striding
     subsampling_factor: 8
     subsampling_conv_channels: 256
@@ -105,10 +101,6 @@ model:
     feat_in: *d_model
     num_classes: *vocab_size
     add_blank: True
-  back_projector_sc:
-    _target_: ezspeech.modules.decoder.decoder.Back_projector_sc_linear
-    input_dim:  *vocab_size
-    output_dim :  *d_model
     
     
   loss:
@@ -160,11 +152,11 @@ loggers:
 
 trainer:
   max_epochs: 30
-  strategy: ddp_find_unused_parameters_true
+  strategy: ddp
   accelerator: gpu
-  devices: [3]
+  devices: [0,3]
   accumulate_grad_batches: 1
   # detect_anomaly: True
   precision: 16
-  val_check_interval: 0.5
+  val_check_interval: 0.1
   use_distributed_sampler: False
