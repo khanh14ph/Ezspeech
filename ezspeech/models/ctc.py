@@ -266,7 +266,7 @@ class ASR_ctc_inference:
 
         xs, x_lens = self.collate_wav(speeches)
         xs, x_lens = self.preprocessor(xs.to(self.device), x_lens.to(self.device))
-        enc_outs, enc_lens = self.encoder(xs, x_lens, self.ctc_decoder)
+        enc_outs, enc_lens = self.encoder(xs, x_lens)
         return enc_outs, enc_lens
     
     def transcribe(self, audio_lst):

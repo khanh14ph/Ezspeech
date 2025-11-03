@@ -8,6 +8,7 @@ A modern, easy-to-use speech recognition toolkit built on PyTorch Lightning. EzS
 - **Advanced Encoders**: Conformer, Fast Conformer architectures
 - **Easy Training**: Simplified training workflows with Hydra configuration
 - **Comprehensive Evaluation**: Detailed metrics and error analysis
+- **Distributed Inference**: Multi-GPU batch processing with torchrun
 - **Real-time Inference**: WebSocket server for live ASR
 - **GPU Optimization**: Efficient inference and training
 - **Pre-trained Models**: Support for transfer learning
@@ -124,6 +125,59 @@ EzSpeech provides comprehensive metrics:
 - **Detailed error analysis** (substitutions, insertions, deletions)
 - **Length statistics**
 - **Confidence-based metrics** (when available)
+
+## 🎤 Inference
+
+### Simple Inference (Single GPU)
+
+For quick testing and small-scale inference:
+
+```bash
+# Transcribe specific audio files
+python ezspeech/script/inference_simple.py \
+  --checkpoint /path/to/checkpoint.pt \
+  --tokenizer /path/to/tokenizer.model \
+  --audio_files audio1.wav audio2.wav audio3.wav
+
+# Process entire directory
+python ezspeech/script/inference_simple.py \
+  --checkpoint /path/to/checkpoint.pt \
+  --tokenizer /path/to/tokenizer.model \
+  --audio_dir /path/to/audio/files \
+  --output results.json
+```
+
+### Distributed Inference (Multi-GPU with torchrun)
+
+For large-scale batch processing with automatic load balancing:
+
+```bash
+# Single GPU
+python ezspeech/script/inference_distributed.py \
+  --checkpoint /path/to/checkpoint.pt \
+  --tokenizer /path/to/tokenizer.model \
+  --input_jsonl dataset/test.jsonl \
+  --output_file predictions.json
+
+# Multi-GPU (4 GPUs)
+torchrun --nproc_per_node=4 ezspeech/script/inference_distributed.py \
+  --checkpoint /path/to/checkpoint.pt \
+  --tokenizer /path/to/tokenizer.model \
+  --input_jsonl dataset/test.jsonl \
+  --output_file predictions.json \
+  --batch_size 8 \
+  --num_workers 4
+```
+
+### Features
+
+- ✅ **Single or Multi-GPU**: Scale from 1 to N GPUs with torchrun
+- ✅ **Automatic WER/CER**: Calculates metrics when reference text provided
+- ✅ **Batch Processing**: Efficient processing of large datasets
+- ✅ **Distributed Loading**: Automatic data distribution across GPUs
+- ✅ **Result Aggregation**: Automatically gathers results from all processes
+
+**See [ezspeech/script/INFERENCE_GUIDE.md](ezspeech/script/INFERENCE_GUIDE.md) for detailed usage and examples.**
 
 ## 🌐 Real-time Inference (WebSocket)
 
@@ -269,6 +323,11 @@ EzSpeech/
 │   ├── models/            # Model definitions
 │   ├── modules/           # Lightning modules
 │   ├── layers/            # Neural network layers
+│   ├── script/            # Inference and utility scripts
+│   │   ├── inference_distributed.py  # Multi-GPU inference
+│   │   ├── inference_simple.py       # Simple inference
+│   │   ├── INFERENCE_GUIDE.md        # Inference documentation
+│   │   └── eval.py                   # Evaluation utilities
 │   └── utils/             # Utilities
 ├── aws/                   # AWS deployment
 │   ├── terraform/         # Infrastructure as Code
@@ -353,10 +412,11 @@ pytest tests/ --cov=ezspeech --cov-report=html
 
 ### Inference Optimization
 
-1. **TorchScript**: Export models for faster inference
-2. **ONNX**: Use ONNX runtime for deployment
-3. **Quantization**: Apply post-training quantization
-4. **Batch Processing**: Process multiple files together
+1. **Multi-GPU Processing**: Use `inference_distributed.py` with torchrun for parallel processing
+2. **Batch Processing**: Adjust `--batch_size` for optimal GPU utilization
+3. **TorchScript**: Export models for faster inference
+4. **ONNX**: Use ONNX runtime for deployment
+5. **Quantization**: Apply post-training quantization
 
 ## 🤝 Contributing
 
@@ -381,6 +441,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 ## 🎯 Quick Links
 
 - **[📚 Online Documentation](https://khanh14ph.github.io/Ezspeech)** - Interactive guides and tutorials
+- **[🎤 Inference Guide](ezspeech/script/INFERENCE_GUIDE.md)** - Detailed inference usage and examples
 - **[☁️ AWS Deployment](aws/README.md)** - Production deployment on AWS
 - **[🐳 Deployment Options](DEPLOYMENT.md)** - All deployment methods
 - **[💡 Examples](examples/)** - Code samples and usage examples

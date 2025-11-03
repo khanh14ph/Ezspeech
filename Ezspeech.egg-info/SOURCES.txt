@@ -17,7 +17,8 @@ ezspeech/layers/sampling.py
 ezspeech/models/ASR.py
 ezspeech/models/__init__.py
 ezspeech/models/abtract.py
-ezspeech/models/ctc_recognition.py
+ezspeech/models/ctc.py
+ezspeech/models/ctc_sc.py
 ezspeech/modules/__init__.py
 ezspeech/modules/decoder/__init__.py
 ezspeech/modules/decoder/decoder.py
@@ -59,5 +60,7 @@ ezspeech/utils/common.py
 ezspeech/utils/constant.py
 ezspeech/utils/convert.py
 ezspeech/utils/cuda_python_utils.py
+ezspeech/utils/metrics.py
 ezspeech/utils/number2text.py
 ezspeech/utils/operation.py
+ezspeech/utils/training.py

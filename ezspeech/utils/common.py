@@ -123,10 +123,8 @@ def avoid_float16_autocast_context():
 if __name__ == "__main__":
     import pandas as pd
     import librosa
-    a=load_dataset("train_vietbud.jsonl")
-    for i in a:
-        text=i["text"]
-        i["text"]=i["text"].lower().replace(",","").replace(".","").replace("?","").replace("!","").replace(";","").replace(":","").replace("\"","").replace("`","").replace("(","").replace(")","").replace("[","").replace("]","").replace("{","").replace("}","")
-        if text!=i["text"]:
-            print(f"{text} -> {i['text']}")
-    save_dataset(a,"train_vietbud.jsonl")
+    a=load_dataset("/Users/khanh/dev/metadata.jsonl")
+    # for idx,i in enumerate(a):
+        
+    with open(f"/Users/khanh/dev/metadata1.jsonl", "w") as f:
+        json.dump(a, f, indent=2) # Indent with 2 spaces
