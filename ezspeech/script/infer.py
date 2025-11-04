@@ -10,6 +10,8 @@ Usage:
         --input_jsonl dataset/demo.jsonl \
         --output_file predictions.json \
         --batch_size 8
+        --lexicon path/to/lexicon.txt
+        --lm path/to/lm.arpa
 """
 
 import argparse
@@ -54,8 +56,9 @@ def run_inference(
     tokenizer_path: str,
     input_jsonl: str,
     output_file: str,
-    data_dir: str = "",
-    batch_size: int = 4
+    lexicon_path: str,
+    lm_path: str,
+    batch_size: int = 4,
 ):
     """Main inference function for single GPU"""
 
@@ -77,7 +80,9 @@ def run_inference(
     model = ASR_ctc_inference(
         filepath=checkpoint_path,
         device=device,
-        tokenizer_path=tokenizer_path
+        tokenizer_path=tokenizer_path,
+        lexicon_path=lexicon_path,
+        lm_path=lm_path
     )
     print("Model loaded successfully")
 
@@ -100,7 +105,7 @@ def run_inference(
             audio_paths = [sample['audio_path'] for sample in batch]
 
             # Run inference
-            transcriptions = model.transcribe(audio_paths)
+            transcriptions = model.transcribe_lm(audio_paths)
 
             # Store results
             for sample, transcription in zip(batch, transcriptions):
@@ -207,14 +212,18 @@ def main():
         default='predictions.json',
         help='Path to output JSON file (default: predictions.json)'
     )
-
     parser.add_argument(
-        '--data_dir',
+        '--lexicon_path',
         type=str,
-        default='',
-        help='Base directory for audio files (prepended to audio_filepath in JSONL)'
+        required=True,
+        help='Path to lexicon file with audio paths'
     )
-
+    parser.add_argument(
+        '--lm_path',
+        type=str,
+        required=True,
+        help='Path to lm paths'
+    )
     parser.add_argument(
         '--batch_size',
         type=int,
@@ -230,8 +239,9 @@ def main():
         tokenizer_path=args.tokenizer,
         input_jsonl=args.input_jsonl,
         output_file=args.output_file,
-        data_dir=args.data_dir,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        lexicon_path=args.lexicon_path,
+        lm_path=args.lm_path
     )
 
 

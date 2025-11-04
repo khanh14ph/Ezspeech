@@ -15,6 +15,8 @@ from ezspeech.modules.data.sampler import DynamicBatchSampler
 from ezspeech.modules.data.utils.text import Tokenizer
 from ezspeech.optims.scheduler import NoamAnnealing
 from ezspeech.utils.common import load_module
+from torchaudio.models.decoder import ctc_decoder
+
 
 class ASR_ctc_training(LightningModule):
     def __init__(self, config: DictConfig):
@@ -29,7 +31,6 @@ class ASR_ctc_training(LightningModule):
         self.encoder = instantiate(config.model.encoder)
 
         self.ctc_decoder = instantiate(config.model.ctc_decoder)
-
 
         self.ctc_loss = instantiate(config.model.loss.ctc_loss)
 
@@ -85,10 +86,7 @@ class ASR_ctc_training(LightningModule):
             target_lengths_grapheme,
         ) = batch
         features, feature_lengths = self.preprocessor(wavs, wav_lengths)
-        enc_outs, enc_lens = self.encoder(
-            features,
-            feature_lengths
-        )
+        enc_outs, enc_lens = self.encoder(features, feature_lengths)
         ctc_logits = self.ctc_decoder(enc_outs)
 
         loss = self.ctc_loss(
@@ -98,7 +96,7 @@ class ASR_ctc_training(LightningModule):
             target_lengths=target_lengths_grapheme,
         )
         self.log("loss", loss, sync_dist=True, prog_bar=True)
-        
+
         return loss
 
     def validation_step(
@@ -108,10 +106,7 @@ class ASR_ctc_training(LightningModule):
         features, feature_lengths = self.preprocessor(wavs, wav_lengths)
         # Calculate WER
         # Get CTC predictions for WER calculation
-        enc_outs, enc_lens = self.encoder(
-            features,
-            feature_lengths
-        )
+        enc_outs, enc_lens = self.encoder(features, feature_lengths)
         ctc_logits = self.ctc_decoder(enc_outs)
 
         # Decode predictions and targets to text
@@ -220,7 +215,7 @@ class ASR_ctc_training(LightningModule):
             "state_dict": {
                 "preprocessor": self.preprocessor.state_dict(),
                 "encoder": self.encoder.state_dict(),
-                "ctc_decoder": self.ctc_decoder.state_dict()
+                "ctc_decoder": self.ctc_decoder.state_dict(),
             },
             "hyper_parameters": self.hparams.config.model,
         }
@@ -231,17 +226,33 @@ class ASR_ctc_training(LightningModule):
 
 class ASR_ctc_inference:
     def __init__(
-        self, filepath: str, device: str, tokenizer_path: str = None,tokenizer_phoneme_path=None
+        self,
+        filepath: str,
+        device: str,
+        tokenizer_path: str = None,
+        lexicon_path=None,
+        lm_path=None,
+        LM_WEIGHT=1,
+        WORD_SCORE=0.5,
     ):
         self.device = device
         self.tokenizer = Tokenizer(spe_file=tokenizer_path)
         self.vocab = self.tokenizer.vocab
         self.blank = len(self.vocab)
-        (
-            self.preprocessor,
-            self.encoder,
-            self.ctc_decoder
-        ) = self._load_checkpoint(filepath, device)
+        (self.preprocessor, self.encoder, self.ctc_decoder) = self._load_checkpoint(
+            filepath, device
+        )
+
+        self.beam_search_decoder = ctc_decoder(
+            lexicon=lexicon_path,
+            tokens=self.vocab,
+            lm=lm_path,
+            nbest=3,
+            beam_size=1500,
+            lm_weight=LM_WEIGHT,
+            word_score=WORD_SCORE,
+        )
+
     def _load_checkpoint(self, filepath: str, device: str):
         checkpoint = torch.load(filepath, map_location="cpu", weights_only=False)
 
@@ -268,13 +279,21 @@ class ASR_ctc_inference:
         xs, x_lens = self.preprocessor(xs.to(self.device), x_lens.to(self.device))
         enc_outs, enc_lens = self.encoder(xs, x_lens)
         return enc_outs, enc_lens
-    
+
     def transcribe(self, audio_lst):
         audios = [torchaudio.load(i) for i in audio_lst]
         speeches = [i[0] for i in audios]
         sample_rates = [i[1] for i in audios]
         enc, enc_length = self.forward_encoder(speeches)
         res = self.ctc_decode(enc, enc_length)
+        return res
+
+    def transcribe_lm(self, audio_lst):
+        audios = [torchaudio.load(i) for i in audio_lst]
+        speeches = [i[0] for i in audios]
+        sample_rates = [i[1] for i in audios]
+        enc, enc_length = self.forward_encoder(speeches)
+        res = self.beam_search_decode(enc, enc_length)
         return res
 
     @torch.inference_mode()
@@ -296,6 +315,14 @@ class ASR_ctc_inference:
             predicted_transcripts.append(transcript)
         return predicted_transcripts
     @torch.inference_mode()
+    def beam_search_decode(self, enc_outs: torch.Tensor, enc_lens: torch.Tensor):
+        beam_search_result = self.beam_search_decoder(enc_outs)
+        predicted_transcripts=[]
+        for i in beam_search_result:
+            beam_search_transcript = " ".join(i[0].words).strip()
+            predicted_transcripts.append(beam_search_transcript)
+        return predicted_transcripts
+    @torch.inference_mode()
     def collate_wav(
         self, speeches: List[torch.Tensor]
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -313,5 +340,6 @@ class ASR_ctc_inference:
         audio_lengths = torch.stack(wav_lengths)
         return new_audio_signal, audio_lengths
 
+
 if __name__ == "__main__":
-    a=ASR_ctc_inference()
+    a = ASR_ctc_inference()
