@@ -135,15 +135,27 @@ class ASRServer:
         audio_array = np.array(audio_data, dtype=np.float32)
 
         # Save to temporary WAV file
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-            tmp_path = tmp_file.name
-
+        # with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+        #     tmp_path = tmp_file.name
+        tmp_path="/Users/khanh/dev/temp/1.wav"
         try:
             # Convert to torch tensor and save
             audio_tensor = torch.from_numpy(audio_array).unsqueeze(0)  # Add channel dimension
-            torchaudio.save(tmp_path, audio_tensor, sample_rate)
 
-            logger.info(f"Saved audio to {tmp_path}, duration: {len(audio_array)/sample_rate:.2f}s")
+            # Resample to 16kHz if needed (most ASR models expect 16kHz)
+            target_sample_rate = 16000
+            if sample_rate != target_sample_rate:
+                logger.info(f"Resampling audio from {sample_rate}Hz to {target_sample_rate}Hz")
+                resampler = torchaudio.transforms.Resample(
+                    orig_freq=sample_rate,
+                    new_freq=target_sample_rate
+                )
+                audio_tensor = resampler(audio_tensor)
+                sample_rate = target_sample_rate
+
+            torchaudio.save(tmp_path, audio_tensor, sample_rate)
+            print(audio_tensor.shape)
+            logger.info(f"Saved audio to {tmp_path}, duration: {len(audio_tensor)/sample_rate:.2f}s")
 
             # Run inference
             transcriptions = self.model.transcribe([tmp_path])
