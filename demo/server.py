@@ -208,7 +208,7 @@ def main():
     parser.add_argument(
         '--port',
         type=int,
-        default=8765,
+        default=8768,
         help='Server port (default: 8765)'
     )
 

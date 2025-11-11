@@ -90,51 +90,43 @@ class ASRClient:
 
     async def connect_and_record(self):
         """Connect to server and record audio"""
-        try:
-            async with websockets.connect(self.server_url) as websocket:
-                logger.info(f"Connected to server: {self.server_url}")
+        async with websockets.connect(self.server_url) as websocket:
+            logger.info(f"Connected to server: {self.server_url}")
 
-                # Wait for ready signal
-                ready_msg = await websocket.recv()
-                ready_data = json.loads(ready_msg)
+            # Wait for ready signal
+            ready_msg = await websocket.recv()
+            ready_data = json.loads(ready_msg)
 
-                if ready_data.get("status") == "ready":
-                    logger.info("Server is ready")
-                    print(f"\n✓ Connected to server at {self.server_url}")
+            if ready_data.get("status") == "ready":
+                logger.info("Server is ready")
+                print(f"\n✓ Connected to server at {self.server_url}")
 
-                    # Record and stream audio
-                    await self.record_and_stream(websocket)
+                # Record and stream audio
+                await self.record_and_stream(websocket)
 
-                    # Wait for result
-                    logger.info("Waiting for transcription result...")
-                    print("\n⏳ Waiting for transcription...")
+                # Wait for result
+                logger.info("Waiting for transcription result...")
+                print("\n⏳ Waiting for transcription...")
 
-                    result_msg = await websocket.recv()
-                    result_data = json.loads(result_msg)
+                result_msg = await websocket.recv()
+                result_data = json.loads(result_msg)
 
-                    # Display result
-                    if result_data.get("status") == "success":
-                        transcription = result_data.get("transcription", "")
-                        print(f"\n{'='*60}")
-                        print(f"📝 Transcription: {transcription}")
-                        print(f"{'='*60}\n")
-                        logger.info(f"Transcription: {transcription}")
-                    else:
-                        error_msg = result_data.get("message", "Unknown error")
-                        print(f"\n❌ Error: {error_msg}\n")
-                        logger.error(f"Server error: {error_msg}")
-
+                # Display result
+                if result_data.get("status") == "success":
+                    transcription = result_data.get("transcription", "")
+                    print(f"\n{'='*60}")
+                    print(f"📝 Transcription: {transcription}")
+                    print(f"{'='*60}\n")
+                    logger.info(f"Transcription: {transcription}")
                 else:
-                    logger.error("Server not ready")
-                    print(f"\n❌ Server not ready: {ready_data.get('message')}\n")
+                    error_msg = result_data.get("message", "Unknown error")
+                    print(f"\n❌ Error: {error_msg}\n")
+                    logger.error(f"Server error: {error_msg}")
 
-        except websockets.exceptions.ConnectionRefused:
-            logger.error(f"Connection refused. Is the server running at {self.server_url}?")
-            print(f"\n❌ Cannot connect to server at {self.server_url}")
-            print("   Make sure the server is running.\n")
-        except Exception as e:
-            logger.error(f"Error: {e}", exc_info=True)
-            print(f"\n❌ Error: {e}\n")
+            else:
+                logger.error("Server not ready")
+                print(f"\n❌ Server not ready: {ready_data.get('message')}\n")
+
 
     def run(self):
         """Run the client"""
@@ -153,7 +145,7 @@ def main():
     parser.add_argument(
         '--server',
         type=str,
-        default='ws://192.168.0.192:8765',
+        default='ws://192.168.0.192:8768',
         help='WebSocket server URL (default: ws://localhost:8765)'
     )
 

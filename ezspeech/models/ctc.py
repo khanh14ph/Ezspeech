@@ -234,6 +234,7 @@ class ASR_ctc_inference:
         lm_path=None,
         LM_WEIGHT=1,
         WORD_SCORE=0.5,
+        beam_size=5,
     ):
         self.device = device
         self.tokenizer = Tokenizer(spe_file=tokenizer_path)
@@ -242,15 +243,16 @@ class ASR_ctc_inference:
         (self.preprocessor, self.encoder, self.ctc_decoder) = self._load_checkpoint(
             filepath, device
         )
-
+        
         self.beam_search_decoder = ctc_decoder(
             lexicon=lexicon_path,
-            tokens=self.vocab,
+            tokens=self.vocab+["-"],
             lm=lm_path,
-            nbest=3,
-            beam_size=1500,
+            nbest=1,
+            beam_size=beam_size,
             lm_weight=LM_WEIGHT,
             word_score=WORD_SCORE,
+            sil_token="<unk>"
         )
 
     def _load_checkpoint(self, filepath: str, device: str):

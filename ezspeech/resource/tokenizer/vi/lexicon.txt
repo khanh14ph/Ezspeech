@@ -809,9 +809,7 @@ buýa	bu ý a▁
 buỳa	bu ỳ a▁
 buỹa	bu ỹ a▁
 buỷa	bu ỷ a▁
-buỵa	bu ỵ a▁
 buých	bu ý ch▁
-buỵch	bu ỵ ch▁
 buyên	b uyên▁
 buyến	b uy ến▁
 buyền	b uyền▁
@@ -825,29 +823,23 @@ buýn	bu ý n▁
 buỳn	bu ỳ n▁
 buỹn	bu ỹ n▁
 buỷn	bu ỷ n▁
-buỵn	bu ỵ n▁
 buynh	b uy nh▁
 buýnh	bu ý nh▁
 buỳnh	bu ỳ nh▁
 buỹnh	bu ỹ nh▁
 buỷnh	bu ỷ nh▁
-buỵnh	bu ỵ nh▁
 buýp	bu ý p▁
-buỵp	bu ỵ p▁
 buýt	bu ý t▁
-buỵt	bu ỵ t▁
 buyu	b uy u▁
 buýu	bu ý u▁
 buỳu	bu ỳ u▁
 buỹu	bu ỹ u▁
 buỷu	bu ỷ u▁
-buỵu	bu ỵ u▁
 by	b y▁
 bý	b ý▁
 bỳ	b ỳ▁
 bỹ	b ỹ▁
 bỷ	b ỷ▁
-bỵ	b ỵ ▁
 ca	c a▁
 cá	cá▁
 cà	c à▁
@@ -1659,9 +1651,7 @@ chuýa	chu ý a▁
 chuỳa	chu ỳ a▁
 chuỹa	chu ỹ a▁
 chuỷa	chu ỷ a▁
-chuỵa	chu ỵ a▁
 chuých	chu ý ch▁
-chuỵch	chu ỵ ch▁
 chuyên	chuy ên▁
 chuyến	chuy ến▁
 chuyền	chuy ền▁
@@ -1675,29 +1665,23 @@ chuýn	chu ý n▁
 chuỳn	chu ỳ n▁
 chuỹn	chu ỹ n▁
 chuỷn	chu ỷ n▁
-chuỵn	chu ỵ n▁
 chuynh	chuy nh▁
 chuýnh	chu ý nh▁
 chuỳnh	chu ỳ nh▁
 chuỹnh	chu ỹ nh▁
 chuỷnh	chu ỷ nh▁
-chuỵnh	chu ỵ nh▁
 chuýp	chu ý p▁
-chuỵp	chu ỵ p▁
 chuýt	chu ý t▁
-chuỵt	chu ỵ t▁
 chuyu	chuy u▁
 chuýu	chu ý u▁
 chuỳu	chu ỳ u▁
 chuỹu	chu ỹ u▁
 chuỷu	chu ỷ u▁
-chuỵu	chu ỵ u▁
 chy	ch y▁
 chý	ch ý▁
 chỳ	ch ỳ▁
 chỹ	ch ỹ▁
 chỷ	ch ỷ▁
-chỵ	ch ỵ ▁
 co	c o▁
 có	có▁
 cò	c ò▁
@@ -2119,9 +2103,7 @@ cuýa	c u ý a▁
 cuỳa	c u ỳ a▁
 cuỹa	c u ỹ a▁
 cuỷa	c u ỷ a▁
-cuỵa	c u ỵ a▁
 cuých	c u ý ch▁
-cuỵch	c u ỵ ch▁
 cuyên	c uyên▁
 cuyến	c uy ến▁
 cuyền	c uyền▁
@@ -2135,23 +2117,18 @@ cuýn	c u ý n▁
 cuỳn	c u ỳ n▁
 cuỹn	c u ỹ n▁
 cuỷn	c u ỷ n▁
-cuỵn	c u ỵ n▁
 cuynh	c uy nh▁
 cuýnh	c u ý nh▁
 cuỳnh	c u ỳ nh▁
 cuỹnh	c u ỹ nh▁
 cuỷnh	c u ỷ nh▁
-cuỵnh	c u ỵ nh▁
 cuýp	c u ý p▁
-cuỵp	c u ỵ p▁
 cuýt	c u ý t▁
-cuỵt	c u ỵ t▁
 cuyu	c uy u▁
 cuýu	c u ý u▁
 cuỳu	c u ỳ u▁
 cuỹu	c u ỹ u▁
 cuỷu	c u ỷ u▁
-cuỵu	c u ỵ u▁
 da	d a▁
 dá	d á▁
 dà	d à▁
@@ -3526,17 +3503,13 @@ duýa	d u ý a▁
 duỳa	d u ỳ a▁
 duỹa	d u ỹ a▁
 duỷa	d u ỷ a▁
-duỵa	d u ỵ a▁
 đuya	đ uy a▁
 đuýa	đ u ý a▁
 đuỳa	đ u ỳ a▁
 đuỹa	đ u ỹ a▁
 đuỷa	đ u ỷ a▁
-đuỵa	đ u ỵ a▁
 duých	d u ý ch▁
-duỵch	d u ỵ ch▁
 đuých	đ u ý ch▁
-đuỵch	đ u ỵ ch▁
 duyên	d uyên▁
 duyến	d uy ến▁
 duyền	d uyền▁
@@ -3558,57 +3531,45 @@ duýn	d u ý n▁
 duỳn	d u ỳ n▁
 duỹn	d u ỹ n▁
 duỷn	d u ỷ n▁
-duỵn	d u ỵ n▁
 đuyn	đ uy n▁
 đuýn	đ u ý n▁
 đuỳn	đ u ỳ n▁
 đuỹn	đ u ỹ n▁
 đuỷn	đ u ỷ n▁
-đuỵn	đ u ỵ n▁
 duynh	d uy nh▁
 duýnh	d u ý nh▁
 duỳnh	d u ỳ nh▁
 duỹnh	d u ỹ nh▁
 duỷnh	d u ỷ nh▁
-duỵnh	d u ỵ nh▁
 đuynh	đ uy nh▁
 đuýnh	đ u ý nh▁
 đuỳnh	đ u ỳ nh▁
 đuỹnh	đ u ỹ nh▁
 đuỷnh	đ u ỷ nh▁
-đuỵnh	đ u ỵ nh▁
 duýp	d u ý p▁
-duỵp	d u ỵ p▁
 đuýp	đ u ý p▁
-đuỵp	đ u ỵ p▁
 duýt	d u ý t▁
-duỵt	d u ỵ t▁
 đuýt	đ u ý t▁
-đuỵt	đ u ỵ t▁
 duyu	d uy u▁
 duýu	d u ý u▁
 duỳu	d u ỳ u▁
 duỹu	d u ỹ u▁
 duỷu	d u ỷ u▁
-duỵu	d u ỵ u▁
 đuyu	đ uy u▁
 đuýu	đ u ý u▁
 đuỳu	đ u ỳ u▁
 đuỹu	đ u ỹ u▁
 đuỷu	đ u ỷ u▁
-đuỵu	đ u ỵ u▁
 dy	d y▁
 dý	d ý▁
 dỳ	d ỳ▁
 dỹ	d ỹ▁
 dỷ	d ỷ▁
-dỵ	d ỵ ▁
 đy	đ y▁
 đý	đ ý▁
 đỳ	đ ỳ▁
 đỹ	đ ỹ▁
 đỷ	đ ỷ▁
-đỵ	đ ỵ ▁
 e	e▁
 é	é▁
 è	è▁
@@ -3961,7 +3922,6 @@ ghý	gh ý▁
 ghỳ	gh ỳ▁
 ghỹ	gh ỹ▁
 ghỷ	gh ỷ▁
-ghỵ	gh ỵ ▁
 gi	g i▁
 gí	g í▁
 gì	gì▁
@@ -4597,9 +4557,7 @@ giuýa	gi u ý a▁
 giuỳa	gi u ỳ a▁
 giuỹa	gi u ỹ a▁
 giuỷa	gi u ỷ a▁
-giuỵa	gi u ỵ a▁
 giuých	gi u ý ch▁
-giuỵch	gi u ỵ ch▁
 giuyên	gi uyên▁
 giuyến	gi uy ến▁
 giuyền	gi uyền▁
@@ -4613,29 +4571,23 @@ giuýn	gi u ý n▁
 giuỳn	gi u ỳ n▁
 giuỹn	gi u ỹ n▁
 giuỷn	gi u ỷ n▁
-giuỵn	gi u ỵ n▁
 giuynh	gi uy nh▁
 giuýnh	gi u ý nh▁
 giuỳnh	gi u ỳ nh▁
 giuỹnh	gi u ỹ nh▁
 giuỷnh	gi u ỷ nh▁
-giuỵnh	gi u ỵ nh▁
 giuýp	gi u ý p▁
-giuỵp	gi u ỵ p▁
 giuýt	gi u ý t▁
-giuỵt	gi u ỵ t▁
 giuyu	gi uy u▁
 giuýu	gi u ý u▁
 giuỳu	gi u ỳ u▁
 giuỹu	gi u ỹ u▁
 giuỷu	gi u ỷ u▁
-giuỵu	gi u ỵ u▁
 giy	gi y▁
 giý	gi ý▁
 giỳ	gi ỳ▁
 giỹ	gi ỹ▁
 giỷ	gi ỷ▁
-giỵ	gi ỵ ▁
 go	g o▁
 gó	g ó▁
 gò	g ò▁
@@ -5059,9 +5011,7 @@ guýa	g u ý a▁
 guỳa	g u ỳ a▁
 guỹa	g u ỹ a▁
 guỷa	g u ỷ a▁
-guỵa	g u ỵ a▁
 guých	g u ý ch▁
-guỵch	g u ỵ ch▁
 guyên	g uyên▁
 guyến	g uy ến▁
 guyền	g uyền▁
@@ -5075,23 +5025,18 @@ guýn	g u ý n▁
 guỳn	g u ỳ n▁
 guỹn	g u ỹ n▁
 guỷn	g u ỷ n▁
-guỵn	g u ỵ n▁
 guynh	g uy nh▁
 guýnh	g u ý nh▁
 guỳnh	g u ỳ nh▁
 guỹnh	g u ỹ nh▁
 guỷnh	g u ỷ nh▁
-guỵnh	g u ỵ nh▁
 guýp	g u ý p▁
-guỵp	g u ỵ p▁
 guýt	g u ý t▁
-guỵt	g u ỵ t▁
 guyu	g uy u▁
 guýu	g u ý u▁
 guỳu	g u ỳ u▁
 guỹu	g u ỹ u▁
 guỷu	g u ỷ u▁
-guỵu	g u ỵ u▁
 ha	h a▁
 há	h á▁
 hà	h à▁
@@ -5781,9 +5726,7 @@ huýa	h u ý a▁
 huỳa	h u ỳ a▁
 huỹa	h u ỹ a▁
 huỷa	h u ỷ a▁
-huỵa	h u ỵ a▁
 huých	h u ý ch▁
-huỵch	h u ỵ ch▁
 huyên	h uyên▁
 huyến	h uy ến▁
 huyền	h uyền▁
@@ -5797,29 +5740,23 @@ huýn	h u ý n▁
 huỳn	h u ỳ n▁
 huỹn	h u ỹ n▁
 huỷn	h u ỷ n▁
-huỵn	h u ỵ n▁
 huynh	h uy nh▁
 huýnh	h u ý nh▁
 huỳnh	h u ỳ nh▁
 huỹnh	h u ỹ nh▁
 huỷnh	h u ỷ nh▁
-huỵnh	h u ỵ nh▁
 huýp	h u ý p▁
-huỵp	h u ỵ p▁
 huýt	h u ý t▁
-huỵt	h u ỵ t▁
 huyu	h uy u▁
 huýu	h u ý u▁
 huỳu	h u ỳ u▁
 huỹu	h u ỹ u▁
 huỷu	h u ỷ u▁
-huỵu	h u ỵ u▁
 hy	h y▁
 hý	h ý▁
 hỳ	h ỳ▁
 hỹ	h ỹ▁
 hỷ	h ỷ▁
-hỵ	h ỵ ▁
 i	i▁
 í	í▁
 ì	ì▁
@@ -6657,9 +6594,7 @@ khuýa	kh u ý a▁
 khuỳa	kh u ỳ a▁
 khuỹa	kh u ỹ a▁
 khuỷa	kh u ỷ a▁
-khuỵa	kh u ỵ a▁
 khuých	kh u ý ch▁
-khuỵch	kh u ỵ ch▁
 khuyên	kh uyên▁
 khuyến	kh uy ến▁
 khuyền	kh uyền▁
@@ -6673,29 +6608,23 @@ khuýn	kh u ý n▁
 khuỳn	kh u ỳ n▁
 khuỹn	kh u ỹ n▁
 khuỷn	kh u ỷ n▁
-khuỵn	kh u ỵ n▁
 khuynh	kh uy nh▁
 khuýnh	kh u ý nh▁
 khuỳnh	kh u ỳ nh▁
 khuỹnh	kh u ỹ nh▁
 khuỷnh	kh u ỷ nh▁
-khuỵnh	kh u ỵ nh▁
 khuýp	kh u ý p▁
-khuỵp	kh u ỵ p▁
 khuýt	kh u ý t▁
-khuỵt	kh u ỵ t▁
 khuyu	kh uy u▁
 khuýu	kh u ý u▁
 khuỳu	kh u ỳ u▁
 khuỹu	kh u ỹ u▁
 khuỷu	kh u ỷ u▁
-khuỵu	kh u ỵ u▁
 khy	kh y▁
 khý	kh ý▁
 khỳ	kh ỳ▁
 khỹ	kh ỹ▁
 khỷ	kh ỷ▁
-khỵ	kh ỵ ▁
 ki	k i▁
 kí	k í▁
 kì	k ì▁
@@ -6782,7 +6711,6 @@ ký	k ý▁
 kỳ	kỳ▁
 kỹ	kỹ▁
 kỷ	k ỷ▁
-kỵ	k ỵ ▁
 la	l a▁
 lá	l á▁
 là	là▁
@@ -7473,9 +7401,7 @@ luýa	lu ý a▁
 luỳa	lu ỳ a▁
 luỹa	lu ỹ a▁
 luỷa	lu ỷ a▁
-luỵa	lu ỵ a▁
 luých	lu ý ch▁
-luỵch	lu ỵ ch▁
 luyên	l uyên▁
 luyến	l uy ến▁
 luyền	l uyền▁
@@ -7489,29 +7415,23 @@ luýn	lu ý n▁
 luỳn	lu ỳ n▁
 luỹn	lu ỹ n▁
 luỷn	lu ỷ n▁
-luỵn	lu ỵ n▁
 luynh	l uy nh▁
 luýnh	lu ý nh▁
 luỳnh	lu ỳ nh▁
 luỹnh	lu ỹ nh▁
 luỷnh	lu ỷ nh▁
-luỵnh	lu ỵ nh▁
 luýp	lu ý p▁
-luỵp	lu ỵ p▁
 luýt	lu ý t▁
-luỵt	lu ỵ t▁
 luyu	l uy u▁
 luýu	lu ý u▁
 luỳu	lu ỳ u▁
 luỹu	lu ỹ u▁
 luỷu	lu ỷ u▁
-luỵu	lu ỵ u▁
 ly	l y▁
 lý	lý▁
 lỳ	l ỳ▁
 lỹ	l ỹ▁
 lỷ	l ỷ▁
-lỵ	l ỵ ▁
 ma	m a▁
 má	m á▁
 mà	mà▁
@@ -8201,9 +8121,7 @@ muýa	m u ý a▁
 muỳa	m u ỳ a▁
 muỹa	m u ỹ a▁
 muỷa	m u ỷ a▁
-muỵa	m u ỵ a▁
 muých	m u ý ch▁
-muỵch	m u ỵ ch▁
 muyên	m uyên▁
 muyến	m uy ến▁
 muyền	m uyền▁
@@ -8217,29 +8135,23 @@ muýn	m u ý n▁
 muỳn	m u ỳ n▁
 muỹn	m u ỹ n▁
 muỷn	m u ỷ n▁
-muỵn	m u ỵ n▁
 muynh	m uy nh▁
 muýnh	m u ý nh▁
 muỳnh	m u ỳ nh▁
 muỹnh	m u ỹ nh▁
 muỷnh	m u ỷ nh▁
-muỵnh	m u ỵ nh▁
 muýp	m u ý p▁
-muỵp	m u ỵ p▁
 muýt	m u ý t▁
-muỵt	m u ỵ t▁
 muyu	m uy u▁
 muýu	m u ý u▁
 muỳu	m u ỳ u▁
 muỹu	m u ỹ u▁
 muỷu	m u ỷ u▁
-muỵu	m u ỵ u▁
 my	m y▁
 mý	m ý▁
 mỳ	m ỳ▁
 mỹ	mỹ▁
 mỷ	m ỷ▁
-mỵ	m ỵ ▁
 na	n a▁
 ná	n á▁
 nà	n à▁
@@ -8713,7 +8625,6 @@ nghý	ngh ý▁
 nghỳ	ngh ỳ▁
 nghỹ	ngh ỹ▁
 nghỷ	ngh ỷ▁
-nghỵ	ngh ỵ ▁
 ngo	ng o▁
 ngó	ng ó▁
 ngò	ng ò▁
@@ -9137,9 +9048,7 @@ nguýa	ng u ý a▁
 nguỳa	ng u ỳ a▁
 nguỹa	ng u ỹ a▁
 nguỷa	ng u ỷ a▁
-nguỵa	ng u ỵ a▁
 nguých	ng u ý ch▁
-nguỵch	ng u ỵ ch▁
 nguyên	nguyên▁
 nguyến	ng uy ến▁
 nguyền	ng uyền▁
@@ -9153,23 +9062,18 @@ nguýn	ng u ý n▁
 nguỳn	ng u ỳ n▁
 nguỹn	ng u ỹ n▁
 nguỷn	ng u ỷ n▁
-nguỵn	ng u ỵ n▁
 nguynh	ng uy nh▁
 nguýnh	ng u ý nh▁
 nguỳnh	ng u ỳ nh▁
 nguỹnh	ng u ỹ nh▁
 nguỷnh	ng u ỷ nh▁
-nguỵnh	ng u ỵ nh▁
 nguýp	ng u ý p▁
-nguỵp	ng u ỵ p▁
 nguýt	ng u ý t▁
-nguỵt	ng u ỵ t▁
 nguyu	ng uy u▁
 nguýu	ng u ý u▁
 nguỳu	ng u ỳ u▁
 nguỹu	ng u ỹ u▁
 nguỷu	ng u ỷ u▁
-nguỵu	ng u ỵ u▁
 nha	nha▁
 nhá	nh á▁
 nhà	nhà▁
@@ -9859,9 +9763,7 @@ nhuýa	nh u ý a▁
 nhuỳa	nh u ỳ a▁
 nhuỹa	nh u ỹ a▁
 nhuỷa	nh u ỷ a▁
-nhuỵa	nh u ỵ a▁
 nhuých	nh u ý ch▁
-nhuỵch	nh u ỵ ch▁
 nhuyên	nh uyên▁
 nhuyến	nh uy ến▁
 nhuyền	nh uyền▁
@@ -9875,29 +9777,23 @@ nhuýn	nh u ý n▁
 nhuỳn	nh u ỳ n▁
 nhuỹn	nh u ỹ n▁
 nhuỷn	nh u ỷ n▁
-nhuỵn	nh u ỵ n▁
 nhuynh	nh uy nh▁
 nhuýnh	nh u ý nh▁
 nhuỳnh	nh u ỳ nh▁
 nhuỹnh	nh u ỹ nh▁
 nhuỷnh	nh u ỷ nh▁
-nhuỵnh	nh u ỵ nh▁
 nhuýp	nh u ý p▁
-nhuỵp	nh u ỵ p▁
 nhuýt	nh u ý t▁
-nhuỵt	nh u ỵ t▁
 nhuyu	nh uy u▁
 nhuýu	nh u ý u▁
 nhuỳu	nh u ỳ u▁
 nhuỹu	nh u ỹ u▁
 nhuỷu	nh u ỷ u▁
-nhuỵu	nh u ỵ u▁
 nhy	nh y▁
 nhý	nh ý▁
 nhỳ	nh ỳ▁
 nhỹ	nh ỹ▁
 nhỷ	nh ỷ▁
-nhỵ	nh ỵ ▁
 ni	n i▁
 ní	n í▁
 nì	n ì▁
@@ -10393,9 +10289,7 @@ nuýa	n u ý a▁
 nuỳa	n u ỳ a▁
 nuỹa	n u ỹ a▁
 nuỷa	n u ỷ a▁
-nuỵa	n u ỵ a▁
 nuých	n u ý ch▁
-nuỵch	n u ỵ ch▁
 nuyên	n uyên▁
 nuyến	n uy ến▁
 nuyền	n uyền▁
@@ -10409,29 +10303,23 @@ nuýn	n u ý n▁
 nuỳn	n u ỳ n▁
 nuỹn	n u ỹ n▁
 nuỷn	n u ỷ n▁
-nuỵn	n u ỵ n▁
 nuynh	n uy nh▁
 nuýnh	n u ý nh▁
 nuỳnh	n u ỳ nh▁
 nuỹnh	n u ỹ nh▁
 nuỷnh	n u ỷ nh▁
-nuỵnh	n u ỵ nh▁
 nuýp	n u ý p▁
-nuỵp	n u ỵ p▁
 nuýt	n u ý t▁
-nuỵt	n u ỵ t▁
 nuyu	n uy u▁
 nuýu	n u ý u▁
 nuỳu	n u ỳ u▁
 nuỹu	n u ỹ u▁
 nuỷu	n u ỷ u▁
-nuỵu	n u ỵ u▁
 ny	n y▁
 ný	n ý▁
 nỳ	n ỳ▁
 nỹ	n ỹ▁
 nỷ	n ỷ▁
-nỵ	n ỵ ▁
 o	o▁
 ó	ó▁
 ò	ò▁
@@ -11535,9 +11423,7 @@ phuýa	ph u ý a▁
 phuỳa	ph u ỳ a▁
 phuỹa	ph u ỹ a▁
 phuỷa	ph u ỷ a▁
-phuỵa	ph u ỵ a▁
 phuých	ph u ý ch▁
-phuỵch	ph u ỵ ch▁
 phuyên	ph uyên▁
 phuyến	ph uy ến▁
 phuyền	ph uyền▁
@@ -11551,29 +11437,23 @@ phuýn	ph u ý n▁
 phuỳn	ph u ỳ n▁
 phuỹn	ph u ỹ n▁
 phuỷn	ph u ỷ n▁
-phuỵn	ph u ỵ n▁
 phuynh	ph uy nh▁
 phuýnh	ph u ý nh▁
 phuỳnh	ph u ỳ nh▁
 phuỹnh	ph u ỹ nh▁
 phuỷnh	ph u ỷ nh▁
-phuỵnh	ph u ỵ nh▁
 phuýp	ph u ý p▁
-phuỵp	ph u ỵ p▁
 phuýt	ph u ý t▁
-phuỵt	ph u ỵ t▁
 phuyu	ph uy u▁
 phuýu	ph u ý u▁
 phuỳu	ph u ỳ u▁
 phuỹu	ph u ỹ u▁
 phuỷu	ph u ỷ u▁
-phuỵu	ph u ỵ u▁
 phy	ph y▁
 phý	ph ý▁
 phỳ	ph ỳ▁
 phỹ	ph ỹ▁
 phỷ	ph ỷ▁
-phỵ	ph ỵ ▁
 pi	p i▁
 pí	p í▁
 pì	p ì▁
@@ -12068,9 +11948,7 @@ puýa	p u ý a▁
 puỳa	p u ỳ a▁
 puỹa	p u ỹ a▁
 puỷa	p u ỷ a▁
-puỵa	p u ỵ a▁
 puých	p u ý ch▁
-puỵch	p u ỵ ch▁
 puyên	p uyên▁
 puyến	p uy ến▁
 puyền	p uyền▁
@@ -12084,29 +11962,23 @@ puýn	p u ý n▁
 puỳn	p u ỳ n▁
 puỹn	p u ỹ n▁
 puỷn	p u ỷ n▁
-puỵn	p u ỵ n▁
 puynh	p uy nh▁
 puýnh	p u ý nh▁
 puỳnh	p u ỳ nh▁
 puỹnh	p u ỹ nh▁
 puỷnh	p u ỷ nh▁
-puỵnh	p u ỵ nh▁
 puýp	p u ý p▁
-puỵp	p u ỵ p▁
 puýt	p u ý t▁
-puỵt	p u ỵ t▁
 puyu	p uy u▁
 puýu	p u ý u▁
 puỳu	p u ỳ u▁
 puỹu	p u ỹ u▁
 puỷu	p u ỷ u▁
-puỵu	p u ỵ u▁
 py	p y▁
 pý	p ý▁
 pỳ	p ỳ▁
 pỹ	p ỹ▁
 pỷ	p ỷ▁
-pỵ	p ỵ ▁
 qoéc	q o é c▁
 qoẹc	q o ẹ c▁
 qoeng	q o e ng▁
@@ -12563,9 +12435,7 @@ quý	quý▁
 quỳ	qu ỳ▁
 quỹ	qu ỹ▁
 quỷ	qu ỷ▁
-quỵ	qu ỵ ▁
 quých	qu ý ch▁
-quỵch	qu ỵ ch▁
 quyên	quy ên▁
 quyến	quy ến▁
 quyền	quyền▁
@@ -12579,17 +12449,13 @@ quýn	qu ý n▁
 quỳn	qu ỳ n▁
 quỹn	qu ỹ n▁
 quỷn	qu ỷ n▁
-quỵn	qu ỵ n▁
 quynh	quy nh▁
 quýnh	qu ý nh▁
 quỳnh	qu ỳ nh▁
 quỹnh	qu ỹ nh▁
 quỷnh	qu ỷ nh▁
-quỵnh	qu ỵ nh▁
 quýp	qu ý p▁
-quỵp	qu ỵ p▁
 quýt	qu ý t▁
-quỵt	qu ỵ t▁
 ra	ra▁
 rá	r á▁
 rà	r à▁
@@ -13279,9 +13145,7 @@ ruýa	r u ý a▁
 ruỳa	r u ỳ a▁
 ruỹa	r u ỹ a▁
 ruỷa	r u ỷ a▁
-ruỵa	r u ỵ a▁
 ruých	r u ý ch▁
-ruỵch	r u ỵ ch▁
 ruyên	r uyên▁
 ruyến	r uy ến▁
 ruyền	r uyền▁
@@ -13295,29 +13159,23 @@ ruýn	r u ý n▁
 ruỳn	r u ỳ n▁
 ruỹn	r u ỹ n▁
 ruỷn	r u ỷ n▁
-ruỵn	r u ỵ n▁
 ruynh	r uy nh▁
 ruýnh	r u ý nh▁
 ruỳnh	r u ỳ nh▁
 ruỹnh	r u ỹ nh▁
 ruỷnh	r u ỷ nh▁
-ruỵnh	r u ỵ nh▁
 ruýp	r u ý p▁
-ruỵp	r u ỵ p▁
 ruýt	r u ý t▁
-ruỵt	r u ỵ t▁
 ruyu	r uy u▁
 ruýu	r u ý u▁
 ruỳu	r u ỳ u▁
 ruỹu	r u ỹ u▁
 ruỷu	r u ỷ u▁
-ruỵu	r u ỵ u▁
 ry	r y▁
 rý	r ý▁
 rỳ	r ỳ▁
 rỹ	r ỹ▁
 rỷ	r ỷ▁
-rỵ	r ỵ ▁
 sa	s a▁
 sá	s á▁
 sà	s à▁
@@ -14007,9 +13865,7 @@ suýa	s u ý a▁
 suỳa	s u ỳ a▁
 suỹa	s u ỹ a▁
 suỷa	s u ỷ a▁
-suỵa	s u ỵ a▁
 suých	s u ý ch▁
-suỵch	s u ỵ ch▁
 suyên	s uyên▁
 suyến	s uy ến▁
 suyền	s uyền▁
@@ -14023,29 +13879,23 @@ suýn	s u ý n▁
 suỳn	s u ỳ n▁
 suỹn	s u ỹ n▁
 suỷn	s u ỷ n▁
-suỵn	s u ỵ n▁
 suynh	s uy nh▁
 suýnh	s u ý nh▁
 suỳnh	s u ỳ nh▁
 suỹnh	s u ỹ nh▁
 suỷnh	s u ỷ nh▁
-suỵnh	s u ỵ nh▁
 suýp	s u ý p▁
-suỵp	s u ỵ p▁
 suýt	s u ý t▁
-suỵt	s u ỵ t▁
 suyu	s uy u▁
 suýu	s u ý u▁
 suỳu	s u ỳ u▁
 suỹu	s u ỹ u▁
 suỷu	s u ỷ u▁
-suỵu	s u ỵ u▁
 sy	s y▁
 sý	s ý▁
 sỳ	s ỳ▁
 sỹ	s ỹ▁
 sỷ	s ỷ▁
-sỵ	s ỵ ▁
 ta	ta▁
 tá	t á▁
 tà	t à▁
@@ -14929,9 +14779,7 @@ thuýa	thu ý a▁
 thuỳa	thu ỳ a▁
 thuỹa	thu ỹ a▁
 thuỷa	thu ỷ a▁
-thuỵa	thu ỵ a▁
 thuých	thu ý ch▁
-thuỵch	thu ỵ ch▁
 thuyên	th uyên▁
 thuyến	th uy ến▁
 thuyền	th uyền▁
@@ -14945,29 +14793,23 @@ thuýn	thu ý n▁
 thuỳn	thu ỳ n▁
 thuỹn	thu ỹ n▁
 thuỷn	thu ỷ n▁
-thuỵn	thu ỵ n▁
 thuynh	th uy nh▁
 thuýnh	thu ý nh▁
 thuỳnh	thu ỳ nh▁
 thuỹnh	thu ỹ nh▁
 thuỷnh	thu ỷ nh▁
-thuỵnh	thu ỵ nh▁
 thuýp	thu ý p▁
-thuỵp	thu ỵ p▁
 thuýt	thu ý t▁
-thuỵt	thu ỵ t▁
 thuyu	th uy u▁
 thuýu	thu ý u▁
 thuỳu	thu ỳ u▁
 thuỹu	thu ỹ u▁
 thuỷu	thu ỷ u▁
-thuỵu	thu ỵ u▁
 thy	th y▁
 thý	th ý▁
 thỳ	th ỳ▁
 thỹ	th ỹ▁
 thỷ	th ỷ▁
-thỵ	th ỵ ▁
 ti	t i▁
 tí	t í▁
 tì	t ì▁
@@ -15943,9 +15785,7 @@ truýa	tr u ý a▁
 truỳa	tr u ỳ a▁
 truỹa	tr u ỹ a▁
 truỷa	tr u ỷ a▁
-truỵa	tr u ỵ a▁
 truých	tr u ý ch▁
-truỵch	tr u ỵ ch▁
 truyên	tr uyên▁
 truyến	tr uy ến▁
 truyền	truyền▁
@@ -15959,29 +15799,23 @@ truýn	tr u ý n▁
 truỳn	tr u ỳ n▁
 truỹn	tr u ỹ n▁
 truỷn	tr u ỷ n▁
-truỵn	tr u ỵ n▁
 truynh	tr uy nh▁
 truýnh	tr u ý nh▁
 truỳnh	tr u ỳ nh▁
 truỹnh	tr u ỹ nh▁
 truỷnh	tr u ỷ nh▁
-truỵnh	tr u ỵ nh▁
 truýp	tr u ý p▁
-truỵp	tr u ỵ p▁
 truýt	tr u ý t▁
-truỵt	tr u ỵ t▁
 truyu	tr uy u▁
 truýu	tr u ý u▁
 truỳu	tr u ỳ u▁
 truỹu	tr u ỹ u▁
 truỷu	tr u ỷ u▁
-truỵu	tr u ỵ u▁
 try	tr y▁
 trý	tr ý▁
 trỳ	tr ỳ▁
 trỹ	tr ỹ▁
 trỷ	tr ỷ▁
-trỵ	tr ỵ ▁
 tu	t u▁
 tú	t ú▁
 tù	t ù▁
@@ -16185,9 +16019,7 @@ tuýa	tu ý a▁
 tuỳa	tu ỳ a▁
 tuỹa	tu ỹ a▁
 tuỷa	tu ỷ a▁
-tuỵa	tu ỵ a▁
 tuých	tu ý ch▁
-tuỵch	tu ỵ ch▁
 tuyên	t uyên▁
 tuyến	tuy ến▁
 tuyền	tuy ền▁
@@ -16201,29 +16033,23 @@ tuýn	tu ý n▁
 tuỳn	tu ỳ n▁
 tuỹn	tu ỹ n▁
 tuỷn	tu ỷ n▁
-tuỵn	tu ỵ n▁
 tuynh	tuy nh▁
 tuýnh	tu ý nh▁
 tuỳnh	tu ỳ nh▁
 tuỹnh	tu ỹ nh▁
 tuỷnh	tu ỷ nh▁
-tuỵnh	tu ỵ nh▁
 tuýp	tu ý p▁
-tuỵp	tu ỵ p▁
 tuýt	tu ý t▁
-tuỵt	tu ỵ t▁
 tuyu	tuy u▁
 tuýu	tu ý u▁
 tuỳu	tu ỳ u▁
 tuỹu	tu ỹ u▁
 tuỷu	tu ỷ u▁
-tuỵu	tu ỵ u▁
 ty	ty▁
 tý	t ý▁
 tỳ	t ỳ▁
 tỹ	t ỹ▁
 tỷ	t ỷ▁
-tỵ	t ỵ ▁
 u	u▁
 ú	ú▁
 ù	ù▁
@@ -16427,9 +16253,7 @@ uýa	u ý a▁
 uỳa	u ỳ a▁
 uỹa	u ỹ a▁
 uỷa	u ỷ a▁
-uỵa	u ỵ a▁
 uých	u ý ch▁
-uỵch	u ỵ ch▁
 uyên	uyên▁
 uyến	uy ến▁
 uyền	uyền▁
@@ -16443,23 +16267,18 @@ uýn	u ý n▁
 uỳn	u ỳ n▁
 uỹn	u ỹ n▁
 uỷn	u ỷ n▁
-uỵn	u ỵ n▁
 uynh	uy nh▁
 uýnh	u ý nh▁
 uỳnh	u ỳ nh▁
 uỹnh	u ỹ nh▁
 uỷnh	u ỷ nh▁
-uỵnh	u ỵ nh▁
 uýp	u ý p▁
-uỵp	u ỵ p▁
 uýt	u ý t▁
-uỵt	u ỵ t▁
 uyu	uy u▁
 uýu	u ý u▁
 uỳu	u ỳ u▁
 uỹu	u ỹ u▁
 uỷu	u ỷ u▁
-uỵu	u ỵ u▁
 va	v a▁
 vá	v á▁
 và	và▁
@@ -17149,9 +16968,7 @@ vuýa	v u ý a▁
 vuỳa	v u ỳ a▁
 vuỹa	v u ỹ a▁
 vuỷa	v u ỷ a▁
-vuỵa	v u ỵ a▁
 vuých	v u ý ch▁
-vuỵch	v u ỵ ch▁
 vuyên	v uyên▁
 vuyến	v uy ến▁
 vuyền	v uyền▁
@@ -17165,29 +16982,23 @@ vuýn	v u ý n▁
 vuỳn	v u ỳ n▁
 vuỹn	v u ỹ n▁
 vuỷn	v u ỷ n▁
-vuỵn	v u ỵ n▁
 vuynh	v uy nh▁
 vuýnh	v u ý nh▁
 vuỳnh	v u ỳ nh▁
 vuỹnh	v u ỹ nh▁
 vuỷnh	v u ỷ nh▁
-vuỵnh	v u ỵ nh▁
 vuýp	v u ý p▁
-vuỵp	v u ỵ p▁
 vuýt	v u ý t▁
-vuỵt	v u ỵ t▁
 vuyu	v uy u▁
 vuýu	v u ý u▁
 vuỳu	v u ỳ u▁
 vuỹu	v u ỹ u▁
 vuỷu	v u ỷ u▁
-vuỵu	v u ỵ u▁
 vy	v y▁
 vý	v ý▁
 vỳ	v ỳ▁
 vỹ	v ỹ▁
 vỷ	v ỷ▁
-vỵ	v ỵ ▁
 xa	xa▁
 xá	x á▁
 xà	x à▁
@@ -17877,9 +17688,7 @@ xuýa	xu ý a▁
 xuỳa	xu ỳ a▁
 xuỹa	xu ỹ a▁
 xuỷa	xu ỷ a▁
-xuỵa	xu ỵ a▁
 xuých	xu ý ch▁
-xuỵch	xu ỵ ch▁
 xuyên	x uyên▁
 xuyến	x uy ến▁
 xuyền	x uyền▁
@@ -17893,35 +17702,28 @@ xuýn	xu ý n▁
 xuỳn	xu ỳ n▁
 xuỹn	xu ỹ n▁
 xuỷn	xu ỷ n▁
-xuỵn	xu ỵ n▁
 xuynh	x uy nh▁
 xuýnh	xu ý nh▁
 xuỳnh	xu ỳ nh▁
 xuỹnh	xu ỹ nh▁
 xuỷnh	xu ỷ nh▁
-xuỵnh	xu ỵ nh▁
 xuýp	xu ý p▁
-xuỵp	xu ỵ p▁
 xuýt	xu ý t▁
-xuỵt	xu ỵ t▁
 xuyu	x uy u▁
 xuýu	xu ý u▁
 xuỳu	xu ỳ u▁
 xuỹu	xu ỹ u▁
 xuỷu	xu ỷ u▁
-xuỵu	xu ỵ u▁
 xy	x y▁
 xý	x ý▁
 xỳ	x ỳ▁
 xỹ	x ỹ▁
 xỷ	x ỷ▁
-xỵ	x ỵ ▁
 y	y▁
 ý	ý▁
 ỳ	ỳ▁
 ỹ	ỹ▁
 ỷ	ỷ▁
-ỵ	ỵ ▁
 yêm	y êm▁
 yếm	y ế m▁
 yềm	y ề m▁

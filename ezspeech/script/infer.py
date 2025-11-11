@@ -12,6 +12,7 @@ Usage:
         --batch_size 8
         --lexicon path/to/lexicon.txt
         --lm path/to/lm.arpa
+        --beam_size 5
 """
 
 import argparse
@@ -24,23 +25,9 @@ import torch
 from tqdm import tqdm
 
 from ezspeech.models.ctc import ASR_ctc_inference
+from ezspeech.utils.common import load_dataset
 
 
-def load_samples(jsonl_path: str, data_dir: str = "") -> List[Dict[str, Any]]:
-    """Load samples from JSONL file"""
-    samples = []
-    with open(jsonl_path, 'r', encoding='utf-8') as f:
-        for idx, line in enumerate(f):
-            sample = json.loads(line.strip())
-            # Construct full audio path
-            audio_path = os.path.join(data_dir, sample['audio_filepath']) if data_dir else sample['audio_filepath']
-            samples.append({
-                'id': idx,
-                'audio_path': audio_path,
-                'text': sample.get('text', ''),
-                'duration': sample.get('duration', 0)
-            })
-    return samples
 
 
 def create_batches(samples: List[Dict], batch_size: int) -> List[List[Dict]]:
@@ -59,6 +46,7 @@ def run_inference(
     lexicon_path: str,
     lm_path: str,
     batch_size: int = 4,
+    beam_size: int = 1,
 ):
     """Main inference function for single GPU"""
 
@@ -82,13 +70,14 @@ def run_inference(
         device=device,
         tokenizer_path=tokenizer_path,
         lexicon_path=lexicon_path,
-        lm_path=lm_path
+        lm_path=lm_path,
+        beam_size=beam_size,
     )
     print("Model loaded successfully")
 
     # Load samples from JSONL
     print(f"\nLoading samples from {input_jsonl}...")
-    samples = load_samples(input_jsonl, data_dir)
+    samples = load_dataset(input_jsonl)
     print(f"Loaded {len(samples)} samples")
 
     # Create batches
@@ -100,41 +89,24 @@ def run_inference(
     print("\nRunning inference...")
 
     for batch in tqdm(batches, desc="Processing batches"):
-        try:
-            # Extract audio paths
-            audio_paths = [sample['audio_path'] for sample in batch]
+        # Extract audio paths
+        audio_paths = [sample['audio_filepath'] for sample in batch]
 
-            # Run inference
-            transcriptions = model.transcribe_lm(audio_paths)
+        # Run inference
+        transcriptions = model.transcribe(audio_paths)
 
-            # Store results
-            for sample, transcription in zip(batch, transcriptions):
-                result = {
-                    'id': sample['id'],
-                    'audio_path': sample['audio_path'],
-                    'prediction': transcription,
-                    'reference': sample['text'],
-                    'duration': sample['duration']
-                }
-                all_results.append(result)
+        # Store results
+        for sample, transcription in zip(batch, transcriptions):
+            result = {
+                'audio_filepath': sample['audio_filepath'],
+                'prediction': transcription,
+                'reference': sample['text'],
+                'duration': sample['duration']
+            }
+            all_results.append(result)
 
-        except Exception as e:
-            print(f"\nError processing batch: {e}")
-            # Add failed results with empty predictions
-            for sample in batch:
-                result = {
-                    'id': sample['id'],
-                    'audio_path': sample['audio_path'],
-                    'prediction': '',
-                    'reference': sample['text'],
-                    'duration': sample['duration'],
-                    'error': str(e)
-                }
-                all_results.append(result)
-            continue
 
     # Sort by ID to maintain original order
-    all_results = sorted(all_results, key=lambda x: x['id'])
 
     # Calculate metrics if references are available
     metrics = {'total_samples': len(all_results)}
@@ -230,6 +202,12 @@ def main():
         default=4,
         help='Batch size (default: 4)'
     )
+    parser.add_argument(
+        '--beam_size',
+        type=int,
+        default=2,
+        help='beam size (default: 2)'
+    )
 
     args = parser.parse_args()
 
@@ -241,7 +219,8 @@ def main():
         output_file=args.output_file,
         batch_size=args.batch_size,
         lexicon_path=args.lexicon_path,
-        lm_path=args.lm_path
+        lm_path=args.lm_path,
+        beam_size=args.beam_size
     )
 
 

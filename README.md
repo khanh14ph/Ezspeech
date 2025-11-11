@@ -1,6 +1,6 @@
 # EzSpeech
 
-A modern, easy-to-use speech recognition toolkit built on PyTorch Lightning. EzSpeech provides state-of-the-art ASR models with clean APIs for training, evaluation, and deployment.
+A modern, easy-to-use speech recognition toolkit built on PyTorch Lightning. EzSpeech provides state-of-the-art ASR models with clean APIs for training and evaluation.
 
 ## 🚀 Features
 
@@ -8,8 +8,6 @@ A modern, easy-to-use speech recognition toolkit built on PyTorch Lightning. EzS
 - **Advanced Encoders**: Conformer, Fast Conformer architectures
 - **Easy Training**: Simplified training workflows with Hydra configuration
 - **Comprehensive Evaluation**: Detailed metrics and error analysis
-- **Distributed Inference**: Multi-GPU batch processing with torchrun
-- **Real-time Inference**: WebSocket server for live ASR
 - **GPU Optimization**: Efficient inference and training
 - **Pre-trained Models**: Support for transfer learning
 
@@ -29,14 +27,6 @@ pip install -e .
 git clone https://github.com/khanh14ph/EzSpeech.git
 cd EzSpeech
 pip install -e ".[dev]"
-```
-
-### Dependencies
-
-Install additional dependencies for WebSocket server:
-
-```bash
-pip install websockets pyaudio
 ```
 
 ## 🚂 Training
@@ -89,32 +79,9 @@ python scripts/train.py --config-name=my_config
 
 ## 📊 Evaluation
 
-### Using Test Configuration
+### Evaluation Script
 
-```bash
-# Use the pre-configured test setup
-python scripts/evaluate.py --config-name=test
-```
-
-### Custom Evaluation Configuration
-
-Create your own evaluation config (copy from `config/eval.yaml`):
-
-```bash
-# Copy and modify the template
-cp config/eval.yaml config/my_eval.yaml
-# Edit config/my_eval.yaml with your paths
-python scripts/evaluate.py --config-name=my_eval
-```
-
-### Configuration Override
-
-```bash
-# Override specific values from command line
-python scripts/evaluate.py --config-name=test \
-  model_checkpoint=/path/to/different/model.ckpt \
-  output_dir=custom_results
-```
+Use the evaluation utilities in `ezspeech/script/eval.py` for evaluating your models.
 
 ### Metrics
 
@@ -124,163 +91,41 @@ EzSpeech provides comprehensive metrics:
 - **Sentence-level accuracy**
 - **Detailed error analysis** (substitutions, insertions, deletions)
 - **Length statistics**
-- **Confidence-based metrics** (when available)
 
 ## 🎤 Inference
 
-### Simple Inference (Single GPU)
+### Inference Script
 
-For quick testing and small-scale inference:
-
-```bash
-# Transcribe specific audio files
-python ezspeech/script/inference_simple.py \
-  --checkpoint /path/to/checkpoint.pt \
-  --tokenizer /path/to/tokenizer.model \
-  --audio_files audio1.wav audio2.wav audio3.wav
-
-# Process entire directory
-python ezspeech/script/inference_simple.py \
-  --checkpoint /path/to/checkpoint.pt \
-  --tokenizer /path/to/tokenizer.model \
-  --audio_dir /path/to/audio/files \
-  --output results.json
-```
-
-### Distributed Inference (Multi-GPU with torchrun)
-
-For large-scale batch processing with automatic load balancing:
+Use the inference script for transcribing audio files:
 
 ```bash
-# Single GPU
-python ezspeech/script/inference_distributed.py \
+python ezspeech/script/infer.py \
   --checkpoint /path/to/checkpoint.pt \
   --tokenizer /path/to/tokenizer.model \
-  --input_jsonl dataset/test.jsonl \
-  --output_file predictions.json
-
-# Multi-GPU (4 GPUs)
-torchrun --nproc_per_node=4 ezspeech/script/inference_distributed.py \
-  --checkpoint /path/to/checkpoint.pt \
-  --tokenizer /path/to/tokenizer.model \
-  --input_jsonl dataset/test.jsonl \
-  --output_file predictions.json \
-  --batch_size 8 \
-  --num_workers 4
+  --input /path/to/audio.wav
 ```
 
-### Features
-
-- ✅ **Single or Multi-GPU**: Scale from 1 to N GPUs with torchrun
-- ✅ **Automatic WER/CER**: Calculates metrics when reference text provided
-- ✅ **Batch Processing**: Efficient processing of large datasets
-- ✅ **Distributed Loading**: Automatic data distribution across GPUs
-- ✅ **Result Aggregation**: Automatically gathers results from all processes
-
-**See [ezspeech/script/INFERENCE_GUIDE.md](ezspeech/script/INFERENCE_GUIDE.md) for detailed usage and examples.**
-
-## 🌐 Real-time Inference (WebSocket)
-
-### Start WebSocket Server
+For batch processing and detailed usage, refer to the script's help:
 
 ```bash
-python scripts/serve_websocket.py \
-  --model-path /path/to/model.ckpt \
-  --host 0.0.0.0 \
-  --port 8765
-```
-
-### Client Examples
-
-See `examples/` directory for detailed client implementations.
-
-#### File Transcription
-
-```python
-import asyncio
-from examples.websocket_client import ASRWebSocketClient
-
-async def transcribe_file():
-    client = ASRWebSocketClient("ws://localhost:8765")
-    await client.connect()
-
-    result = await client.transcribe_file("/path/to/audio.wav")
-    print(f"Transcription: {result}")
-
-    await client.disconnect()
-
-asyncio.run(transcribe_file())
-```
-
-#### Real-time Microphone
-
-```python
-async def real_time_demo():
-    client = ASRWebSocketClient("ws://localhost:8765")
-    await client.connect()
-
-    # Stream from microphone for 10 seconds
-    await client.stream_audio_from_microphone(duration_seconds=10.0)
-
-    await client.disconnect()
-
-asyncio.run(real_time_demo())
+python ezspeech/script/infer.py --help
 ```
 
 ## 🚀 Deployment
 
-### Quick Deploy to AWS
+### Docker Deployment
 
-Deploy EzSpeech to AWS with auto-scaling, load balancing, and monitoring:
-
-```bash
-# 1. Configure infrastructure
-cd aws/terraform
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your AWS settings
-
-# 2. Deploy infrastructure
-cd ../..
-./aws/scripts/deploy.sh
-
-# 3. Build and push Docker image
-./aws/scripts/build-and-push.sh
-
-# 4. Upload your model
-./aws/scripts/upload-model.sh /path/to/model.ckpt
-
-# 5. Update ECS service
-./aws/scripts/update-service.sh
-```
-
-**Architecture**: ECS Fargate + ALB + Auto-scaling + CloudWatch
-
-**See detailed guides:**
-- **[AWS Deployment Guide](aws/README.md)** - Complete AWS setup
-- **[Deployment Options](DEPLOYMENT.md)** - All deployment methods
-- **[Online Tutorial](https://khanh14ph.github.io/Ezspeech/deployment)** - Interactive guide
-
-### Local Testing with Docker
+Test locally with Docker:
 
 ```bash
-# Test locally before deploying
+# Build and run with docker-compose
 docker-compose up -d
-
-# Check health
-curl http://localhost:8080/health
 
 # View logs
 docker-compose logs -f
 ```
 
-### Deployment Options
-
-- **AWS ECS Fargate** (Recommended for production) - Auto-scaling, managed infrastructure
-- **Docker Compose** (Local development) - Quick local setup
-- **Kubernetes** (Advanced deployments) - Full orchestration
-- **Manual Docker** (Simple deployments) - Direct container deployment
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for all options.
+For detailed deployment options and configurations, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## 📁 Dataset Format
 
@@ -311,33 +156,32 @@ EzSpeech/
 │   ├── ctc_sc.yaml         # CTC with grapheme+phoneme
 │   ├── ctc.yaml            # Standard CTC
 │   ├── asr.yaml            # Transducer model
-│   └── eval.yaml           # Evaluation config
+│   ├── streaming.yaml      # Streaming model
+│   ├── eval.yaml           # Evaluation config
+│   └── test.yaml           # Test configuration
 ├── scripts/                # Main scripts
 │   ├── train.py            # Training script
-│   ├── evaluate.py         # Evaluation script
-│   └── serve_websocket.py  # WebSocket server
+│   ├── build_lexicon.py    # Build lexicon
+│   ├── csv_to_jsonl.py     # Data conversion
+│   └── export.py           # Model export
 ├── examples/               # Usage examples
-│   ├── websocket_client.py # WebSocket client
+│   ├── websocket_client.py # WebSocket client example
+│   ├── evaluation_usage.md # Evaluation examples
 │   └── README.md           # Examples documentation
 ├── ezspeech/              # Core package
 │   ├── models/            # Model definitions
 │   ├── modules/           # Lightning modules
 │   ├── layers/            # Neural network layers
 │   ├── script/            # Inference and utility scripts
-│   │   ├── inference_distributed.py  # Multi-GPU inference
-│   │   ├── inference_simple.py       # Simple inference
-│   │   ├── INFERENCE_GUIDE.md        # Inference documentation
-│   │   └── eval.py                   # Evaluation utilities
+│   │   ├── infer.py                  # Inference script
+│   │   ├── eval.py                   # Evaluation utilities
+│   │   ├── train_tokenizer.py        # Tokenizer training
+│   │   └── validate_training.py      # Training validation
 │   └── utils/             # Utilities
-├── aws/                   # AWS deployment
-│   ├── terraform/         # Infrastructure as Code
-│   ├── scripts/           # Deployment scripts
-│   ├── nginx/             # Reverse proxy config
-│   └── README.md          # AWS deployment guide
-├── docs/                  # GitHub Pages documentation
-├── Dockerfile             # Optimized container image
-├── docker-compose.yml     # Local development
-└── tests/                 # Unit tests
+├── docs/                  # Documentation
+├── demo/                  # Demo scripts
+├── dockerfile             # Container image
+└── docker-compose.yml     # Local development
 ```
 
 ## 🔧 Configuration
@@ -412,25 +256,21 @@ pytest tests/ --cov=ezspeech --cov-report=html
 
 ### Inference Optimization
 
-1. **Multi-GPU Processing**: Use `inference_distributed.py` with torchrun for parallel processing
-2. **Batch Processing**: Adjust `--batch_size` for optimal GPU utilization
+1. **Batch Processing**: Process multiple files efficiently
+2. **GPU Utilization**: Ensure optimal GPU usage during inference
 3. **TorchScript**: Export models for faster inference
 4. **ONNX**: Use ONNX runtime for deployment
 5. **Quantization**: Apply post-training quantization
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions!
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Add tests
 5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
@@ -441,9 +281,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 ## 🎯 Quick Links
 
 - **[📚 Online Documentation](https://khanh14ph.github.io/Ezspeech)** - Interactive guides and tutorials
-- **[🎤 Inference Guide](ezspeech/script/INFERENCE_GUIDE.md)** - Detailed inference usage and examples
-- **[☁️ AWS Deployment](aws/README.md)** - Production deployment on AWS
-- **[🐳 Deployment Options](DEPLOYMENT.md)** - All deployment methods
+- **[🐳 Deployment Options](DEPLOYMENT.md)** - Deployment methods and configurations
 - **[💡 Examples](examples/)** - Code samples and usage examples
 
 ## 📞 Support
