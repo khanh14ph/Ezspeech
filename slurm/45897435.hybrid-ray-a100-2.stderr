@@ -1,0 +1,175 @@
+[rank: 0] Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/logger_connector/logger_connector.py:76: Starting from v1.9.0, `tensorboardX` has been removed as a dependency of the `pytorch_lightning` package, due to potential conflicts with other packages in the ML ecosystem. For this reason, `logger=True` will use `CSVLogger` as the default logger, unless the `tensorboard` or `tensorboardX` packages are found. Please `pip install lightning[extra]` or one of them to enable TensorBoard support by default
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 78545.02it/s]
+100%|██████████| 1/1 [00:00<00:00, 2507.06it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A
+25243it [00:00, 252358.64it/s][A
+54792it [00:00, 277715.94it/s][A
+86286it [00:00, 294706.46it/s][A
+116416it [00:00, 297303.31it/s][A
+162562it [00:00, 356459.31it/s][A
+214351it [00:00, 411333.99it/s][A
+255485it [00:00, 374145.32it/s][A
+293483it [00:00, 355086.35it/s][A
+329495it [00:00, 337375.20it/s][A
+363647it [00:01, 331323.10it/s][A
+397038it [00:01, 326103.93it/s][A
+429806it [00:01, 316422.29it/s][A
+461959it [00:01, 317850.78it/s][A
+493834it [00:01, 312905.81it/s][A
+525562it [00:01, 314156.51it/s][A550000it [00:01, 326740.76it/s]
+100%|██████████| 1/1 [00:01<00:00,  1.69s/it]100%|██████████| 1/1 [00:01<00:00,  1.69s/it]
+Add samples to bucket map - [0]...:   0%|          | 0/550000 [00:00<?, ?it/s]Add samples to bucket map - [0]...:  27%|██▋       | 145828/550000 [00:00<00:00, 1458236.19it/s]Add samples to bucket map - [0]...:  62%|██████▏   | 340359/550000 [00:00<00:00, 1744713.38it/s]Add samples to bucket map - [0]...:  98%|█████████▊| 541299/550000 [00:00<00:00, 1865549.22it/s]Add samples to bucket map - [0]...: 100%|██████████| 550000/550000 [00:00<00:00, 1804468.80it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  19%|█▉        | 4/21 [00:00<00:00, 33.42it/s]Generating bucket data - [0]...:  38%|███▊      | 8/21 [00:00<00:00, 31.86it/s]Generating bucket data - [0]...:  57%|█████▋    | 12/21 [00:00<00:00, 16.66it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 33.12it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 8 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+/scratch/midway3/khanhnd/Ezspeech/ezspeech/modules/data/dataset.py:46: UserWarning: PySoundFile failed. Trying audioread instead.
+  speech, sample_rate = librosa.load(audio_filepath, sr=None)
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/core/audio.py:184: FutureWarning: librosa.core.audio.__audioread_load
+	Deprecated as of librosa version 0.10.0.
+	It will be removed in librosa version 1.0.
+  y, sr_native = __audioread_load(path, offset, duration, dtype)
+/scratch/midway3/khanhnd/Ezspeech/ezspeech/modules/data/dataset.py:46: UserWarning: PySoundFile failed. Trying audioread instead.
+  speech, sample_rate = librosa.load(audio_filepath, sr=None)
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/core/audio.py:184: FutureWarning: librosa.core.audio.__audioread_load
+	Deprecated as of librosa version 0.10.0.
+	It will be removed in librosa version 1.0.
+  y, sr_native = __audioread_load(path, offset, duration, dtype)
+/scratch/midway3/khanhnd/Ezspeech/ezspeech/modules/data/dataset.py:46: UserWarning: PySoundFile failed. Trying audioread instead.
+  speech, sample_rate = librosa.load(audio_filepath, sr=None)
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/core/audio.py:184: FutureWarning: librosa.core.audio.__audioread_load
+	Deprecated as of librosa version 0.10.0.
+	It will be removed in librosa version 1.0.
+  y, sr_native = __audioread_load(path, offset, duration, dtype)
+/scratch/midway3/khanhnd/Ezspeech/ezspeech/modules/data/dataset.py:46: UserWarning: PySoundFile failed. Trying audioread instead.
+  speech, sample_rate = librosa.load(audio_filepath, sr=None)
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/core/audio.py:184: FutureWarning: librosa.core.audio.__audioread_load
+	Deprecated as of librosa version 0.10.0.
+	It will be removed in librosa version 1.0.
+  y, sr_native = __audioread_load(path, offset, duration, dtype)
+/scratch/midway3/khanhnd/Ezspeech/ezspeech/modules/data/dataset.py:46: UserWarning: PySoundFile failed. Trying audioread instead.
+  speech, sample_rate = librosa.load(audio_filepath, sr=None)
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/core/audio.py:184: FutureWarning: librosa.core.audio.__audioread_load
+	Deprecated as of librosa version 0.10.0.
+	It will be removed in librosa version 1.0.
+  y, sr_native = __audioread_load(path, offset, duration, dtype)
+/scratch/midway3/khanhnd/Ezspeech/ezspeech/modules/data/dataset.py:46: UserWarning: PySoundFile failed. Trying audioread instead.
+  speech, sample_rate = librosa.load(audio_filepath, sr=None)
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/core/audio.py:184: FutureWarning: librosa.core.audio.__audioread_load
+	Deprecated as of librosa version 0.10.0.
+	It will be removed in librosa version 1.0.
+  y, sr_native = __audioread_load(path, offset, duration, dtype)
+Error executing job with overrides: []
+Traceback (most recent call last):
+  File "/scratch/midway3/khanhnd/Ezspeech/scripts/train.py", line 93, in main
+    trainer.fit(model)
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 584, in fit
+    call._call_and_handle_interrupt(
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/call.py", line 48, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 630, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 1079, in _run
+    results = self._run_stage()
+              ^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 1123, in _run_stage
+    self.fit_loop.run()
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/fit_loop.py", line 217, in run
+    self.advance()
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/fit_loop.py", line 465, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 153, in run
+    self.advance(data_fetcher)
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 311, in advance
+    batch, _, __ = next(data_fetcher)
+                   ^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/fetchers.py", line 134, in __next__
+    batch = super().__next__()
+            ^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/fetchers.py", line 61, in __next__
+    batch = next(self.iterator)
+            ^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/utilities/combined_loader.py", line 341, in __next__
+    out = next(self._iterator)
+          ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/utilities/combined_loader.py", line 78, in __next__
+    out[i] = next(self.iterators[i])
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py", line 732, in __next__
+    data = self._next_data()
+           ^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py", line 1479, in _next_data
+    return self._process_data(data, worker_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py", line 1541, in _process_data
+    data.reraise()
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/_utils.py", line 769, in reraise
+    raise exception
+FileNotFoundError: Caught FileNotFoundError in DataLoader worker process 2.
+Original Traceback (most recent call last):
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/core/audio.py", line 176, in load
+    y, sr_native = __soundfile_load(path, offset, duration, dtype)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/core/audio.py", line 209, in __soundfile_load
+    context = sf.SoundFile(path)
+              ^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/soundfile.py", line 690, in __init__
+    self._file = self._open(file, mode_int, closefd)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/soundfile.py", line 1265, in _open
+    raise LibsndfileError(err, prefix="Error opening {0!r}: ".format(self.name))
+soundfile.LibsndfileError: Error opening '/scratch/midway3/khanhnd/data/audio/youtube/audio_526059.flac': System error.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/_utils/worker.py", line 349, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/_utils/fetch.py", line 52, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+            ~~~~~~~~~~~~^^^^^
+  File "/scratch/midway3/khanhnd/Ezspeech/ezspeech/modules/data/dataset.py", line 46, in __getitem__
+    speech, sample_rate = librosa.load(audio_filepath, sr=None)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/core/audio.py", line 184, in load
+    y, sr_native = __audioread_load(path, offset, duration, dtype)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/decorator.py", line 235, in fun
+    return caller(func, *(extras + args), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/util/decorators.py", line 63, in __wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/librosa/core/audio.py", line 240, in __audioread_load
+    reader = audioread.audio_open(path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/audioread/__init__.py", line 126, in audio_open
+    return BackendClass(path)
+           ^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/audioread/rawread.py", line 59, in __init__
+    self._fh = open(filename, 'rb')
+               ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/scratch/midway3/khanhnd/data/audio/youtube/audio_526059.flac'
+
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.

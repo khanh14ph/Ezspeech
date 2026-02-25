@@ -1,0 +1,40 @@
+[rank: 0] Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/logger_connector/logger_connector.py:76: Starting from v1.9.0, `tensorboardX` has been removed as a dependency of the `pytorch_lightning` package, due to potential conflicts with other packages in the ML ecosystem. For this reason, `logger=True` will use `CSVLogger` as the default logger, unless the `tensorboard` or `tensorboardX` packages are found. Please `pip install lightning[extra]` or one of them to enable TensorBoard support by default
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 95542.23it/s]
+100%|██████████| 1/1 [00:00<00:00, 2657.99it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A
+34078it [00:00, 340755.14it/s][A
+68154it [00:00, 319894.79it/s][A
+100230it [00:00, 312507.80it/s][A
+134462it [00:00, 323825.95it/s][A
+187092it [00:00, 395141.26it/s][A
+230717it [00:00, 408864.12it/s][A
+271765it [00:00, 365754.54it/s][A
+309198it [00:00, 350451.26it/s][A
+344866it [00:00, 340518.20it/s][A
+379331it [00:01, 326834.36it/s][A
+412320it [00:01, 322108.84it/s][A
+444718it [00:01, 320026.40it/s][A
+476838it [00:01, 314635.02it/s][A
+509011it [00:01, 316657.61it/s][A520000it [00:01, 335071.46it/s]
+100%|██████████| 1/1 [00:01<00:00,  1.56s/it]100%|██████████| 1/1 [00:01<00:00,  1.56s/it]
+Add samples to bucket map - [0]...:   0%|          | 0/520000 [00:00<?, ?it/s]Add samples to bucket map - [0]...:  35%|███▍      | 180584/520000 [00:00<00:00, 1805790.06it/s]Add samples to bucket map - [0]...:  76%|███████▋  | 397634/520000 [00:00<00:00, 2020290.01it/s]Add samples to bucket map - [0]...: 100%|██████████| 520000/520000 [00:00<00:00, 2035906.45it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  19%|█▉        | 4/21 [00:00<00:00, 34.24it/s]Generating bucket data - [0]...:  38%|███▊      | 8/21 [00:00<00:00, 33.87it/s]Generating bucket data - [0]...:  57%|█████▋    | 12/21 [00:00<00:00, 17.14it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 34.21it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 8 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+slurmstepd: error: *** JOB 45897697 ON midway3-0281 CANCELLED AT 2026-02-23T18:22:29 ***

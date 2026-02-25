@@ -1,0 +1,52 @@
+[rank: 0] Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/logger_connector/logger_connector.py:76: Starting from v1.9.0, `tensorboardX` has been removed as a dependency of the `pytorch_lightning` package, due to potential conflicts with other packages in the ML ecosystem. For this reason, `logger=True` will use `CSVLogger` as the default logger, unless the `tensorboard` or `tensorboardX` packages are found. Please `pip install lightning[extra]` or one of them to enable TensorBoard support by default
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 67869.00it/s]
+100%|██████████| 1/1 [00:00<00:00, 1836.39it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 98227.26it/s]
+100%|██████████| 1/1 [00:00<00:00, 2226.28it/s]
+Add samples to bucket map - [0]...:   0%|          | 0/10 [00:00<?, ?it/s]Add samples to bucket map - [0]...: 100%|██████████| 10/10 [00:00<00:00, 197844.53it/s]
+Generating bucket data - [0]...:   0%|          | 0/8 [00:00<?, ?it/s]Generating bucket data - [0]...: 100%|██████████| 8/8 [00:00<00:00, 134217.73it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 8 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+Generating bucket data - [0]...:   0%|          | 0/8 [00:00<?, ?it/s]Generating bucket data - [0]...: 100%|██████████| 8/8 [00:00<00:00, 75743.64it/s]
+Error executing job with overrides: []
+Traceback (most recent call last):
+  File "/scratch/midway3/khanhnd/Ezspeech/scripts/train.py", line 93, in main
+    trainer.fit(model)
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 584, in fit
+    call._call_and_handle_interrupt(
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/call.py", line 48, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 630, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 1079, in _run
+    results = self._run_stage()
+              ^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/trainer.py", line 1123, in _run_stage
+    self.fit_loop.run()
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/fit_loop.py", line 209, in run
+    self.setup_data()
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/fit_loop.py", line 296, in setup_data
+    raise ValueError(
+ValueError:  `val_check_interval` (10000) must be less than or equal to the number of the training batches (8). If you want to disable validation set `limit_val_batches` to 0.0 instead. If you want to validate based on the total training batches, set `check_val_every_n_epoch=None`.
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.

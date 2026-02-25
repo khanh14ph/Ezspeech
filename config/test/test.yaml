@@ -1,7 +1,10 @@
 model:
-  _target_: ezspeech.models.ctc_recognition.ASR_ctc_inference
-  filepath: /home3/tuannd/model_en_only_last.ckpt 
+  _target_: ezspeech.models.ctc.ASR_ctc_inference
+  filepath: ../exported_checkpoint/ckpt.ckpt
 
   device: cuda
-  tokenizer_path: /home3/khanhnd/download/grapheme.model
-  tokenizer_phoneme_path: /home3/khanhnd/download/ipa.model
+  tokenizer_path: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
+  lm_path: /scratch/midway3/khanhnd/vi_lm_4grams.bin
+  lexicon_path: /scratch/midway3/khanhnd/Ezspeech/asset/lexicon.txt
+  
+  # export LD_LIBRARY_P:ATH=$LD_LIBRARY_PATH:/scratch/midway3/khanhnd/miniconda3/lib

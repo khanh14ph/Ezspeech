@@ -1,0 +1,46 @@
+[rank: 0] Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 96642.95it/s]
+100%|██████████| 1/1 [00:00<00:00, 2743.17it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A
+16739it [00:00, 167378.19it/s][A
+45701it [00:00, 239234.20it/s][A
+76625it [00:00, 271191.07it/s][A
+106046it [00:00, 280275.61it/s][A
+143619it [00:00, 314690.82it/s][A
+195549it [00:00, 384251.66it/s][A
+235063it [00:00, 387807.06it/s][A
+273844it [00:00, 353803.88it/s][A
+309762it [00:00, 339895.96it/s][A
+344171it [00:01, 332140.83it/s][A
+377665it [00:01, 320328.74it/s][A
+409914it [00:01, 316501.72it/s][A
+441697it [00:01, 312488.12it/s][A
+473026it [00:01, 312218.69it/s][A
+504919it [00:01, 314156.30it/s][A520000it [00:01, 318861.25it/s]
+100%|██████████| 1/1 [00:01<00:00,  1.64s/it]100%|██████████| 1/1 [00:01<00:00,  1.64s/it]
+Add samples to bucket map - [0]...:   0%|          | 0/520000 [00:00<?, ?it/s]Add samples to bucket map - [0]...:  36%|███▋      | 189558/520000 [00:00<00:00, 1895523.06it/s]Add samples to bucket map - [0]...:  78%|███████▊  | 406986/520000 [00:00<00:00, 2059467.97it/s]Add samples to bucket map - [0]...: 100%|██████████| 520000/520000 [00:00<00:00, 2066609.89it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  19%|█▉        | 4/21 [00:00<00:00, 37.56it/s]Generating bucket data - [0]...:  38%|███▊      | 8/21 [00:00<00:00, 36.05it/s]Generating bucket data - [0]...:  57%|█████▋    | 12/21 [00:00<00:00, 17.48it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 35.19it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 8 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  10%|▉         | 2/21 [00:00<00:01, 18.03it/s]Generating bucket data - [0]...:  29%|██▊       | 6/21 [00:00<00:00, 24.26it/s]Generating bucket data - [0]...:  43%|████▎     | 9/21 [00:00<00:00, 21.15it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 44.61it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  10%|▉         | 2/21 [00:00<00:00, 19.90it/s]Generating bucket data - [0]...:  29%|██▊       | 6/21 [00:00<00:00, 29.46it/s]Generating bucket data - [0]...:  43%|████▎     | 9/21 [00:00<00:00, 22.58it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 48.66it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 27.00it/s]Generating bucket data - [0]...:  29%|██▊       | 6/21 [00:00<00:00, 28.55it/s]Generating bucket data - [0]...:  43%|████▎     | 9/21 [00:00<00:00, 26.35it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 55.66it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 26.32it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 25.94it/s]Generating bucket data - [0]...:  48%|████▊     | 10/21 [00:00<00:00, 26.75it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 54.57it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 26.42it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 29.04it/s]Generating bucket data - [0]...:  48%|████▊     | 10/21 [00:00<00:00, 27.88it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 56.79it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 21.78it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 23.23it/s]Generating bucket data - [0]...:  48%|████▊     | 10/21 [00:00<00:00, 23.82it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 48.42it/s]
+slurmstepd: error: *** JOB 45967774 ON midway3-0279 CANCELLED AT 2026-02-25T10:34:31 DUE TO TIME LIMIT ***

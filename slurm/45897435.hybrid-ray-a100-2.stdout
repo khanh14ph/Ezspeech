@@ -1,0 +1,164 @@
+[2026-02-23 18:02:01,486][__main__][INFO] - Starting EzSpeech training...
+[2026-02-23 18:02:01,491][__main__][INFO] - Configuration:
+dataset:
+  spe_file_grapheme: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
+  train_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    filepaths:
+    - /scratch/midway3/khanhnd/data/metadata/youtube.jsonl
+    data_dir: /scratch/midway3/khanhnd/data/audio/
+  val_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    filepaths:
+    - /scratch/midway3/khanhnd/data/metadata/hehe.jsonl
+    data_dir: /scratch/midway3/khanhnd/data/audio/
+  train_loader:
+    max_batch_duration: 50
+    num_bucket: 20
+    num_workers: 8
+    pin_memory: true
+  val_loader:
+    batch_size: 4
+    num_workers: 4
+    pin_memory: true
+model:
+  d_model: 512
+  vocab_size: 2048
+  preprocessor:
+    _target_: ezspeech.modules.data.utils.audio.AudioToMelSpectrogramPreprocessor
+    sample_rate: 16000
+    normalize: per_feature
+    window_size: 0.025
+    window_stride: 0.01
+    window: hann
+    features: 80
+    n_fft: 512
+    frame_splicing: 1
+    dither: 1.0e-05
+    pad_to: 0
+  spec_augment:
+    _target_: ezspeech.modules.data.augment.SpecAugment
+    freq_masks: 2
+    time_masks: 10
+    freq_width: 27
+    time_width: 0.05
+  encoder:
+    _target_: ezspeech.modules.encoder.conformer_offline.ConformerOfflineEncoder
+    feat_in: ${model.preprocessor.features}
+    feat_out: -1
+    n_layers: 4
+    d_model: 512
+    subsampling: dw_striding
+    subsampling_factor: 8
+    subsampling_conv_channels: 256
+    causal_downsampling: false
+    reduction: null
+    reduction_position: null
+    reduction_factor: 1
+    ff_expansion_factor: 4
+    self_attention_model: rel_pos
+    n_heads: 8
+    att_context_size:
+    - -1
+    - -1
+    att_context_style: regular
+    xscaling: false
+    untie_biases: true
+    pos_emb_max_len: 5000
+    conv_kernel_size: 9
+    conv_norm_type: batch_norm
+    conv_context_size: null
+    dropout: 0.1
+    dropout_pre_encoder: 0.1
+    dropout_emb: 0.0
+    dropout_att: 0.1
+    stochastic_depth_drop_prob: 0.0
+    stochastic_depth_mode: linear
+    stochastic_depth_start_layer: 1
+  ctc_decoder:
+    _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
+    feat_in: 512
+    num_classes: 2048
+    add_blank: true
+  loss:
+    ctc_loss:
+      _target_: ezspeech.modules.losses.ctc.CTCLoss
+      blank_idx: 2048
+      reduction: mean
+      zero_infinity: true
+  optimizer:
+    lr: 1
+    betas:
+    - 0.9
+    - 0.999
+    weight_decay: 0.01
+    eps: 1.0e-09
+    foreach: false
+    fused: true
+  scheduler:
+    d_model: 512
+    warmup_steps: 10000
+callbacks:
+  lr:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+  swa:
+    _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
+    swa_lrs: 1.0e-06
+    swa_epoch_start: 0.8
+    annealing_epochs: 1
+  cb:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: step
+    save_top_k: 5
+    save_last: true
+    filename: '{epoch}-{val_wer:.5f}-{step}'
+    every_n_epochs: 1
+    mode: max
+loggers:
+  tb:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: ../lightning_logs
+    name: icassp
+    version: ctc
+    default_hp_metric: false
+trainer:
+  max_epochs: 30
+  strategy: ddp
+  accelerator: gpu
+  devices:
+  - 0
+  accumulate_grad_batches: 1
+  precision: 32
+  val_check_interval: 1000
+  use_distributed_sampler: false
+
+[2026-02-23 18:02:01,491][__main__][INFO] - Configuration validation completed
+[2026-02-23 18:02:01,491][__main__][INFO] - Initializing ASR model...
+PADDING: 0
+[2026-02-23 18:02:02,584][ezspeech.utils.training][INFO] - Added callback: lr
+[2026-02-23 18:02:02,585][ezspeech.utils.training][INFO] - Added callback: swa
+[2026-02-23 18:02:02,586][ezspeech.utils.training][INFO] - Added callback: cb
+[2026-02-23 18:02:02,587][ezspeech.utils.training][ERROR] - Failed to instantiate logger tb: Error in call to target 'pytorch_lightning.loggers.tensorboard.TensorBoardLogger':
+ModuleNotFoundError("Neither `tensorboard` nor `tensorboardX` is available. Try `pip install`ing either.\nRequirement 'tensorboardX' not met. HINT: Try running `pip install -U 'tensorboardX'`\nRequirement 'tensorboard' not met. HINT: Try running `pip install -U 'tensorboard'`")
+full_key: loggers.tb
+[2026-02-23 18:02:02,594][__main__][INFO] - Initializing PyTorch Lightning trainer...
+[2026-02-23 18:02:02,617][__main__][INFO] - Starting training process...
+┏━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name         ┃ Type                             ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ preprocessor │ AudioToMelSpectrogramPreprocess… │      0 │ train │     0 │
+│ 1 │ spec_augment │ SpecAugment                      │      0 │ train │     0 │
+│ 2 │ encoder      │ ConformerOfflineEncoder          │ 26.7 M │ train │     0 │
+│ 3 │ ctc_decoder  │ ConvASRDecoder                   │  1.1 M │ train │     0 │
+│ 4 │ ctc_loss     │ CTCLoss                          │      0 │ train │     0 │
+└───┴──────────────┴──────────────────────────────────┴────────┴───────┴───────┘
+Trainable params: 27.8 M                                                        
+Non-trainable params: 0                                                         
+Total params: 27.8 M                                                            
+Total estimated model params size (MB): 111                                     
+Modules in train mode: 133                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+GPU rank 0 handle 550000 samples
+Epoch 0/30                  2/69272 0:00:08 •        23.83it/s v_num: 19.000    
+                                    0:48:28                    loss: 21.341     

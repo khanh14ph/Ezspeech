@@ -35,14 +35,14 @@ class ASR_ctc_training(LightningModule):
         self.ctc_loss = instantiate(config.model.loss.ctc_loss)
 
         # Initialize tokenizer for WER calculation
-        self.tokenizer_grapheme = Tokenizer(spe_file=config.dataset.spe_file_grapheme)
+        self.tokenizer = Tokenizer(spe_file=config.dataset.spe_file)
         # Initialize WER accumulation for validation set
         self.val_predictions = []
         self.val_references = []
 
     def train_dataloader(self) -> DataLoader:
         dataset = instantiate(self.hparams.config.dataset.train_ds, _recursive_=False)
-        dataset.set_tokenizer(self.tokenizer_grapheme)
+        dataset.set_tokenizer(self.tokenizer)
         sampler = SequentialSampler(dataset)
         loader = self.hparams.config.dataset.train_loader
 
@@ -63,7 +63,7 @@ class ASR_ctc_training(LightningModule):
 
     def val_dataloader(self) -> DataLoader:
         dataset = instantiate(self.hparams.config.dataset.val_ds, _recursive_=False)
-        dataset.set_tokenizer(self.tokenizer_grapheme)
+        dataset.set_tokenizer(self.tokenizer)
         val_loader = self.hparams.config.dataset.val_loader
         sampler = DistributedSampler(dataset)
         val_dl = DataLoader(
@@ -95,7 +95,7 @@ class ASR_ctc_training(LightningModule):
             input_lengths=enc_lens,
             target_lengths=target_lengths_grapheme,
         )
-        self.log("loss", loss, sync_dist=True, prog_bar=True)
+        self.log("Loss", loss, sync_dist=True, prog_bar=True)
 
         return loss
 
@@ -104,15 +104,16 @@ class ASR_ctc_training(LightningModule):
     ) -> torch.Tensor:
         wavs, wav_lengths, targets, target_lengths = batch
         features, feature_lengths = self.preprocessor(wavs, wav_lengths)
-        # Calculate WER
-        # Get CTC predictions for WER calculation
+  
         enc_outs, enc_lens = self.encoder(features, feature_lengths)
         ctc_logits = self.ctc_decoder(enc_outs)
 
-        # Decode predictions and targets to text
         predictions = self._ctc_decode_predictions(ctc_logits, enc_lens)
         references = self._targets_to_text(targets, target_lengths)
         # Accumulate predictions and references for validation set WER
+        print(predictions)
+        print(references)
+        print("___________")
         self.val_predictions.extend(predictions)
         self.val_references.extend(references)
 
@@ -128,38 +129,16 @@ class ASR_ctc_training(LightningModule):
         self.val_predictions = []
         self.val_references = []
 
-    def self_condition_step(
-        self, logits_lst, enc_lens, targets: torch.Tensor, target_lengths: torch.Tensor
-    ):
-        loss_lst = []
-        for logit in logits_lst:
-            loss = self.ctc_loss(
-                log_probs=logit,
-                targets=targets,
-                input_lengths=enc_lens,
-                target_lengths=target_lengths,
-            )
-            loss_lst.append(loss)
-        return sum(loss_lst) / len(loss_lst)
-
     def _ctc_decode_predictions(self, logits, input_lengths):
-        """
-        Decode CTC predictions to text for WER calculation
-        """
-        # Get predictions using argmax
         predicted_ids = torch.argmax(logits, dim=-1)  # [B, T]
 
         predictions = []
         for i, pred_seq in enumerate(predicted_ids):
-            # Get the actual length for this sequence
             seq_len = input_lengths[i].item()
             pred_seq = pred_seq[:seq_len]
-
-            # Remove consecutive duplicates and blank tokens
             unique_seq = torch.unique_consecutive(pred_seq)
-            # Remove blank token (usually the last token in vocab)
             filtered_seq = (
-                unique_seq[unique_seq != len(self.tokenizer_grapheme.vocab)]
+                unique_seq[unique_seq != len(self.tokenizer.vocab)]
                 .cpu()
                 .numpy()
                 .tolist()
@@ -167,7 +146,7 @@ class ASR_ctc_training(LightningModule):
 
             # Convert token IDs to text
             if len(filtered_seq) > 0:
-                tokens = self.tokenizer_grapheme.decode(filtered_seq)
+                tokens = self.tokenizer.decode(filtered_seq)
                 text = "".join(tokens).replace("_", " ").strip()
             else:
                 text = ""
@@ -187,7 +166,7 @@ class ASR_ctc_training(LightningModule):
             target_seq = target_seq[:seq_len]
 
             # Convert token IDs to text
-            tokens = self.tokenizer_grapheme.decode(target_seq.cpu().numpy().tolist())
+            tokens = self.tokenizer.decode(target_seq.cpu().numpy().tolist())
             text = "".join(tokens).replace("_", " ").strip()
             references.append(text)
 
@@ -286,6 +265,7 @@ class ASR_ctc_inference:
         audios = [torchaudio.load(i) for i in audio_lst]
         speeches = [i[0] for i in audios]
         sample_rates = [i[1] for i in audios]
+        print(speeches[0].shape)
         enc, enc_length = self.forward_encoder(speeches)
         res = self.ctc_decode(enc, enc_length)
         return res
@@ -295,7 +275,7 @@ class ASR_ctc_inference:
         speeches = [i[0] for i in audios]
         sample_rates = [i[1] for i in audios]
         enc, enc_length = self.forward_encoder(speeches)
-        res = self.beam_search_decode(enc, enc_length)
+        res = self.beam_search_decode(enc.to("cpu"), enc_length.to("cpu"))
         return res
 
     @torch.inference_mode()

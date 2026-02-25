@@ -1,18 +1,6 @@
 import re
 from typing import List, Optional, Tuple, Union
-
 import sentencepiece as spm
-
-
-def tokenize(sentence: str, vocab: List[str]) -> List[str]:
-    # sentence = re.sub(r"\s+", "|", sentence)
-    # sentence = sentence.strip("|")
-    sentence = sentence.replace(" ", "_") + "_"
-
-    patterns = "|".join(map(re.escape, sorted(vocab, reverse=True)))
-    tokens = re.findall(patterns, sentence)
-    return tokens
-
 
 class Tokenizer:
     def __init__(self,spe_file=None):
@@ -27,10 +15,17 @@ class Tokenizer:
     def encode(self, sentence):
         token_idx = self.spe_model.encode(sentence)
         return token_idx
-
+    
     def decode(self, idx_lst):
         return self.spe_model.decode(idx_lst)
-
+    def id_to_token(self,idx):
+        return self.spe_model.id_to_piece(idx)
+    def decode_list(self, idx_lst):
+        res=[]
+        for i in idx_lst:
+            if i!=0:
+                res.append(self.id_to_token(i))
+        return res
     def __len__(self):
         return len(self.vocab)
 
@@ -60,21 +55,22 @@ def check_end_word(token: str, vocab: List[str]):
         return False
 
 
-
+import re
+try:
+    # UCS-4
+    highpoints = re.compile(u'[\U00010000-\U0010ffff]')
+except re.error:
+    # UCS-2
+    highpoints = re.compile(u'[\uD800-\uDBFF][\uDC00-\uDFFF]')
 special_symbol=open("ezspeech/resource/special_char.txt").read().splitlines()
 def normalize(x):
-
+    x=x.replace('\u200b', '').replace("°c","độ c")
     for i in special_symbol:
+        
         x = x.replace(i, " ")
     x = " ".join(x.split())
+    x=highpoints.sub(u'\u25FD', x)
     return x
 
 
-if __name__ == "__main__":
-    vocab = (
-        open("/home4/khanhnd/Ezspeech/ezspeech/resource/vocab/vi_en.txt")
-        .read()
-        .splitlines()
-    )
-    res = tokenize("xin chào tôi là người đẳng cấp PRO VIP ENTERTAINMENT", vocab)
-    print(res)
+

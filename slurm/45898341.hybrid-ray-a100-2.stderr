@@ -1,0 +1,41 @@
+[rank: 0] Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/logger_connector/logger_connector.py:76: Starting from v1.9.0, `tensorboardX` has been removed as a dependency of the `pytorch_lightning` package, due to potential conflicts with other packages in the ML ecosystem. For this reason, `logger=True` will use `CSVLogger` as the default logger, unless the `tensorboard` or `tensorboardX` packages are found. Please `pip install lightning[extra]` or one of them to enable TensorBoard support by default
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 68422.58it/s]
+100%|██████████| 1/1 [00:00<00:00, 1469.11it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A
+19819it [00:00, 198146.73it/s][A
+48527it [00:00, 250437.24it/s][A
+79174it [00:00, 276014.81it/s][A
+108584it [00:00, 283148.94it/s][A
+147587it [00:00, 321682.40it/s][A
+199250it [00:00, 387937.37it/s][A
+238044it [00:00, 382194.08it/s][A
+276281it [00:00, 351161.93it/s][A
+311848it [00:00, 335007.37it/s][A
+345733it [00:01, 326845.54it/s][A
+378671it [00:01, 313840.45it/s][A
+410260it [00:01, 310890.35it/s][A
+441475it [00:01, 306934.60it/s][A
+472395it [00:01, 307576.51it/s][A
+503798it [00:01, 309439.66it/s][A520000it [00:01, 316902.92it/s]
+100%|██████████| 1/1 [00:01<00:00,  1.65s/it]100%|██████████| 1/1 [00:01<00:00,  1.65s/it]
+Add samples to bucket map - [0]...:   0%|          | 0/520000 [00:00<?, ?it/s]Add samples to bucket map - [0]...:  29%|██▉       | 150557/520000 [00:00<00:00, 1505499.65it/s]Add samples to bucket map - [0]...:  64%|██████▎   | 330659/520000 [00:00<00:00, 1679302.13it/s]Add samples to bucket map - [0]...:  98%|█████████▊| 512057/520000 [00:00<00:00, 1740775.66it/s]Add samples to bucket map - [0]...: 100%|██████████| 520000/520000 [00:00<00:00, 1707287.89it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  19%|█▉        | 4/21 [00:00<00:00, 29.99it/s]Generating bucket data - [0]...:  38%|███▊      | 8/21 [00:00<00:00, 29.51it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 58.61it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 8 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+slurmstepd: error: *** JOB 45898341 ON midway3-0277 CANCELLED AT 2026-02-23T18:58:08 DUE TO TIME LIMIT ***

@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple, Union
 
 import torch
+import librosa
 import torchaudio
 import torchaudio.transforms as T
 from hydra.utils import instantiate
@@ -42,7 +43,8 @@ class SpeechRecognitionDataset(Dataset):
         audio_filepath = self.data_dir+data["audio_filepath"]
         transcript = data["text"]
 
-        speech, sample_rate = torchaudio.load(audio_filepath)
+        speech, sample_rate = librosa.load(audio_filepath, sr=None)
+        speech=torch.from_numpy(speech).unsqueeze(0)
         for augment in self.audio_augment:
             speech = augment.apply(speech, sample_rate)
         if sample_rate != 16000:
