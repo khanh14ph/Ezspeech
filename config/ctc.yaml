@@ -145,7 +145,7 @@ trainer:
   max_epochs: 100
   strategy: ddp
   accelerator: gpu
-  devices: [0]
+  devices: [0,1]
   accumulate_grad_batches: 1
   # detect_anomaly: True
   precision: 32

@@ -6,5 +6,6 @@ model:
   tokenizer_path: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
   lm_path: /scratch/midway3/khanhnd/vi_lm_4grams.bin
   lexicon_path: /scratch/midway3/khanhnd/Ezspeech/asset/lexicon.txt
-  
+  beam_size: 10
+  LM_WEIGHT: 0
   # export LD_LIBRARY_P:ATH=$LD_LIBRARY_PATH:/scratch/midway3/khanhnd/miniconda3/lib

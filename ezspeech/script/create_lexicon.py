@@ -6,22 +6,22 @@ tokenizer=Tokenizer("/scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.mo
 
 
 
-a=load_dataset("/scratch/midway3/khanhnd/data/metadata/youtube.jsonl")
+a=load_dataset("/scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl")
 for i in a:
     i["text"]=normalize(i["text"])
 
-b=[]
-for i in a:
-    text=i["text"].strip()
-    temp=tokenizer.decode(tokenizer.encode(text)).strip()
-    if temp==text:
-        b.append(i)
+# b=[]
+# for i in a:
+#     text=i["text"].strip()
+#     temp=tokenizer.decode(tokenizer.encode(text)).strip()
+#     if temp==text:
+#         b.append(i)
     # else:
     #     print(temp)
     #     print(text)
     #     print("______")
-save_dataset(b,"/scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl")
-text_lst=[i["text"] for i in b]
+# save_dataset(b,"/scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl")
+text_lst=[i["text"] for i in a]
 
 word_lst=[]
 for i in text_lst:

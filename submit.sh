@@ -3,7 +3,7 @@
 #SBATCH --job-name=hybrid-ray-single
 #SBATCH --account=mpcs51087
 #SBATCH --partition=gpu
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:1
 #SBATCH --constraint=v100
 #SBATCH --time=07:00:00
 #SBATCH --nodes=1
