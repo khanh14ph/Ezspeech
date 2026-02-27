@@ -1,0 +1,179 @@
+dataset:
+  spe_file: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
+  train_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    filepaths:
+      - /scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl
+    data_dir: "/scratch/midway3/khanhnd/data/audio/"
+  val_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    filepaths:
+      - /scratch/midway3/khanhnd/data/metadata/hehe.jsonl
+    data_dir: "/scratch/midway3/khanhnd/data/audio/"
+  train_loader:
+    max_batch_duration: 150
+    num_bucket: 20
+    num_workers: 8
+    pin_memory: True
+  val_loader:
+    batch_size: 4
+    num_workers: 4
+    pin_memory: True
+
+model:
+  d_model:           &d_model           512
+  vocab_size:        &vocab_size        2048
+  pred_hidden:       &pred_hidden       640
+  joint_hidden:      &joint_hidden      640
+  num_tdt_durations: &num_tdt_durations 5   # durations: [0, 1, 2, 3, 4]
+
+  model_pretrained:
+    path: /scratch/midway3/khanhnd/exported_checkpoint/ckpt.ckpt
+    include: ["encoder"]
+
+  preprocessor:
+    _target_: ezspeech.modules.data.utils.audio.AudioToMelSpectrogramPreprocessor
+    sample_rate: 16000
+    normalize: per_feature
+    window_size: 0.025
+    window_stride: 0.01
+    window: hann
+    features: 80
+    n_fft: 512
+    frame_splicing: 1
+    dither: 1.0e-05
+    pad_to: 0
+
+  spec_augment:
+    _target_: ezspeech.modules.data.augment.SpecAugment
+    freq_masks: 2
+    time_masks: 10
+    freq_width: 27
+    time_width: 0.05
+
+  encoder:
+    _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
+    feat_in: ${model.preprocessor.features}
+    feat_out: -1
+    n_layers: 17
+    d_model: *d_model
+    subsampling: dw_striding
+    subsampling_factor: 8
+    subsampling_conv_channels: 256
+    causal_downsampling: false
+    reduction: null
+    reduction_position: null
+    reduction_factor: 1
+    ff_expansion_factor: 4
+    self_attention_model: rel_pos
+    n_heads: 8
+    att_context_size:
+      - -1
+      - -1
+    att_context_style: regular
+    xscaling: false
+    untie_biases: true
+    pos_emb_max_len: 5000
+    conv_kernel_size: 9
+    conv_norm_type: batch_norm
+    conv_context_size: null
+    dropout: 0.1
+    dropout_pre_encoder: 0.1
+    dropout_emb: 0.0
+    dropout_att: 0.1
+    stochastic_depth_drop_prob: 0.0
+    stochastic_depth_mode: linear
+    stochastic_depth_start_layer: 1
+
+  decoder:
+    _target_: ezspeech.modules.decoder.rnnt.RNNTDecoder
+    prednet:
+      pred_hidden: *pred_hidden
+      pred_rnn_layers: 1
+      dropout: 0.2
+    vocab_size: *vocab_size
+
+  joint:
+    _target_: ezspeech.modules.decoder.rnnt.RNNTJoint
+    jointnet:
+      encoder_hidden: *d_model
+      pred_hidden: *pred_hidden
+      joint_hidden: *joint_hidden
+      activation: relu
+      dropout: 0.2
+    num_classes: *vocab_size
+    num_extra_outputs: *num_tdt_durations
+    log_softmax: null
+    fuse_loss_wer: false   # model overrides to False; loss computed explicitly in training_step
+    fused_batch_size: 16
+
+  ctc_decoder:
+    _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
+    feat_in: *d_model
+    num_classes: *vocab_size
+    add_blank: True
+
+  loss:
+    tdt_loss:
+      _target_: ezspeech.modules.losses.tdt.TDTLoss
+      blank_idx: *vocab_size
+      durations: [0, 1, 2, 3, 4]
+      reduction: mean
+      fastemit_lambda: 0.0
+      clamp: -1.0
+      sigma: 0.05
+      omega: 0.1
+    ctc_loss:
+      _target_: ezspeech.modules.losses.ctc.CTCLoss
+      blank_idx: *vocab_size
+      reduction: mean
+      zero_infinity: True
+    ctc_loss_weight: 0.3   # total = tdt_loss + ctc_loss_weight * ctc_loss
+
+  optimizer:
+    lr: 1
+    betas: [0.9, 0.999]
+    weight_decay: 1e-2
+    eps: 1e-9
+    foreach: False
+    fused: True
+
+  scheduler:
+    d_model: *d_model
+    warmup_steps: 10000
+
+callbacks:
+  lr:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+
+  swa:
+    _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
+    swa_lrs: 1e-6
+    swa_epoch_start: 0.8
+    annealing_epochs: 1
+
+  cb:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: step
+    save_top_k: 1
+    save_last: True
+    filename: "{epoch}-{val_wer:.5f}-{step}"
+    every_n_epochs: 1
+    mode: max
+
+loggers:
+  tb:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: /scratch/midway2/khanhnd/lightning_logs
+    name: tdt
+    default_hp_metric: false
+
+trainer:
+  max_epochs: 100
+  strategy: ddp
+  accelerator: gpu
+  devices: [0]
+  accumulate_grad_batches: 1
+  precision: 32
+  val_check_interval: 1000
+  use_distributed_sampler: False
