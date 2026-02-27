@@ -1,6 +1,7 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import torch
+import torchaudio
 from hydra.utils import instantiate
 from jiwer import wer
 from omegaconf import DictConfig
@@ -11,7 +12,9 @@ from torch.utils.data.distributed import DistributedSampler
 
 from ezspeech.modules.data.sampler import DynamicBatchSampler
 from ezspeech.modules.data.utils.text import Tokenizer
+from ezspeech.modules.searcher.tdt import BeamTDTInfer, GreedyTDTInfer
 from ezspeech.optims.scheduler import NoamAnnealing
+from ezspeech.utils.common import load_module
 
 
 class ASR_tdt_training(LightningModule):
@@ -202,3 +205,179 @@ class ASR_tdt_training(LightningModule):
             "optimizer": optimizer,
             "lr_scheduler": {"scheduler": scheduler, "interval": "step"},
         }
+
+    def export_checkpoint(self, filepath: str):
+        checkpoint = {
+            "state_dict": {
+                "preprocessor": self.preprocessor.state_dict(),
+                "encoder":      self.encoder.state_dict(),
+                "decoder":      self.decoder.state_dict(),
+                "joint":        self.joint.state_dict(),
+                "ctc_decoder":  self.ctc_decoder.state_dict(),
+            },
+            "hyper_parameters": self.hparams.config.model,
+        }
+        torch.save(checkpoint, filepath)
+        print(f'Checkpoint saved to "{filepath}"')
+
+
+# ---------------------------------------------------------------------------
+# Inference
+# ---------------------------------------------------------------------------
+
+class ASR_tdt_inference:
+    """Inference wrapper for a trained hybrid CTC-TDT model.
+
+    Loads a checkpoint produced by ``ASR_tdt_training.export_checkpoint()``
+    and exposes three decode modes:
+
+    * ``transcribe``      — TDT greedy decode (fastest)
+    * ``transcribe_beam`` — TDT beam search (``default`` or ``maes``)
+    * ``transcribe_ctc``  — CTC greedy decode
+    """
+
+    def __init__(
+        self,
+        filepath: str,
+        device: str,
+        tokenizer_path: str,
+        max_symbols_per_step: int = 10,
+    ):
+        self.device = device
+        self.tokenizer = Tokenizer(spe_file=tokenizer_path)
+        self.vocab_size = len(self.tokenizer.vocab)  # excludes blank
+
+        (
+            self.preprocessor,
+            self.encoder,
+            self.decoder,
+            self.joint,
+            self.ctc_decoder,
+            self.durations,
+        ) = self._load_checkpoint(filepath, device)
+
+        self.greedy_searcher = GreedyTDTInfer(
+            decoder_model=self.decoder,
+            joint_model=self.joint,
+            blank_index=self.vocab_size,
+            durations=self.durations,
+            max_symbols_per_step=max_symbols_per_step,
+        )
+
+    # ------------------------------------------------------------------
+    # Checkpoint loading
+    # ------------------------------------------------------------------
+
+    def _load_checkpoint(self, filepath: str, device: str):
+        checkpoint = torch.load(filepath, map_location="cpu", weights_only=False)
+        hparams  = checkpoint["hyper_parameters"]
+        weights  = checkpoint["state_dict"]
+
+        preprocessor = load_module(hparams["preprocessor"], weights["preprocessor"], device)
+        encoder      = load_module(hparams["encoder"],      weights["encoder"],      device)
+        decoder      = load_module(hparams["decoder"],      weights["decoder"],      device)
+        joint        = load_module(hparams["joint"],        weights["joint"],        device)
+        ctc_decoder  = load_module(hparams["ctc_decoder"],  weights["ctc_decoder"],  device)
+
+        durations = list(hparams["loss"]["tdt_loss"]["durations"])
+        return preprocessor, encoder, decoder, joint, ctc_decoder, durations
+
+    # ------------------------------------------------------------------
+    # Audio utilities
+    # ------------------------------------------------------------------
+
+    @torch.inference_mode()
+    def collate_wav(self, speeches: List[torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+        wavs       = [b[0] for b in speeches]
+        wav_lengths = [torch.tensor(len(f)) for f in wavs]
+        max_len    = max(wav_lengths).item()
+        padded     = []
+        for sig, sig_len in zip(wavs, wav_lengths):
+            if sig_len < max_len:
+                sig = torch.nn.functional.pad(sig, (0, max_len - sig_len))
+            padded.append(sig)
+        return torch.stack(padded), torch.stack(wav_lengths)
+
+    @torch.inference_mode()
+    def forward_encoder(
+        self, speeches: List[torch.Tensor]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        xs, x_lens = self.collate_wav(speeches)
+        xs, x_lens = self.preprocessor(xs.to(self.device), x_lens.to(self.device))
+        enc_outs, enc_lens = self.encoder(xs, x_lens)
+        return enc_outs, enc_lens   # (B, T, D), (B,)
+
+    def _load_audio(self, audio_lst: List[str]) -> List[torch.Tensor]:
+        return [torchaudio.load(p) for p in audio_lst]
+
+    # ------------------------------------------------------------------
+    # Decode helpers
+    # ------------------------------------------------------------------
+
+    def _hyps_to_text(self, hypotheses) -> List[str]:
+        results = []
+        for hyp in hypotheses:
+            token_ids = hyp.y_sequence.cpu().tolist()
+            text = "".join(self.tokenizer.decode(token_ids)).replace("_", " ").strip()
+            results.append(text)
+        return results
+
+    def _ctc_greedy(self, enc_outs: torch.Tensor, enc_lens: torch.Tensor) -> List[str]:
+        logits      = self.ctc_decoder(enc_outs)          # (B, T, V+1)
+        predicted   = torch.argmax(logits, dim=-1)        # (B, T)
+        results     = []
+        for i, seq in enumerate(predicted):
+            seq      = seq[: enc_lens[i].item()]
+            unique   = torch.unique_consecutive(seq)
+            filtered = unique[unique != self.vocab_size].cpu().tolist()
+            text     = "".join(self.tokenizer.decode(filtered)).replace("_", " ").strip()
+            results.append(text)
+        return results
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    @torch.inference_mode()
+    def transcribe(self, audio_lst: List[str]) -> List[str]:
+        """TDT greedy decode."""
+        audios   = self._load_audio(audio_lst)
+        speeches = [a[0] for a in audios]
+        enc_outs, enc_lens = self.forward_encoder(speeches)
+        # encoder output is (B, T, D); searcher expects (B, D, T)
+        hypotheses, = self.greedy_searcher(enc_outs.transpose(1, 2), enc_lens)
+        return self._hyps_to_text(hypotheses)
+
+    @torch.inference_mode()
+    def transcribe_beam(
+        self,
+        audio_lst: List[str],
+        beam_size: int = 5,
+        search_type: str = 'default',
+        ngram_lm_model: Optional[str] = None,
+        ngram_lm_alpha: float = 0.3,
+    ) -> List[str]:
+        """TDT beam search decode (``default`` or ``maes``)."""
+        audios   = self._load_audio(audio_lst)
+        speeches = [a[0] for a in audios]
+        enc_outs, enc_lens = self.forward_encoder(speeches)
+
+        searcher = BeamTDTInfer(
+            decoder_model=self.decoder,
+            joint_model=self.joint,
+            durations=self.durations,
+            beam_size=beam_size,
+            search_type=search_type,
+            ngram_lm_model=ngram_lm_model,
+            ngram_lm_alpha=ngram_lm_alpha,
+        )
+        hypotheses, = searcher(enc_outs.transpose(1, 2), enc_lens)
+        return self._hyps_to_text(hypotheses)
+
+    @torch.inference_mode()
+    def transcribe_ctc(self, audio_lst: List[str]) -> List[str]:
+        """CTC greedy decode (faster, uses the CTC branch)."""
+        audios   = self._load_audio(audio_lst)
+        speeches = [a[0] for a in audios]
+        enc_outs, enc_lens = self.forward_encoder(speeches)
+        return self._ctc_greedy(enc_outs, enc_lens)

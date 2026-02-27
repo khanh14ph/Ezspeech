@@ -138,3 +138,5 @@ SLURM auto-requeueing enabled. Setting signal handlers.
   warn(NumbaPerformanceWarning(msg))
 /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 5 will likely result in GPU under-utilization due to low occupancy.[0m
   warn(NumbaPerformanceWarning(msg))
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 94 will likely result in GPU under-utilization due to low occupancy.[0m
+  warn(NumbaPerformanceWarning(msg))
