@@ -219,6 +219,7 @@ class ASR_ctc_inference:
         (self.preprocessor, self.encoder, self.ctc_decoder) = self._load_checkpoint(
             filepath, device
         )
+        self.blank=len(self.vocab)
         self.beam_size=beam_size
         self.beam_search_decoder = build_ctcdecoder(
             self.vocab,

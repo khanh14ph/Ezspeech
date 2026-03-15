@@ -1,0 +1,243 @@
+[NeMo W 2026-03-15 02:11:03 megatron_init:62] Megatron num_microbatches_calculator not found, using Apex version.
+OneLogger: Setting error_handling_strategy to DISABLE_QUIETLY_AND_REPORT_METRIC_ERROR for rank (rank=0) with OneLogger disabled. To override: explicitly set error_handling_strategy parameter.
+No exporters were provided. This means that no telemetry data will be collected.
+[rank: 0] Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A760it [00:00, 138612.47it/s]
+100%|██████████| 1/1 [00:00<00:00, 151.24it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A
+34267it [00:00, 342635.20it/s][A
+68531it [00:00, 323265.70it/s][A
+100932it [00:00, 315868.48it/s][A
+136237it [00:00, 330047.34it/s][A
+188485it [00:00, 397914.99it/s][A
+231428it [00:00, 408467.91it/s][A
+272422it [00:00, 366488.51it/s][A
+309884it [00:00, 351991.77it/s][A
+345669it [00:00, 342436.46it/s][A
+380301it [00:01, 329010.91it/s][A
+413491it [00:01, 324657.16it/s][A
+446134it [00:01, 324909.15it/s][A
+478750it [00:01, 317283.53it/s][A
+511255it [00:01, 319499.60it/s][A519774it [00:01, 337924.55it/s]
+100%|██████████| 1/1 [00:01<00:00,  1.55s/it]100%|██████████| 1/1 [00:01<00:00,  1.55s/it]
+Add samples to bucket map - [0]...:   0%|          | 0/519774 [00:00<?, ?it/s]Add samples to bucket map - [0]...:  36%|███▌      | 187237/519774 [00:00<00:00, 1872304.83it/s]Add samples to bucket map - [0]...:  77%|███████▋  | 401985/519774 [00:00<00:00, 2034134.31it/s]Add samples to bucket map - [0]...: 100%|██████████| 519774/519774 [00:00<00:00, 2044539.26it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  19%|█▉        | 4/21 [00:00<00:00, 33.48it/s]Generating bucket data - [0]...:  38%|███▊      | 8/21 [00:00<00:00, 30.89it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 62.53it/s]
+[NeMo W 2026-03-15 02:11:21 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 62 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:22 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 62 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:24 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 2 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:24 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 23 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:24 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 1 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:25 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 19 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:25 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 20 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:26 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 44 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:26 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 2 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:26 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 17 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:27 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 15 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:27 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 32 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:28 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 27 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:32 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 43 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:33 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 14 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:35 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 63 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:35 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 99 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:35 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 4 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:40 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 13 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:41 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 12 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:42 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 33 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:43 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 22 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:46 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 10 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:46 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 100 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:48 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 16 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:50 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 11 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:50 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 26 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:52 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 62 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:11:57 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 101 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:12:07 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 102 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:12:10 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 61 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:12:18 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 9 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:12:20 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 60 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:12:50 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 97 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:12:53 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 8 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:13:15 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 103 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:13:28 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 95 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:13:28 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 3 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:13:29 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 96 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:13:33 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 7 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:13:41 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 59 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:13:52 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 98 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:15:50 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 6 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:17:09 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 45 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:18:08 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 18 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:18:18 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 104 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:18:22 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 31 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:19:02 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 106 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:19:50 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 64 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:20:14 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 42 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:22:34 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 5 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:34:24 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 94 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 02:54:51 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 34 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 03:04:39 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 51 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 03:11:56 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 55 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 03:26:30 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 105 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 03:46:39 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 28 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 27.68it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 28.12it/s]Generating bucket data - [0]...:  48%|████▊     | 10/21 [00:00<00:00, 27.51it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 56.62it/s]
+[NeMo W 2026-03-15 04:02:42 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 58 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 04:03:11 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 38 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 04:05:37 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 41 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 27.52it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 28.79it/s]Generating bucket data - [0]...:  48%|████▊     | 10/21 [00:00<00:00, 27.92it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 57.44it/s]
+[NeMo W 2026-03-15 05:58:15 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 21 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 06:06:13 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 70 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 26.77it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 28.52it/s]Generating bucket data - [0]...:  48%|████▊     | 10/21 [00:00<00:00, 26.40it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 54.92it/s]
+[NeMo W 2026-03-15 07:37:57 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 48 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 08:30:18 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 65 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 08:38:43 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 107 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 28.88it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 29.51it/s]Generating bucket data - [0]...:  48%|████▊     | 10/21 [00:00<00:00, 28.47it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 58.75it/s]
+[NeMo W 2026-03-15 09:21:53 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 25 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+[NeMo W 2026-03-15 09:42:07 nemo_logging:364] /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numba_cuda/numba/cuda/dispatcher.py:605: NumbaPerformanceWarning: [1mGrid size 39 will likely result in GPU under-utilization due to low occupancy.[0m
+      warn(NumbaPerformanceWarning(msg))
+    
+slurmstepd: error: *** JOB 46994687 ON midway3-0279 CANCELLED AT 2026-03-15T10:11:02 DUE TO TIME LIMIT ***

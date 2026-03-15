@@ -4,11 +4,11 @@ dataset:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     filepaths:
       - /scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl
-    data_dir: "/scratch/midway3/khanhnd/data/audio/"
+    data_dir: "/scratch/midway2/khanhnd/data/audio/"
   val_ds:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     filepaths:
-      - /scratch/midway3/khanhnd/data/metadata/hehe.jsonl
+      - /scratch/midway3/khanhnd/data/metadata/vivos_test.jsonl
     data_dir: "/scratch/midway3/khanhnd/data/audio/"
   train_loader:
     max_batch_duration: 150

@@ -96,4 +96,4 @@ test*.py
 docs/_build/
 
 # Jupyter Notebook
-.ipynb_checkpoints
+.ipynb_checkpointsencoder_decoder_5s.ts

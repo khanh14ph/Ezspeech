@@ -1,8 +1,8 @@
 model:
-  _target_: ezspeech.models.ctc.ASR_ctc_inference
+  _target_: ezspeech.models.ctc.ASR_tdt_inference
   filepath: ../exported_checkpoint/ckpt.ckpt
 
-  device: cuda
+  device: cpu
   tokenizer_path: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
   lm_path: /scratch/midway3/khanhnd/vi_lm_4grams.bin
   lexicon_path: /scratch/midway3/khanhnd/Ezspeech/asset/lexicon.txt

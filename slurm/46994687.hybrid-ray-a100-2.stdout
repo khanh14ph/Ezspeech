@@ -1,19 +1,19 @@
-[2026-02-23 18:02:01,486][__main__][INFO] - Starting EzSpeech training...
-[2026-02-23 18:02:01,491][__main__][INFO] - Configuration:
+[2026-03-15 02:11:08,194][__main__][INFO] - Starting EzSpeech training...
+[2026-03-15 02:11:08,200][__main__][INFO] - Configuration:
 dataset:
-  spe_file_grapheme: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
+  spe_file: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
   train_ds:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     filepaths:
-    - /scratch/midway3/khanhnd/data/metadata/youtube.jsonl
-    data_dir: /scratch/midway3/khanhnd/data/audio/
+    - /scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl
+    data_dir: /scratch/midway2/khanhnd/data/audio/
   val_ds:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     filepaths:
-    - /scratch/midway3/khanhnd/data/metadata/hehe.jsonl
+    - /scratch/midway3/khanhnd/data/metadata/vivos_test.jsonl
     data_dir: /scratch/midway3/khanhnd/data/audio/
   train_loader:
-    max_batch_duration: 50
+    max_batch_duration: 150
     num_bucket: 20
     num_workers: 8
     pin_memory: true
@@ -24,6 +24,13 @@ dataset:
 model:
   d_model: 512
   vocab_size: 2048
+  pred_hidden: 640
+  joint_hidden: 640
+  num_tdt_durations: 5
+  model_pretrained:
+    path: /scratch/midway3/khanhnd/exported_checkpoint/ckpt.ckpt
+    include:
+    - encoder
   preprocessor:
     _target_: ezspeech.modules.data.utils.audio.AudioToMelSpectrogramPreprocessor
     sample_rate: 16000
@@ -43,10 +50,10 @@ model:
     freq_width: 27
     time_width: 0.05
   encoder:
-    _target_: ezspeech.modules.encoder.conformer_offline.ConformerOfflineEncoder
+    _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
     feat_in: ${model.preprocessor.features}
     feat_out: -1
-    n_layers: 4
+    n_layers: 17
     d_model: 512
     subsampling: dw_striding
     subsampling_factor: 8
@@ -75,17 +82,52 @@ model:
     stochastic_depth_drop_prob: 0.0
     stochastic_depth_mode: linear
     stochastic_depth_start_layer: 1
+  decoder:
+    _target_: ezspeech.modules.decoder.rnnt.RNNTDecoder
+    prednet:
+      pred_hidden: 640
+      pred_rnn_layers: 1
+      dropout: 0.2
+    vocab_size: 2048
+  joint:
+    _target_: ezspeech.modules.decoder.rnnt.RNNTJoint
+    jointnet:
+      encoder_hidden: 512
+      pred_hidden: 640
+      joint_hidden: 640
+      activation: relu
+      dropout: 0.2
+    num_classes: 2048
+    num_extra_outputs: 5
+    log_softmax: null
+    fuse_loss_wer: false
+    fused_batch_size: 16
   ctc_decoder:
     _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
     feat_in: 512
     num_classes: 2048
     add_blank: true
   loss:
+    tdt_loss:
+      _target_: ezspeech.modules.losses.tdt.TDTLoss
+      blank_idx: 2048
+      durations:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      reduction: mean
+      fastemit_lambda: 0.0
+      clamp: -1.0
+      sigma: 0.05
+      omega: 0.1
     ctc_loss:
       _target_: ezspeech.modules.losses.ctc.CTCLoss
       blank_idx: 2048
       reduction: mean
       zero_infinity: true
+    ctc_loss_weight: 0.3
   optimizer:
     lr: 1
     betas:
@@ -109,7 +151,7 @@ callbacks:
   cb:
     _target_: pytorch_lightning.callbacks.ModelCheckpoint
     monitor: step
-    save_top_k: 5
+    save_top_k: 1
     save_last: true
     filename: '{epoch}-{val_wer:.5f}-{step}'
     every_n_epochs: 1
@@ -117,12 +159,11 @@ callbacks:
 loggers:
   tb:
     _target_: pytorch_lightning.loggers.TensorBoardLogger
-    save_dir: ../lightning_logs
-    name: icassp
-    version: ctc
+    save_dir: /scratch/midway2/khanhnd/lightning_logs
+    name: tdt
     default_hp_metric: false
 trainer:
-  max_epochs: 30
+  max_epochs: 100
   strategy: ddp
   accelerator: gpu
   devices:
@@ -132,33 +173,34 @@ trainer:
   val_check_interval: 1000
   use_distributed_sampler: false
 
-[2026-02-23 18:02:01,491][__main__][INFO] - Configuration validation completed
-[2026-02-23 18:02:01,491][__main__][INFO] - Initializing ASR model...
 PADDING: 0
-[2026-02-23 18:02:02,584][ezspeech.utils.training][INFO] - Added callback: lr
-[2026-02-23 18:02:02,585][ezspeech.utils.training][INFO] - Added callback: swa
-[2026-02-23 18:02:02,586][ezspeech.utils.training][INFO] - Added callback: cb
-[2026-02-23 18:02:02,587][ezspeech.utils.training][ERROR] - Failed to instantiate logger tb: Error in call to target 'pytorch_lightning.loggers.tensorboard.TensorBoardLogger':
-ModuleNotFoundError("Neither `tensorboard` nor `tensorboardX` is available. Try `pip install`ing either.\nRequirement 'tensorboardX' not met. HINT: Try running `pip install -U 'tensorboardX'`\nRequirement 'tensorboard' not met. HINT: Try running `pip install -U 'tensorboard'`")
-full_key: loggers.tb
-[2026-02-23 18:02:02,594][__main__][INFO] - Initializing PyTorch Lightning trainer...
-[2026-02-23 18:02:02,617][__main__][INFO] - Starting training process...
+[2026-03-15 02:11:09,745][__main__][INFO] - Pretrained weights loaded successfully.
+[2026-03-15 02:11:09,746][__main__][INFO] - Added callback: lr
+[2026-03-15 02:11:09,746][__main__][INFO] - Added callback: swa
+[2026-03-15 02:11:09,751][__main__][INFO] - Added callback: cb
+[2026-03-15 02:11:09,752][__main__][INFO] - Initializing PyTorch Lightning trainer...
+[2026-03-15 02:11:09,772][__main__][INFO] - Starting training process...
 ┏━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
 ┃   ┃ Name         ┃ Type                             ┃ Params ┃ Mode  ┃ FLOPs ┃
 ┡━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
 │ 0 │ preprocessor │ AudioToMelSpectrogramPreprocess… │      0 │ train │     0 │
 │ 1 │ spec_augment │ SpecAugment                      │      0 │ train │     0 │
-│ 2 │ encoder      │ ConformerOfflineEncoder          │ 26.7 M │ train │     0 │
-│ 3 │ ctc_decoder  │ ConvASRDecoder                   │  1.1 M │ train │     0 │
-│ 4 │ ctc_loss     │ CTCLoss                          │      0 │ train │     0 │
+│ 2 │ encoder      │ ConformerEncoder                 │  108 M │ train │     0 │
+│ 3 │ decoder      │ RNNTDecoder                      │  4.6 M │ train │     0 │
+│ 4 │ joint        │ RNNTJoint                        │  2.1 M │ train │     0 │
+│ 5 │ ctc_decoder  │ ConvASRDecoder                   │  1.1 M │ train │     0 │
+│ 6 │ tdt_loss     │ TDTLoss                          │      0 │ train │     0 │
+│ 7 │ ctc_loss_fn  │ CTCLoss                          │      0 │ train │     0 │
 └───┴──────────────┴──────────────────────────────────┴────────┴───────┴───────┘
-Trainable params: 27.8 M                                                        
+Trainable params: 116 M                                                         
 Non-trainable params: 0                                                         
-Total params: 27.8 M                                                            
-Total estimated model params size (MB): 111                                     
-Modules in train mode: 133                                                      
+Total params: 116 M                                                             
+Total estimated model params size (MB): 465                                     
+Modules in train mode: 511                                                      
 Modules in eval mode: 0                                                         
 Total FLOPs: 0                                                                  
-GPU rank 0 handle 550000 samples
-Epoch 0/30                  2/69272 0:00:08 •        23.83it/s v_num: 19.000    
-                                    0:48:28                    loss: 21.341     
+GPU rank 0 handle 519774 samples
+GPU rank 0 handle 519774 samples
+GPU rank 0 handle 519774 samples
+GPU rank 0 handle 519774 samples
+GPU rank 0 handle 519774 samples
