@@ -1,6 +1,7 @@
 import contextlib
 import json
-import wave
+import os
+
 from contextlib import nullcontext
 from typing import List, Optional, OrderedDict, Tuple, Union
 
@@ -20,7 +21,7 @@ def save_dataset(x: List[dict], filepath: str):
             outfile.write("\n")
 
 
-def load_dataset(filepaths: Union[str, List[str]]) -> List[dict]:
+def load_dataset(filepaths: Union[str, List[str]], data_dir: str = "") -> List[dict]:
     if isinstance(filepaths, str):
         filepaths = [filepaths]
 
@@ -28,7 +29,8 @@ def load_dataset(filepaths: Union[str, List[str]]) -> List[dict]:
     for filepath in tqdm(filepaths):
         with open(filepath, encoding="utf-8") as datas:
             dataset += [orjson.loads(d) for d in tqdm(datas)]
-
+    for i in dataset:
+        i["audio_filepath"]=os.path.join(data_dir, i["audio_filepath"])
     return dataset
 
 

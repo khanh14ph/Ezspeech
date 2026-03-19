@@ -1,54 +1,45 @@
 #!/usr/bin/env python3
 """
-Enhanced training script for EzSpeech ASR models.
-Supports multiple model types with improved configuration management.
+Training script for EzSpeech ASR models.
+The model class is resolved from `training_module` in the YAML config,
+so the same script works for any model (ctc, ctc_llm, …).
 """
 
 import logging
-import os
 from pathlib import Path
-from typing import Optional
 
 import hydra
 import pytorch_lightning as pl
 import torch
-from hydra.utils import instantiate
+from hydra.utils import get_class, instantiate
 from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning.callbacks import (
-    LearningRateMonitor,
-    ModelCheckpoint,
-    StochasticWeightAveraging,
-)
-from pytorch_lightning.loggers import TensorBoardLogger
 
-# from ezspeech.models.ctc import ASR_ctc_training
-from ezspeech.models.tdt import ASR_tdt_training
 from ezspeech.utils import color
 
-# Set up logging
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Ensure reproducibility
 pl.seed_everything(42, workers=True)
 torch.set_float32_matmul_precision("medium")
 
-@hydra.main(version_base=None, config_path="../config", config_name="tdt")
+
+@hydra.main(version_base=None, config_path="../config", config_name="ctc")
 def main(config: DictConfig) -> None:
-    """Main training function."""
     logger.info("Starting EzSpeech training...")
     logger.info(f"Configuration:\n{OmegaConf.to_yaml(config)}")
 
+    # Resolve the model class from config (e.g. ezspeech.models.ctc.ASR_ctc_training)
+    ModelClass = get_class(config.training_module)
+    model = ModelClass(config)
 
-    # Setup model
-    model = ASR_tdt_training(config)
-    
-    # Load pretrained weights if specified
-    if config.model.get("model_pretrained") is not None:
-
-        checkpoint = torch.load(config.model.model_pretrained.path,weights_only=False)
-        model.encoder.load_state_dict(checkpoint["state_dict"]["encoder"])
-        logger.info("Pretrained weights loaded successfully.")
+    # Legacy pretrained loading for models that don't handle it in __init__
+    if config.model.get("model_pretrained") is not None and not hasattr(model, "_load_pretrained"):
+        checkpoint = torch.load(config.model.model_pretrained.path, weights_only=False)
+        for key in config.model.model_pretrained.get("include", ["encoder"]):
+            if key in checkpoint.get("state_dict", {}):
+                getattr(model, key).load_state_dict(checkpoint["state_dict"][key])
+                logger.info(f"Loaded pretrained weights for: {key}")
 
 
     callbacks = []

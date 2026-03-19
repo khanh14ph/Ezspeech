@@ -22,7 +22,7 @@ class SpeechRecognitionDataset(Dataset):
     ):
         super(SpeechRecognitionDataset, self).__init__()
 
-        self.dataset = load_dataset(filepaths)
+        self.dataset = load_dataset(filepaths,data_dir=data_dir)
         self.data_dir=data_dir
         self.audio_augment = []
         self.augmentation_cfg = augmentation
@@ -40,7 +40,7 @@ class SpeechRecognitionDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, ...]:
         data = self.dataset[idx]
-        audio_filepath = self.data_dir+data["audio_filepath"]
+        audio_filepath = data["audio_filepath"]
         transcript = data["text"]
 
         speech, sample_rate = librosa.load(audio_filepath, sr=None)
