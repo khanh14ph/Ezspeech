@@ -8,13 +8,11 @@ from jiwer import wer
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
 from torch.optim import AdamW
-from torch.utils.data import DataLoader, SequentialSampler
+from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import LoraConfig, get_peft_model
 
 from ezspeech.modules.data.dataset import SpeechRecognitionDataset
-from ezspeech.modules.data.sampler import DynamicBatchSampler
 from ezspeech.modules.data.utils.text import Tokenizer
 from ezspeech.optims.scheduler import NoamAnnealing
 from ezspeech.utils.common import load_module
@@ -136,23 +134,17 @@ class ASR_ctc_llm_training(LightningModule):
             trust_remote_code=True,
         )
 
-        if llm_cfg.get("use_lora", False):
-            peft_config = LoraConfig(
-                r=llm_cfg.get("lora_r", 8),
-                lora_alpha=llm_cfg.get("lora_alpha", 16),
-                target_modules="all-linear",
-                lora_dropout=0.05,
-                task_type="CAUSAL_LM",
-            )
-            self.llm = get_peft_model(self.llm, peft_config)
-            self.llm.print_trainable_parameters()
-
         # Freeze encoder if not finetuning
         if not config.model.get("finetune_encoder", False):
             for param in self.encoder.parameters():
                 param.requires_grad = False
 
-        # Load pretrained CTC encoder weights if specified
+        # Freeze LLM if not finetuning (useful when only training the connector)
+        if not config.model.get("finetune_llm", True):
+            for param in self.llm.parameters():
+                param.requires_grad = False
+
+        # Load pretrained weights if specified
         if config.model.get("model_pretrained") and config.model.model_pretrained.get("path"):
             self._load_pretrained(
                 config.model.model_pretrained.path,
@@ -174,8 +166,6 @@ class ASR_ctc_llm_training(LightningModule):
         self, wavs: torch.Tensor, wav_lengths: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         features, feat_lengths = self.preprocessor(wavs, wav_lengths)
-        # if self.training:
-        #     features = self.spec_augment(features)
         enc_out, enc_lens = self.encoder(features, feat_lengths)
         speech_embeds = self.connector(enc_out)
         return speech_embeds, enc_lens
@@ -187,7 +177,6 @@ class ASR_ctc_llm_training(LightningModule):
         post_ids: torch.Tensor,
         output_ids: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # get_input_embeddings() works for both base and peft-wrapped models
         embedder = self.llm.get_input_embeddings()
 
         pre_embeds = embedder(pre_ids.clamp(min=0))
@@ -200,7 +189,6 @@ class ASR_ctc_llm_training(LightningModule):
 
         input_len = pre_ids.shape[1] + speech_embeds.shape[1] + post_ids.shape[1]
         batch_size = combined.shape[0]
-        # Mask input positions with -100 so loss is only computed on response tokens
         labels = torch.cat(
             [
                 torch.full(
@@ -228,18 +216,11 @@ class ASR_ctc_llm_training(LightningModule):
     def train_dataloader(self) -> DataLoader:
         dataset = self._make_dataset(self.hparams.config.dataset.train_ds)
         loader_cfg = self.hparams.config.dataset.train_loader
-        sampler = SequentialSampler(dataset)
-        dynamic_batcher = DynamicBatchSampler(
-            sampler=sampler,
-            max_batch_duration=loader_cfg.max_batch_duration,
-            num_buckets=loader_cfg.num_bucket,
-        )
         return DataLoader(
             dataset=dataset,
-            batch_sampler=dynamic_batcher,
             collate_fn=dataset.collate_llm_data,
-            num_workers=loader_cfg.num_workers,
-            pin_memory=loader_cfg.pin_memory,
+            shuffle=True,
+            **loader_cfg,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -269,7 +250,6 @@ class ASR_ctc_llm_training(LightningModule):
         out = self.llm(inputs_embeds=combined, attention_mask=atts, labels=labels)
         self.log("val_loss", out.loss, sync_dist=True, prog_bar=True)
 
-        # Greedy decode for WER estimation
         input_len = pre_ids.shape[1] + speech_embeds.shape[1] + post_ids.shape[1]
         predicted_ids = torch.argmax(out.logits, dim=-1)
         for i in range(wavs.shape[0]):
@@ -388,10 +368,14 @@ class ASR_ctc_llm_inference:
             speech_embed_i = speech_embeds[i : i + 1]
             combined = torch.cat([pre_embeds, speech_embed_i, post_embeds], dim=1)
 
+            attention_mask = torch.ones(combined.shape[:-1], dtype=torch.long, device=self.device)
             generated = self.llm.generate(
                 inputs_embeds=combined,
+                attention_mask=attention_mask,
                 max_new_tokens=self.max_new_tokens,
                 do_sample=False,
+                pad_token_id=self.llm_tokenizer.eos_token_id,
+                eos_token_id=self.llm_tokenizer.eos_token_id,
             )
             text = self.llm_tokenizer.decode(generated[0], skip_special_tokens=True)
             results.append(text)

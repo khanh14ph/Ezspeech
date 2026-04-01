@@ -1,0 +1,187 @@
+[rank: 0] Seed set to 42
+[2026-03-31 19:13:26,145][__main__][INFO] - Starting EzSpeech training...
+[2026-03-31 19:13:26,160][__main__][INFO] - Configuration:
+training_module: ezspeech.models.ctc_llm.ASR_ctc_llm_training
+dataset:
+  spe_file: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
+  pre_prompt: ''
+  post_prompt: 'Transcribe:'
+  train_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    filepaths:
+    - /scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl
+    data_dir: /scratch/midway2/khanhnd/data/audio/
+    max_duration: 10
+  val_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    filepaths:
+    - /scratch/midway3/khanhnd/data/metadata/hehe.jsonl
+    data_dir: /scratch/midway2/khanhnd/data/audio/
+  train_loader:
+    batch_size: 10
+    num_workers: 4
+    pin_memory: true
+  val_loader:
+    batch_size: 1
+    num_workers: 4
+    pin_memory: true
+model:
+  d_model: 512
+  model_pretrained:
+    path: /scratch/midway3/khanhnd/exported_checkpoint/ckpt.ckpt
+    include:
+    - encoder
+  finetune_encoder: true
+  finetune_llm: false
+  preprocessor:
+    _target_: ezspeech.modules.data.utils.audio.AudioToMelSpectrogramPreprocessor
+    sample_rate: 16000
+    normalize: per_feature
+    window_size: 0.025
+    window_stride: 0.01
+    window: hann
+    features: 80
+    n_fft: 512
+    frame_splicing: 1
+    dither: 1.0e-05
+    pad_to: 0
+  spec_augment:
+    _target_: ezspeech.modules.data.augment.SpecAugment
+    freq_masks: 2
+    time_masks: 10
+    freq_width: 27
+    time_width: 0.05
+  encoder:
+    _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
+    feat_in: ${model.preprocessor.features}
+    feat_out: -1
+    n_layers: 17
+    d_model: 512
+    subsampling: dw_striding
+    subsampling_factor: 8
+    subsampling_conv_channels: 256
+    causal_downsampling: false
+    reduction: null
+    reduction_position: null
+    reduction_factor: 1
+    ff_expansion_factor: 4
+    self_attention_model: rel_pos
+    n_heads: 8
+    att_context_size:
+    - -1
+    - -1
+    att_context_style: regular
+    xscaling: false
+    untie_biases: true
+    pos_emb_max_len: 5000
+    conv_kernel_size: 9
+    conv_norm_type: batch_norm
+    conv_context_size: null
+    dropout: 0.1
+    dropout_pre_encoder: 0.1
+    dropout_emb: 0.0
+    dropout_att: 0.1
+    stochastic_depth_drop_prob: 0.0
+    stochastic_depth_mode: linear
+    stochastic_depth_start_layer: 1
+  connector:
+    enc_dim: 512
+    llm_dim: 2048
+    pool_factor: 2
+  llm:
+    name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+  optimizer:
+    lr: 0.0001
+    encoder_lr: 1.0e-05
+    betas:
+    - 0.9
+    - 0.999
+    weight_decay: 0.01
+    eps: 1.0e-09
+  scheduler:
+    d_model: 512
+    warmup_steps: 2000
+callbacks:
+  lr:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+  cb:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: val_loss
+    save_top_k: 1
+    save_last: true
+    filename: '{epoch}-{val_loss:.4f}-{step}'
+    every_n_epochs: 1
+    mode: min
+loggers:
+  tb:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: /scratch/midway2/khanhnd/lightning_logs
+    name: ctc_llm
+    default_hp_metric: false
+trainer:
+  max_epochs: 50
+  strategy: ddp
+  accelerator: gpu
+  devices:
+  - 0
+  accumulate_grad_batches: 2
+  precision: 32
+  val_check_interval: 1000
+  use_distributed_sampler: false
+
+PADDING: 0
+Loaded pretrained weights for: encoder
+[2026-03-31 19:13:30,070][__main__][INFO] - Added callback: lr
+[2026-03-31 19:13:30,072][__main__][INFO] - Added callback: cb
+[2026-03-31 19:13:30,073][__main__][INFO] - Initializing PyTorch Lightning trainer...
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/lightning_fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python scripts/train.py --config-name ctc_llm ...
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+[2026-03-31 19:13:30,144][__main__][INFO] - Starting training process...
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+┏━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name         ┃ Type                              ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ preprocessor │ AudioToMelSpectrogramPreprocessor │      0 │ train │     0 │
+│ 1 │ spec_augment │ SpecAugment                       │      0 │ train │     0 │
+│ 2 │ encoder      │ ConformerEncoder                  │  108 M │ train │     0 │
+│ 3 │ connector    │ LinearPoolConnector               │  9.4 M │ train │     0 │
+│ 4 │ llm          │ LlamaForCausalLM                  │  1.1 B │ eval  │     0 │
+└───┴──────────────┴───────────────────────────────────┴────────┴───────┴───────┘
+Trainable params: 118 M                                                                                                     
+Non-trainable params: 1.1 B                                                                                                 
+Total params: 1.2 B                                                                                                         
+Total estimated model params size (MB): 4.9 K                                                                               
+Modules in train mode: 502                                                                                                  
+Modules in eval mode: 293                                                                                                   
+Total FLOPs: 0                                                                                                              
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 100582.83it/s]
+100%|██████████| 1/1 [00:00<00:00, 2766.69it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/utils/data/dataloader.py:626: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A
+35365it [00:00, 353629.26it/s][A
+70728it [00:00, 332593.06it/s][A
+104072it [00:00, 318224.65it/s][A
+142245it [00:00, 342091.08it/s][A
+196477it [00:00, 412059.79it/s][A
+238011it [00:00, 405809.44it/s][A
+278818it [00:00, 373269.36it/s][A
+316708it [00:00, 351085.25it/s][A
+352339it [00:00, 342696.54it/s][A
+386941it [00:01, 304130.29it/s][A
+418173it [00:01, 303368.03it/s][A
+450886it [00:01, 309794.28it/s][A
+482333it [00:01, 306534.83it/s][A
+514960it [00:01, 312089.74it/s][A519774it [00:01, 333400.90it/s]
+100%|██████████| 1/1 [00:01<00:00,  1.57s/it]100%|██████████| 1/1 [00:01<00:00,  1.57s/it]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/fit_loop.py:534: Found 293 module(s) in eval mode at the start of training. This may lead to unexpected behavior during training. If this is intentional, you can ignore this warning.

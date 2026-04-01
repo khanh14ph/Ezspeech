@@ -15,9 +15,9 @@ pip install -e .
 | Model | Config | Class |
 |---|---|---|
 | CTC | `config/ctc.yaml` | `ASR_ctc_training` |
-| Hybrid CTC-TDT | `config/tdt.yaml` | `ASR_tdt_training` |
+| CTC-LLM | `config/ctc_llm.yaml` | `ASR_ctc_llm_training` |
 
-Both use a Conformer encoder. TDT additionally has a prediction network, joint network, and TDT loss alongside the CTC branch.
+Both use a Conformer encoder.
 
 ## Dataset format
 
@@ -33,8 +33,8 @@ JSONL, one sample per line:
 # CTC
 python scripts/train.py --config-name=ctc
 
-# Hybrid CTC-TDT
-python scripts/train.py --config-name=tdt
+# CTC-LLM
+python scripts/train.py --config-name=ctc_llm
 ```
 
 Key config fields to set before training:
@@ -64,40 +64,29 @@ model.export_checkpoint("my_model.ckpt")
 Then load and transcribe:
 
 ```python
-from ezspeech.models.tdt import ASR_tdt_inference
+from ezspeech.models.ctc import ASR_ctc_inference
 
-model = ASR_tdt_inference(
+model = ASR_ctc_inference(
     filepath="my_model.ckpt",
     device="cuda",
     tokenizer_path="/path/to/tokenizer.model",
 )
 
-# TDT greedy (fastest)
-texts = model.transcribe(["audio1.wav", "audio2.wav"])
-
-# TDT beam search
-texts = model.transcribe_beam(["audio.wav"], beam_size=5, search_type="maes")
-
-# TDT beam search + n-gram LM
-texts = model.transcribe_beam(["audio.wav"], beam_size=5, search_type="maes",
-                               ngram_lm_model="/path/to/lm.bin", ngram_lm_alpha=0.3)
-
 # CTC greedy
-texts = model.transcribe_ctc(["audio.wav"])
+texts = model.transcribe(["audio1.wav", "audio2.wav"])
 ```
 
 ## Project structure
 
 ```
-config/          # Hydra configs (ctc.yaml, tdt.yaml)
+config/          # Hydra configs (ctc.yaml, ctc_llm.yaml)
 scripts/         # train.py, train_tokenizer.py, ...
 ezspeech/
-  models/        # ASR_ctc_training, ASR_tdt_training, ASR_tdt_inference
+  models/        # ASR_ctc_training, ASR_ctc_llm_training, ASR_ctc_inference
   modules/
     encoder/     # ConformerEncoder
-    decoder/     # ConvASRDecoder, RNNTDecoder, RNNTJoint
-    losses/      # CTCLoss, TDTLoss
-    searcher/    # GreedyTDTInfer, BeamTDTInfer
+    decoder/     # ConvASRDecoder
+    losses/      # CTCLoss
     data/        # dataset, sampler, augmentation, tokenizer
   optims/        # NoamAnnealing scheduler
 tokenizer/       # SentencePiece models

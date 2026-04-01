@@ -1,0 +1,7 @@
+model:
+  _target_: ezspeech.models.ctc_llm.ASR_ctc_llm_inference
+  filepath: /scratch/midway3/khanhnd/exported_checkpoint/ckpt_ctc_llm.ckpt
+  device: cuda
+  pre_prompt: ""
+  post_prompt: "Transcribe:"
+  max_new_tokens: 200

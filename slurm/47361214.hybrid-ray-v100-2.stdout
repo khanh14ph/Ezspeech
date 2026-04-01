@@ -1,47 +1,37 @@
+[2026-03-19 23:02:56,284][__main__][INFO] - Starting EzSpeech training...
+[2026-03-19 23:02:56,290][__main__][INFO] - Configuration:
 training_module: ezspeech.models.ctc_llm.ASR_ctc_llm_training
-
 dataset:
   spe_file: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
-  # Prompt fragments wrapping the speech embeddings
-  pre_prompt: ""          # text injected before speech (BOS is added automatically)
-  post_prompt: "Transcribe:"   # instruction appended after speech
-
+  pre_prompt: ''
+  post_prompt: 'Transcribe:'
   train_ds:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     filepaths:
-      - /scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl
-    data_dir: "/scratch/midway2/khanhnd/data/audio/"
-    max_duration: 10   # filter out samples longer than this (in seconds)
-
+    - /scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl
+    data_dir: /scratch/midway2/khanhnd/data/audio/
   val_ds:
     _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
     filepaths:
-      - /scratch/midway3/khanhnd/data/metadata/hehe.jsonl
-    data_dir: "/scratch/midway2/khanhnd/data/audio/"
-
+    - /scratch/midway3/khanhnd/data/metadata/hehe.jsonl
+    data_dir: /scratch/midway2/khanhnd/data/audio/
   train_loader:
-    batch_size: 10
-    num_workers: 4
-    pin_memory: True
-
+    max_batch_duration: 30
+    num_bucket: 20
+    num_workers: 8
+    pin_memory: true
   val_loader:
-    batch_size: 1
+    batch_size: 2
     num_workers: 4
-    pin_memory: True
-
+    pin_memory: true
 model:
-  d_model: &d_model 512
-
-  # Optionally load pretrained CTC encoder weights
+  d_model: 512
   model_pretrained:
     path: /scratch/midway3/khanhnd/exported_checkpoint/ckpt.ckpt
-    include: ["encoder"]
-
-  # Whether to allow encoder weights to be updated during training
-  finetune_encoder: True
-  # Whether to allow LLM weights to be updated (set False to train connector only)
-  finetune_llm: False
-
+    include:
+    - encoder
+  finetune_encoder: false
+  finetune_llm: true
   preprocessor:
     _target_: ezspeech.modules.data.utils.audio.AudioToMelSpectrogramPreprocessor
     sample_rate: 16000
@@ -54,20 +44,18 @@ model:
     frame_splicing: 1
     dither: 1.0e-05
     pad_to: 0
-
   spec_augment:
     _target_: ezspeech.modules.data.augment.SpecAugment
     freq_masks: 2
     time_masks: 10
     freq_width: 27
     time_width: 0.05
-
   encoder:
     _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
     feat_in: ${model.preprocessor.features}
     feat_out: -1
     n_layers: 17
-    d_model: *d_model
+    d_model: 512
     subsampling: dw_striding
     subsampling_factor: 8
     subsampling_conv_channels: 256
@@ -78,7 +66,9 @@ model:
     ff_expansion_factor: 4
     self_attention_model: rel_pos
     n_heads: 8
-    att_context_size: [-1, -1]
+    att_context_size:
+    - -1
+    - -1
     att_context_style: regular
     xscaling: false
     untie_biases: true
@@ -93,54 +83,59 @@ model:
     stochastic_depth_drop_prob: 0.0
     stochastic_depth_mode: linear
     stochastic_depth_start_layer: 1
-
-  # Connector: project encoder output -> LLM hidden dim, with temporal pooling
   connector:
-    enc_dim: *d_model    # must match encoder d_model
-    llm_dim: 2048        # must match LLM hidden size (e.g. 2048 for TinyLlama)
-    pool_factor: 2       # temporal downsampling factor
-
-  # LLM backbone
+    enc_dim: 512
+    llm_dim: 2048
+    pool_factor: 2
   llm:
     name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
-
+    use_lora: true
+    lora_r: 8
+    lora_alpha: 16
   optimizer:
-    lr: 1e-4
-    encoder_lr: 1e-5   # separate LR for the (frozen or finetuned) encoder
-    betas: [0.9, 0.999]
-    weight_decay: 1e-2
-    eps: 1e-9
-
+    lr: 0.0001
+    encoder_lr: 1.0e-05
+    betas:
+    - 0.9
+    - 0.999
+    weight_decay: 0.01
+    eps: 1.0e-09
   scheduler:
-    d_model: *d_model
+    d_model: 512
     warmup_steps: 2000
-
 callbacks:
   lr:
     _target_: pytorch_lightning.callbacks.LearningRateMonitor
-
   cb:
     _target_: pytorch_lightning.callbacks.ModelCheckpoint
     monitor: val_loss
     save_top_k: 1
-    save_last: True
-    filename: "{epoch}-{val_loss:.4f}-{step}"
+    save_last: true
+    filename: '{epoch}-{val_loss:.4f}-{step}'
     every_n_epochs: 1
     mode: min
-
 loggers:
   tb:
     _target_: pytorch_lightning.loggers.TensorBoardLogger
     save_dir: /scratch/midway2/khanhnd/lightning_logs
     name: ctc_llm
     default_hp_metric: false
-
 trainer:
   max_epochs: 50
   strategy: ddp
   accelerator: gpu
-  devices: [0]
-  accumulate_grad_batches: 2
+  devices:
+  - 0
+  - 1
+  accumulate_grad_batches: 4
   precision: 32
   val_check_interval: 1000
-  use_distributed_sampler: False
+  use_distributed_sampler: false
+
+PADDING: 0
+trainable params: 6,307,840 || all params: 1,106,356,224 || trainable%: 0.5701
+Loaded pretrained weights for: encoder
+[2026-03-19 23:03:14,721][__main__][INFO] - Added callback: lr
+[2026-03-19 23:03:14,800][__main__][INFO] - Added callback: cb
+[2026-03-19 23:03:14,802][__main__][INFO] - Initializing PyTorch Lightning trainer...
+[2026-03-19 23:03:14,855][__main__][INFO] - Starting training process...

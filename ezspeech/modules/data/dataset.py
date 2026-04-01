@@ -1,5 +1,5 @@
 from typing import List, Optional, Tuple, Union
-
+from tqdm import tqdm
 import torch
 import librosa
 import torchaudio
@@ -99,10 +99,13 @@ class SpeechRecognitionDatasetSC(Dataset):
         filepaths,
         augmentation: Optional[DictConfig] = None,
         data_dir="",
+        max_duration=float("inf"),
+        min_duration=0.0,
     ):
         super(SpeechRecognitionDatasetSC, self).__init__()
 
         self.dataset = load_dataset(filepaths)
+        self.dataset = [d for d in tqdm(self.dataset) if min_duration <= d["duration"] <= max_duration]
         self.data_dir=data_dir
         self.audio_augment = []
         self.augmentation_cfg = augmentation
