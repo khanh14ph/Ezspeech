@@ -13,6 +13,7 @@ pandas
 scipy
 sentencepiece
 transformers[torch]
+peft
 orjson
 editdistance
 tqdm

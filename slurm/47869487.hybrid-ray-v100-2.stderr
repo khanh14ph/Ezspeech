@@ -1,0 +1,44 @@
+[rank: 0] Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 95760.37it/s]
+100%|██████████| 1/1 [00:00<00:00, 2592.28it/s]
+  0%|          | 0/10 [00:00<?, ?it/s]100%|██████████| 10/10 [00:00<00:00, 451000.43it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A
+18465it [00:00, 184638.29it/s][A
+47901it [00:00, 249171.59it/s][A
+79283it [00:00, 278660.62it/s][A
+109467it [00:00, 287806.59it/s][A
+149435it [00:00, 328144.01it/s][A
+202056it [00:00, 395479.13it/s][A
+241605it [00:00, 384131.99it/s][A
+280082it [00:00, 360996.66it/s][A
+316457it [00:00, 340846.75it/s][A
+350871it [00:01, 335283.65it/s][A
+384607it [00:01, 323462.90it/s][A
+417118it [00:01, 318820.82it/s][A
+449483it [00:01, 320164.19it/s][A
+481576it [00:01, 312449.24it/s][A
+513371it [00:01, 314023.17it/s][A519774it [00:01, 323462.47it/s]
+100%|██████████| 1/1 [00:01<00:00,  1.62s/it]100%|██████████| 1/1 [00:01<00:00,  1.62s/it]
+  0%|          | 0/519774 [00:00<?, ?it/s] 93%|█████████▎| 481780/519774 [00:00<00:00, 4817689.73it/s]100%|██████████| 519774/519774 [00:00<00:00, 4928027.03it/s]
+Add samples to bucket map - [0]...:   0%|          | 0/519774 [00:00<?, ?it/s]Add samples to bucket map - [0]...:  32%|███▏      | 164331/519774 [00:00<00:00, 1643260.64it/s]Add samples to bucket map - [0]...:  73%|███████▎  | 381332/519774 [00:00<00:00, 1953069.38it/s]Add samples to bucket map - [0]...: 100%|██████████| 519774/519774 [00:00<00:00, 1982911.44it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  19%|█▉        | 4/21 [00:00<00:00, 36.94it/s]Generating bucket data - [0]...:  38%|███▊      | 8/21 [00:00<00:00, 35.75it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 71.38it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 29.56it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 30.21it/s]Generating bucket data - [0]...:  52%|█████▏    | 11/21 [00:00<00:00, 33.33it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 60.55it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  19%|█▉        | 4/21 [00:00<00:00, 28.99it/s]Generating bucket data - [0]...:  38%|███▊      | 8/21 [00:00<00:00, 31.66it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 63.99it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  19%|█▉        | 4/21 [00:00<00:00, 28.83it/s]Generating bucket data - [0]...:  38%|███▊      | 8/21 [00:00<00:00, 30.80it/s]Generating bucket data - [0]...:  57%|█████▋    | 12/21 [00:00<00:00, 15.71it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 31.21it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 29.27it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 31.13it/s]Generating bucket data - [0]...:  52%|█████▏    | 11/21 [00:00<00:00, 33.90it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 61.53it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 29.30it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 32.12it/s]Generating bucket data - [0]...:  52%|█████▏    | 11/21 [00:00<00:00, 33.71it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 61.62it/s]
+Generating bucket data - [0]...:   0%|          | 0/21 [00:00<?, ?it/s]Generating bucket data - [0]...:  14%|█▍        | 3/21 [00:00<00:00, 28.76it/s]Generating bucket data - [0]...:  33%|███▎      | 7/21 [00:00<00:00, 31.97it/s]Generating bucket data - [0]...:  52%|█████▏    | 11/21 [00:00<00:00, 34.25it/s]Generating bucket data - [0]...: 100%|██████████| 21/21 [00:00<00:00, 62.19it/s]
+slurmstepd: error: *** JOB 47869487 ON midway3-0279 CANCELLED AT 2026-04-03T06:22:32 DUE TO TIME LIMIT ***

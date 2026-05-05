@@ -1,0 +1,4 @@
+  File "/scratch/midway3/khanhnd/Ezspeech/scripts/train.py", line 66
+    trainer.fit(model,resume_from_checkpoint=/scratch/midway2/khanhnd/lightning_logs/ctc_llm/version_1/checkpoints/last.ckpt)
+                                             ^
+SyntaxError: invalid syntax

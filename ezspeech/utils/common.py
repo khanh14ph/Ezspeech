@@ -14,14 +14,14 @@ from torch.special import gammaln
 from tqdm import tqdm
 
 
-def save_dataset(x: List[dict], filepath: str):
+def save_jsonl(x: List[dict], filepath: str):
     with open(filepath, "w", encoding="utf8") as outfile:
         for entry in tqdm(x):
             json.dump(entry, outfile, ensure_ascii=False)
             outfile.write("\n")
 
 
-def load_dataset(filepaths: Union[str, List[str]], data_dir: str = "") -> List[dict]:
+def load_jsonl(filepaths: Union[str, List[str]], data_dir: str = "") -> List[dict]:
     if isinstance(filepaths, str):
         filepaths = [filepaths]
 
@@ -101,7 +101,7 @@ def csv2json(csv_path, jsonl_path, sep=",", replace_columns=None):
         df.rename(columns=replace_columns, inplace=True)
 
     df = list(df.T.to_dict().values())
-    save_dataset(df, jsonl_path)
+    save_jsonl(df, jsonl_path)
 
 
 def avoid_float16_autocast_context():
@@ -125,7 +125,7 @@ def avoid_float16_autocast_context():
 if __name__ == "__main__":
     import pandas as pd
     import librosa
-    a=load_dataset("/Users/khanh/dev/metadata.jsonl")
+    a=load_jsonl("/Users/khanh/dev/metadata.jsonl")
     # for idx,i in enumerate(a):
         
     with open(f"/Users/khanh/dev/metadata1.jsonl", "w") as f:

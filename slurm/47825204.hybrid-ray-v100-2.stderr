@@ -1,0 +1,35 @@
+[rank: 0] Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 96642.95it/s]
+100%|██████████| 1/1 [00:00<00:00, 1813.36it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A
+15531it [00:00, 155300.89it/s][A
+44947it [00:00, 236973.57it/s][A
+76566it [00:00, 273142.13it/s][A
+106756it [00:00, 284484.82it/s][A
+146403it [00:00, 324862.16it/s][A
+200168it [00:00, 397204.73it/s][A
+239889it [00:00, 389049.25it/s][A
+278828it [00:00, 363736.17it/s][A
+315509it [00:00, 344706.37it/s][A
+350312it [00:01, 338620.01it/s][A
+384386it [00:01, 326539.95it/s][A
+417210it [00:01, 323938.93it/s][A
+449938it [00:01, 324889.56it/s][A
+482506it [00:01, 318333.79it/s][A
+515081it [00:01, 320467.83it/s][A519774it [00:01, 325766.86it/s]
+100%|██████████| 1/1 [00:01<00:00,  1.60s/it]100%|██████████| 1/1 [00:01<00:00,  1.60s/it]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/fit_loop.py:534: Found 293 module(s) in eval mode at the start of training. This may lead to unexpected behavior during training. If this is intentional, you can ignore this warning.
+slurmstepd: error: *** JOB 47825204 ON midway3-0278 CANCELLED AT 2026-04-02T01:50:01 DUE TO TIME LIMIT ***

@@ -24,7 +24,7 @@ pl.seed_everything(42, workers=True)
 torch.set_float32_matmul_precision("medium")
 
 
-@hydra.main(version_base=None, config_path="../config", config_name="ctc")
+@hydra.main(version_base=None, config_path="../config", config_name="ctc_llm")
 def main(config: DictConfig) -> None:
     logger.info("Starting EzSpeech training...")
     logger.info(f"Configuration:\n{OmegaConf.to_yaml(config)}")
@@ -32,14 +32,6 @@ def main(config: DictConfig) -> None:
     # Resolve the model class from config (e.g. ezspeech.models.ctc.ASR_ctc_training)
     ModelClass = get_class(config.training_module)
     model = ModelClass(config)
-
-    # Legacy pretrained loading for models that don't handle it in __init__
-    if config.model.get("model_pretrained") is not None and not hasattr(model, "_load_pretrained"):
-        checkpoint = torch.load(config.model.model_pretrained.path, weights_only=False)
-        for key in config.model.model_pretrained.get("include", ["encoder"]):
-            if key in checkpoint.get("state_dict", {}):
-                getattr(model, key).load_state_dict(checkpoint["state_dict"][key])
-                logger.info(f"Loaded pretrained weights for: {key}")
 
 
     callbacks = []
@@ -63,7 +55,8 @@ def main(config: DictConfig) -> None:
 
     # Start training
     logger.info("Starting training process...")
-    trainer.fit(model)
+
+    trainer.fit(model, ckpt_path="/scratch/midway2/khanhnd/lightning_logs/ctc_llm/version_2/checkpoints/last.ckpt")
 
     # Save final model if training completed successfully
     if trainer.state.finished:

@@ -1,0 +1,56 @@
+Traceback (most recent call last):
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numpy/_core/__init__.py", line 24, in <module>
+    from . import multiarray
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numpy/_core/multiarray.py", line 11, in <module>
+    from . import _multiarray_umath, overrides
+ImportError: /lib64/libstdc++.so.6: version `GLIBCXX_3.4.29' not found (required by /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numpy/_core/_multiarray_umath.cpython-312-x86_64-linux-gnu.so)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/scratch/midway3/khanhnd/Ezspeech/scripts/train.py", line 12, in <module>
+    import pytorch_lightning as pl
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/__init__.py", line 25, in <module>
+    from lightning_fabric.utilities.seed import seed_everything  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/lightning_fabric/__init__.py", line 35, in <module>
+    from lightning_fabric.fabric import Fabric  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/lightning_fabric/fabric.py", line 30, in <module>
+    import torch
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/__init__.py", line 1919, in <module>
+    from torch import storage as storage  # usort: skip
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/storage.py", line 27, in <module>
+    import numpy as np
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numpy/__init__.py", line 112, in <module>
+    from numpy.__config__ import show_config
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numpy/__config__.py", line 4, in <module>
+    from numpy._core._multiarray_umath import (
+  File "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numpy/_core/__init__.py", line 85, in <module>
+    raise ImportError(msg) from exc
+ImportError: 
+
+IMPORTANT: PLEASE READ THIS FOR ADVICE ON HOW TO SOLVE THIS ISSUE!
+
+Importing the numpy C-extensions failed. This error can happen for
+many reasons, often due to issues with your setup or how NumPy was
+installed.
+
+We have compiled some common reasons and troubleshooting tips at:
+
+    https://numpy.org/devdocs/user/troubleshooting-importerror.html
+
+Please note and check the following:
+
+  * The Python version is: Python 3.12 from "/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/bin/python"
+  * The NumPy version is: "2.4.3"
+
+and make sure that they are the versions you expect.
+
+Please carefully study the information and documentation linked above.
+This is unlikely to be a NumPy issue but will be caused by a bad install
+or environment on your machine.
+
+Original error was: /lib64/libstdc++.so.6: version `GLIBCXX_3.4.29' not found (required by /scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/numpy/_core/_multiarray_umath.cpython-312-x86_64-linux-gnu.so)
+

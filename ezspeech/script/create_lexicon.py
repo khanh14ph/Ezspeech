@@ -1,4 +1,4 @@
-from ezspeech.utils.common import load_dataset,save_dataset
+from ezspeech.utils.common import load_jsonl,save_jsonl
 
 from ezspeech.modules.data.utils.text import Tokenizer,normalize
 
@@ -6,7 +6,7 @@ tokenizer=Tokenizer("/scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.mo
 
 
 
-a=load_dataset("/scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl")
+a=load_jsonl("/scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl")
 for i in a:
     i["text"]=normalize(i["text"])
 
@@ -20,7 +20,7 @@ for i in a:
     #     print(temp)
     #     print(text)
     #     print("______")
-# save_dataset(b,"/scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl")
+# save_jsonl(b,"/scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl")
 text_lst=[i["text"] for i in a]
 
 word_lst=[]

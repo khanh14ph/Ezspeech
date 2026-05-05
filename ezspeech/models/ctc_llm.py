@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from ezspeech.modules.data.dataset import SpeechRecognitionDataset
+from ezspeech.modules.data.dataset import SpeechRecognitionDataset, SpeechLLMDataset
 from ezspeech.modules.data.utils.text import Tokenizer
 from ezspeech.optims.scheduler import NoamAnnealing
 from ezspeech.utils.common import load_module
@@ -42,66 +42,6 @@ class LinearPoolConnector(nn.Module):
         x = x.transpose(1, 2)     # [B, T', d_llm]
         x = self.linear2(x)
         return x
-
-
-class SpeechLLMDataset(SpeechRecognitionDataset):
-    """Extends SpeechRecognitionDataset to return LLM-tokenized prompt/response pairs."""
-
-    def set_llm_tokenizer(
-        self,
-        llm_tokenizer: AutoTokenizer,
-        pre_prompt: str = "",
-        post_prompt: str = "Transcribe:",
-    ):
-        self.llm_tokenizer = llm_tokenizer
-        self.pre_prompt = pre_prompt
-        self.post_prompt = post_prompt
-
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, ...]:
-        speech, _ = super().__getitem__(idx)
-        transcript = self.dataset[idx]["text"]
-
-        pre_ids = self.llm_tokenizer.encode(
-            self.pre_prompt, add_special_tokens=True, return_tensors="pt"
-        )[0]
-        post_ids = self.llm_tokenizer.encode(
-            self.post_prompt, add_special_tokens=False, return_tensors="pt"
-        )[0]
-        output_ids = self.llm_tokenizer.encode(
-            transcript, add_special_tokens=False, return_tensors="pt"
-        )[0]
-        eos = torch.tensor([self.llm_tokenizer.eos_token_id], dtype=torch.long)
-        output_ids = torch.cat([output_ids, eos])
-
-        return speech, pre_ids, post_ids, output_ids
-
-    def collate_llm_data(self, batch: List) -> Tuple[torch.Tensor, ...]:
-        wavs = [b[0][0] for b in batch]
-        wav_lengths = [torch.tensor(len(w)) for w in wavs]
-        max_wav_len = max(wav_lengths).item()
-
-        padded_wavs = []
-        for sig, sig_len in zip(wavs, wav_lengths):
-            if sig_len < max_wav_len:
-                sig = nn.functional.pad(sig, (0, max_wav_len - sig_len))
-            padded_wavs.append(sig)
-        padded_wavs = torch.stack(padded_wavs)
-        wav_lengths = torch.stack(wav_lengths)
-
-        pad_id = self.llm_tokenizer.pad_token_id or 0
-        pre_ids = _pad_sequence([b[1] for b in batch], pad_id)
-        post_ids = _pad_sequence([b[2] for b in batch], pad_id)
-        output_ids = _pad_sequence([b[3] for b in batch], -100)
-
-        return padded_wavs, wav_lengths, pre_ids, post_ids, output_ids
-
-
-def _pad_sequence(seqs: List[torch.Tensor], pad_val: int) -> torch.Tensor:
-    max_len = max(len(s) for s in seqs)
-    padded = torch.full((len(seqs), max_len), pad_val, dtype=torch.long)
-    for i, s in enumerate(seqs):
-        padded[i, : len(s)] = s
-    return padded
 
 
 class ASR_ctc_llm_training(LightningModule):
@@ -187,12 +127,17 @@ class ASR_ctc_llm_training(LightningModule):
         combined = torch.cat([pre_embeds, speech_embeds, post_embeds, out_embeds], dim=1)
         atts = torch.ones(combined.shape[:-1], dtype=torch.long, device=combined.device)
 
-        input_len = pre_ids.shape[1] + speech_embeds.shape[1] + post_ids.shape[1]
+        # Only mask the pre-prompt + speech + post-prompt regions
+        # The loss should only be computed on actual token positions (output_ids)
         batch_size = combined.shape[0]
+        pre_len = pre_ids.shape[1]
+        speech_len = speech_embeds.shape[1]
+        post_len = post_ids.shape[1]
+        
         labels = torch.cat(
             [
                 torch.full(
-                    (batch_size, input_len), -100, device=combined.device, dtype=torch.long
+                    (batch_size, pre_len + speech_len + post_len), -100, device=combined.device, dtype=torch.long
                 ),
                 output_ids,
             ],
@@ -204,6 +149,8 @@ class ASR_ctc_llm_training(LightningModule):
         dataset = SpeechLLMDataset(
             filepaths=ds_cfg.filepaths,
             data_dir=ds_cfg.data_dir,
+            max_duration=ds_cfg.get("max_duration", float("inf")),
+            min_duration=ds_cfg.get("min_duration", 0.0),
         )
         dataset.set_tokenizer(Tokenizer(spe_file=self.hparams.config.dataset.spe_file))
         dataset.set_llm_tokenizer(
@@ -240,8 +187,33 @@ class ASR_ctc_llm_training(LightningModule):
         speech_embeds, _ = self._embed_speech(wavs, wav_lengths)
         combined, atts, labels = self._build_inputs(speech_embeds, pre_ids, post_ids, output_ids)
         out = self.llm(inputs_embeds=combined, attention_mask=atts, labels=labels)
-        self.log("train_loss", out.loss, sync_dist=True, prog_bar=True)
-        return out.loss
+        
+        # Validate loss is computable (indicates proper label setup)
+        loss = out.loss
+        if torch.isnan(loss) or torch.isinf(loss):
+            self.log("train_loss_invalid", 1.0, sync_dist=True, prog_bar=True)
+            return torch.tensor(0.0, requires_grad=True, device=self.device)
+        
+        self.log("train_loss", loss, sync_dist=True, prog_bar=True)
+        
+        # Log gradient flow for debugging
+        if batch_idx % 100 == 0:
+            encoder_grad_norm = self._get_grad_norm(self.encoder)
+            connector_grad_norm = self._get_grad_norm(self.connector)
+            llm_grad_norm = self._get_grad_norm(self.llm)
+            self.log("grad_norm/encoder", encoder_grad_norm, sync_dist=True)
+            self.log("grad_norm/connector", connector_grad_norm, sync_dist=True)
+            self.log("grad_norm/llm", llm_grad_norm, sync_dist=True)
+        
+        return loss
+    
+    def _get_grad_norm(self, module: nn.Module) -> float:
+        """Compute gradient norm for a module."""
+        total_norm = 0.0
+        for p in module.parameters():
+            if p.grad is not None:
+                total_norm += p.grad.data.norm(2).item() ** 2
+        return total_norm ** 0.5
 
     def validation_step(self, batch: Tuple, batch_idx: int):
         wavs, wav_lengths, pre_ids, post_ids, output_ids = batch
@@ -259,6 +231,8 @@ class ASR_ctc_llm_training(LightningModule):
             ref_ids = output_ids[i]
             ref_ids = ref_ids[ref_ids != -100]
             ref = self.llm_tokenizer.decode(ref_ids.cpu(), skip_special_tokens=True)
+            print(f"Pred: {pred}\nRef: {ref}\n---")
+            
             self.val_predictions.append(pred)
             self.val_references.append(ref)
 
@@ -272,10 +246,17 @@ class ASR_ctc_llm_training(LightningModule):
 
     def configure_optimizers(self):
         optimizer_cfg = self.config.model.optimizer
+        
+        # When finetuning encoder, use a closer learning rate to avoid conflicts
+        encoder_lr = optimizer_cfg.get("encoder_lr", 1e-5)
+        if self.config.model.get("finetune_encoder", False):
+            # Use a fraction of main LR instead of a drastically different rate
+            encoder_lr = optimizer_cfg.lr / 5  # 1/5 of connector/LLM LR for better coordination
+        
         param_groups = [
             {
                 "params": self.encoder.parameters(),
-                "lr": optimizer_cfg.get("encoder_lr", 1e-5),
+                "lr": encoder_lr,
             },
             {"params": self.connector.parameters(), "lr": optimizer_cfg.lr},
             {"params": self.llm.parameters(), "lr": optimizer_cfg.lr},
@@ -338,6 +319,8 @@ class ASR_ctc_llm_inference:
         llm_name = hparams["llm"]["name"]
         self.llm_tokenizer = AutoTokenizer.from_pretrained(llm_name)
         self.llm = AutoModelForCausalLM.from_pretrained(llm_name, trust_remote_code=True)
+        
+        # Load base model weights
         self.llm.load_state_dict(weights["llm"])
         self.llm.eval().to(device)
 

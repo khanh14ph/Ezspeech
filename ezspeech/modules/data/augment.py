@@ -619,9 +619,9 @@ class ApplyImpulseResponse(object):
         self.second_after_peak = second_after_peak
 
         if rir_filepath_8k:
-            self.rir_8k = load_dataset(rir_filepath_8k)
+            self.rir_8k = load_jsonl(rir_filepath_8k)
         if rir_filepath_16k:
-            self.rir_16k = load_dataset(rir_filepath_16k)
+            self.rir_16k = load_jsonl(rir_filepath_16k)
 
     def apply(self, speech: torch.Tensor, sample_rate: int) -> torch.Tensor:
         if random.random() > self.probability:
@@ -672,9 +672,9 @@ class AddBackgroundNoise(object):
         self.snr_db = torch.distributions.Uniform(min_snr_db, max_snr_db)
 
         if noise_filepath_8k:
-            self.noise_8k = load_dataset(noise_filepath_8k)
+            self.noise_8k = load_jsonl(noise_filepath_8k)
         if noise_filepath_16k:
-            self.noise_16k = load_dataset(noise_filepath_16k)
+            self.noise_16k = load_jsonl(noise_filepath_16k)
 
     def apply(self, speech: torch.Tensor, sample_rate: int) -> torch.Tensor:
         if random.random() > self.probability:

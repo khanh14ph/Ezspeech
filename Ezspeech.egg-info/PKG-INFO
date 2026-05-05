@@ -26,6 +26,7 @@ Requires-Dist: pandas
 Requires-Dist: scipy
 Requires-Dist: sentencepiece
 Requires-Dist: transformers[torch]
+Requires-Dist: peft
 Requires-Dist: orjson
 Requires-Dist: editdistance
 Requires-Dist: tqdm

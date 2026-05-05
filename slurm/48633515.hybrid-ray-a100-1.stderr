@@ -1,0 +1,38 @@
+[rank: 0] Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 380.31it/s]
+100%|██████████| 1/1 [00:00<00:00, 34.59it/s]
+  0%|          | 0/10 [00:00<?, ?it/s]100%|██████████| 10/10 [00:00<00:00, 180013.05it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A
+18292it [00:00, 182902.30it/s][A
+51632it [00:00, 271417.08it/s][A
+87095it [00:00, 309406.36it/s][A
+122745it [00:00, 327994.45it/s][A
+178552it [00:00, 410951.97it/s][A
+230223it [00:00, 446868.61it/s][A
+274910it [00:00, 406711.71it/s][A
+316208it [00:00, 391720.98it/s][A
+355848it [00:00, 382184.31it/s][A
+394379it [00:01, 374296.62it/s][A
+432012it [00:01, 362682.45it/s][A
+468434it [00:01, 358897.69it/s][A
+504938it [00:01, 360648.26it/s][A519774it [00:01, 365418.58it/s]
+100%|██████████| 1/1 [00:01<00:00,  1.43s/it]100%|██████████| 1/1 [00:01<00:00,  1.43s/it]
+  0%|          | 0/519774 [00:00<?, ?it/s] 92%|█████████▏| 480674/519774 [00:00<00:00, 4806549.77it/s]100%|██████████| 519774/519774 [00:00<00:00, 4900587.75it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/fit_loop.py:534: Found 293 module(s) in eval mode at the start of training. This may lead to unexpected behavior during training. If this is intentional, you can ignore this warning.
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/torch/autograd/graph.py:869: UserWarning: The AccumulateGrad node's stream does not match the stream of the node that produced the incoming gradient. This may incur unnecessary synchronization and break CUDA graph capture if the AccumulateGrad node's stream is the default stream. This mismatch is caused by an AccumulateGrad node created prior to the current iteration being kept alive. This can happen if the autograd graph is still being kept alive by tensors such as the loss, or if you are using DDP, which will stash a reference to the node. To resolve the mismatch, delete all references to the autograd graph or ensure that DDP initialization is performed under the same stream as subsequent forwards. If the mismatch is intentional, you can use torch.autograd.graph.set_warn_on_accumulate_grad_stream_mismatch(False) to suppress this warning. (Triggered internally at /pytorch/torch/csrc/autograd/input_buffer.cpp:240.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+slurmstepd: error: *** JOB 48633515 ON midway3-0294 CANCELLED AT 2026-04-15T03:15:35 DUE TO TIME LIMIT ***

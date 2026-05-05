@@ -1,0 +1,13 @@
+[rank: 0] Seed set to 42
+Could not set the permissions on the file '/home/khanhnd/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933.incomplete'. Error: [Errno 2] No such file or directory: '/home/khanhnd/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933.incomplete'.
+Continuing without setting permissions.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Error executing job with overrides: []
+Traceback (most recent call last):
+  File "/scratch/midway3/khanhnd/Ezspeech/scripts/train.py", line 66, in main
+    trainer.fit(model,resume_from_checkpoint="/scratch/midway2/khanhnd/lightning_logs/ctc_llm/version_1/checkpoints/last.ckpt")
+TypeError: Trainer.fit() got an unexpected keyword argument 'resume_from_checkpoint'
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.

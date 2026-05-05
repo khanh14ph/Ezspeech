@@ -22,6 +22,7 @@ scipy
 # Tokenization and text processing
 sentencepiece
 transformers[torch]
+peft
 
 # Utilities
 orjson
@@ -33,4 +34,3 @@ flake8
 matplotlib
 seaborn
 scikit-learn
-

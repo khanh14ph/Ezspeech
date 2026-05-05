@@ -1,0 +1,35 @@
+[rank: 0] Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A10it [00:00, 94466.31it/s]
+100%|██████████| 1/1 [00:00<00:00, 324.01it/s]
+  0%|          | 0/10 [00:00<?, ?it/s]100%|██████████| 10/10 [00:00<00:00, 505337.83it/s]
+  0%|          | 0/1 [00:00<?, ?it/s]
+0it [00:00, ?it/s][A
+23881it [00:00, 238788.59it/s][A
+57156it [00:00, 294048.24it/s][A
+92632it [00:00, 321763.28it/s][A
+129202it [00:00, 339084.60it/s][A
+187657it [00:00, 427591.37it/s][A
+235020it [00:00, 443222.70it/s][A
+279343it [00:00, 411277.80it/s][A
+320884it [00:00, 388051.87it/s][A
+360142it [00:00, 379615.68it/s][A
+398399it [00:01, 372207.99it/s][A
+435809it [00:01, 361964.37it/s][A
+472139it [00:01, 360039.78it/s][A
+508673it [00:01, 361560.53it/s][A519774it [00:01, 369497.98it/s]
+100%|██████████| 1/1 [00:01<00:00,  1.42s/it]100%|██████████| 1/1 [00:01<00:00,  1.42s/it]
+  0%|          | 0/519774 [00:00<?, ?it/s] 88%|████████▊ | 456608/519774 [00:00<00:00, 4565964.61it/s]100%|██████████| 519774/519774 [00:00<00:00, 4726872.17it/s]
+/scratch/midway3/khanhnd/miniconda3/envs/ezspeech/lib/python3.12/site-packages/pytorch_lightning/loops/fit_loop.py:534: Found 293 module(s) in eval mode at the start of training. This may lead to unexpected behavior during training. If this is intentional, you can ignore this warning.
+slurmstepd: error: *** JOB 48000242 ON midway3-0294 CANCELLED AT 2026-04-07T04:47:59 DUE TO TIME LIMIT ***

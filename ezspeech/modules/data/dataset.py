@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple, Union
 from tqdm import tqdm
 import torch
+import torch.nn as nn
 import librosa
 import torchaudio
 import torchaudio.transforms as T
@@ -8,9 +9,10 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
+from transformers import AutoTokenizer
 
 from ezspeech.modules.data.utils.text import Tokenizer
-from ezspeech.utils.common import load_dataset, time_reduction
+from ezspeech.utils.common import load_jsonl, time_reduction
 
 
 class SpeechRecognitionDataset(Dataset):
@@ -18,11 +20,16 @@ class SpeechRecognitionDataset(Dataset):
         self,
         filepaths,
         augmentation: Optional[DictConfig] = None,
+        
         data_dir="",
+        max_duration=float("inf"),
+        min_duration=0.0,
     ):
         super(SpeechRecognitionDataset, self).__init__()
 
-        self.dataset = load_dataset(filepaths,data_dir=data_dir)
+        self.dataset = load_jsonl(filepaths,data_dir=data_dir)
+        print("max_duration: ", max_duration)
+        self.dataset = [d for d in tqdm(self.dataset) if min_duration <= d["duration"] <= max_duration]
         self.data_dir=data_dir
         self.audio_augment = []
         self.augmentation_cfg = augmentation
@@ -104,7 +111,7 @@ class SpeechRecognitionDatasetSC(Dataset):
     ):
         super(SpeechRecognitionDatasetSC, self).__init__()
 
-        self.dataset = load_dataset(filepaths)
+        self.dataset = load_jsonl(filepaths)
         self.dataset = [d for d in tqdm(self.dataset) if min_duration <= d["duration"] <= max_duration]
         self.data_dir=data_dir
         self.audio_augment = []
@@ -190,3 +197,63 @@ class SpeechRecognitionDatasetSC(Dataset):
         tokens_phoneme_lengths = torch.stack(tokens_phoneme_lengths)
 
         return new_audio_signal, audio_lengths, new_tokens_grapheme, tokens_grapheme_lengths, new_tokens_phoneme, tokens_phoneme_lengths
+
+
+class SpeechLLMDataset(SpeechRecognitionDataset):
+    """Extends SpeechRecognitionDataset to return LLM-tokenized prompt/response pairs."""
+
+    def set_llm_tokenizer(
+        self,
+        llm_tokenizer: AutoTokenizer,
+        pre_prompt: str = "",
+        post_prompt: str = "Transcribe:",
+    ):
+        self.llm_tokenizer = llm_tokenizer
+        self.pre_prompt = pre_prompt
+        self.post_prompt = post_prompt
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, ...]:
+        speech, _ = super().__getitem__(idx)
+        transcript = self.dataset[idx]["text"]
+
+        pre_ids = self.llm_tokenizer.encode(
+            self.pre_prompt, add_special_tokens=True, return_tensors="pt"
+        )[0]
+        post_ids = self.llm_tokenizer.encode(
+            self.post_prompt, add_special_tokens=False, return_tensors="pt"
+        )[0]
+        output_ids = self.llm_tokenizer.encode(
+            transcript, add_special_tokens=False, return_tensors="pt"
+        )[0]
+        eos = torch.tensor([self.llm_tokenizer.eos_token_id], dtype=torch.long)
+        output_ids = torch.cat([output_ids, eos])
+
+        return speech, pre_ids, post_ids, output_ids
+
+    def collate_llm_data(self, batch: List) -> Tuple[torch.Tensor, ...]:
+        wavs = [b[0][0] for b in batch]
+        wav_lengths = [torch.tensor(len(w)) for w in wavs]
+        max_wav_len = max(wav_lengths).item()
+
+        padded_wavs = []
+        for sig, sig_len in zip(wavs, wav_lengths):
+            if sig_len < max_wav_len:
+                sig = nn.functional.pad(sig, (0, max_wav_len - sig_len))
+            padded_wavs.append(sig)
+        padded_wavs = torch.stack(padded_wavs)
+        wav_lengths = torch.stack(wav_lengths)
+
+        pad_id = self.llm_tokenizer.pad_token_id or 0
+        pre_ids = _pad_sequence([b[1] for b in batch], pad_id)
+        post_ids = _pad_sequence([b[2] for b in batch], pad_id)
+        output_ids = _pad_sequence([b[3] for b in batch], -100)
+
+        return padded_wavs, wav_lengths, pre_ids, post_ids, output_ids
+
+
+def _pad_sequence(seqs: List[torch.Tensor], pad_val: int) -> torch.Tensor:
+    max_len = max(len(s) for s in seqs)
+    padded = torch.full((len(seqs), max_len), pad_val, dtype=torch.long)
+    for i, s in enumerate(seqs):
+        padded[i, : len(s)] = s
+    return padded

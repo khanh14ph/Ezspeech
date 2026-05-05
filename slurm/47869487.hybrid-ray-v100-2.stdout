@@ -1,0 +1,1344 @@
+[2026-04-02 22:22:45,681][__main__][INFO] - Starting EzSpeech training...
+[2026-04-02 22:22:45,686][__main__][INFO] - Configuration:
+training_module: ezspeech.models.ctc.ASR_ctc_training
+dataset:
+  spe_file: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
+  train_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    filepaths:
+    - /scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl
+    data_dir: /scratch/midway2/khanhnd/data/audio/
+  val_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechRecognitionDataset
+    filepaths:
+    - /scratch/midway3/khanhnd/data/metadata/hehe.jsonl
+    data_dir: /scratch/midway2/khanhnd/data/audio/
+  train_loader:
+    max_batch_duration: 150
+    num_bucket: 20
+    num_workers: 8
+    pin_memory: true
+  val_loader:
+    batch_size: 4
+    num_workers: 4
+    pin_memory: true
+model:
+  d_model: 512
+  vocab_size: 2048
+  model_pretrained:
+    path: /scratch/midway3/khanhnd/exported_checkpoint/ckpt.ckpt
+    include:
+    - encoder
+  preprocessor:
+    _target_: ezspeech.modules.data.utils.audio.AudioToMelSpectrogramPreprocessor
+    sample_rate: 16000
+    normalize: per_feature
+    window_size: 0.025
+    window_stride: 0.01
+    window: hann
+    features: 80
+    n_fft: 512
+    frame_splicing: 1
+    dither: 1.0e-05
+    pad_to: 0
+  spec_augment:
+    _target_: ezspeech.modules.data.augment.SpecAugment
+    freq_masks: 2
+    time_masks: 10
+    freq_width: 27
+    time_width: 0.05
+  encoder:
+    _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
+    feat_in: ${model.preprocessor.features}
+    feat_out: -1
+    n_layers: 17
+    d_model: 512
+    subsampling: dw_striding
+    subsampling_factor: 8
+    subsampling_conv_channels: 256
+    causal_downsampling: false
+    reduction: null
+    reduction_position: null
+    reduction_factor: 1
+    ff_expansion_factor: 4
+    self_attention_model: rel_pos
+    n_heads: 8
+    att_context_size:
+    - -1
+    - -1
+    att_context_style: regular
+    xscaling: false
+    untie_biases: true
+    pos_emb_max_len: 5000
+    conv_kernel_size: 9
+    conv_norm_type: batch_norm
+    conv_context_size: null
+    dropout: 0.1
+    dropout_pre_encoder: 0.1
+    dropout_emb: 0.0
+    dropout_att: 0.1
+    stochastic_depth_drop_prob: 0.0
+    stochastic_depth_mode: linear
+    stochastic_depth_start_layer: 1
+  ctc_decoder:
+    _target_: ezspeech.modules.decoder.decoder.ConvASRDecoder
+    feat_in: 512
+    num_classes: 2048
+    add_blank: true
+  loss:
+    ctc_loss:
+      _target_: ezspeech.modules.losses.ctc.CTCLoss
+      blank_idx: 2048
+      reduction: mean
+      zero_infinity: true
+  optimizer:
+    lr: 1
+    betas:
+    - 0.9
+    - 0.999
+    weight_decay: 0.01
+    eps: 1.0e-09
+    foreach: false
+    fused: true
+  scheduler:
+    d_model: 512
+    warmup_steps: 10000
+callbacks:
+  lr:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+  swa:
+    _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
+    swa_lrs: 1.0e-06
+    swa_epoch_start: 0.8
+    annealing_epochs: 1
+  cb:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: step
+    save_top_k: 1
+    save_last: true
+    filename: '{epoch}-{val_wer:.5f}-{step}'
+    every_n_epochs: 1
+    mode: max
+loggers:
+  tb:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: /scratch/midway2/khanhnd/lightning_logs
+    name: icassp
+    default_hp_metric: false
+trainer:
+  max_epochs: 100
+  strategy: ddp
+  accelerator: gpu
+  devices:
+  - 0
+  accumulate_grad_batches: 1
+  precision: 32
+  val_check_interval: 1000
+  use_distributed_sampler: false
+
+PADDING: 0
+[2026-04-02 22:22:48,600][__main__][INFO] - Loaded pretrained weights for: encoder
+[2026-04-02 22:22:48,601][__main__][INFO] - Added callback: lr
+[2026-04-02 22:22:48,601][__main__][INFO] - Added callback: swa
+[2026-04-02 22:22:48,603][__main__][INFO] - Added callback: cb
+[2026-04-02 22:22:48,605][__main__][INFO] - Initializing PyTorch Lightning trainer...
+[2026-04-02 22:22:48,622][__main__][INFO] - Starting training process...
+┏━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name         ┃ Type                             ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ preprocessor │ AudioToMelSpectrogramPreprocess… │      0 │ train │     0 │
+│ 1 │ spec_augment │ SpecAugment                      │      0 │ train │     0 │
+│ 2 │ encoder      │ ConformerEncoder                 │  108 M │ train │     0 │
+│ 3 │ ctc_decoder  │ ConvASRDecoder                   │  1.1 M │ train │     0 │
+│ 4 │ ctc_loss     │ CTCLoss                          │      0 │ train │     0 │
+└───┴──────────────┴──────────────────────────────────┴────────┴───────┴───────┘
+Trainable params: 109 M                                                         
+Non-trainable params: 0                                                         
+Total params: 109 M                                                             
+Total estimated model params size (MB): 439                                     
+Modules in train mode: 497                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+['mắm quáiổi', 'hủy thả cuốn lời ly☆ mắn huyện nhưng thiếu kí đợt thức tuổi bây mu khen địch', 'sách ai nguyai cấmọ đậu quản khỏ tuổi', 'tây tốn lắm lãi việt thiếuonắpgãnữãn lăngờiả']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['chếtài rừng tắm bận hồng làng chúng', 'ời rằng tuổi6 người tập', 'thư cả chưauốngầm lưu cá lu địch gọi lá', 'kết vid giang nắng đoạn bắt hả']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+GPU rank 0 handle 519774 samples
+['và việc', 'để khi nhận công rất của ông ra khi đã cũng một thì đồng để chúng tôi bạn nên', 'đó thể hình nhân trên cho bạn thì và những người đầu', 'mẹ sao đây có nhiều bất có giờ']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng sinh giới nhiều con nh mới của đến chúng ta', 'không được đâu đó là một cũng', 'tôi xin các vị đã thế dụng của học thế không nay', 'vậy với có sẽ một con cho được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải một đâu con', 'ba đầu xin hội chúng một thế cho ra định ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà dịp', 'để ghi nhận công đức của ông vương gia huy đã cũng một tỷ đồng để trung tu bản đêm', 'đó là hình nhân tượng chân cho bà thầy và những người hậu', 'mẹ ơi sao đây có nhiều b bức b quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới hiệu con nhan mới của đ đèn chúng ta', 'thông được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tế dụng buổi hậu thanh hôm nay', 'vậy chị con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búc bê đâu con', 'ba đồng xin hồi hướng một tượng thanh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà d dịp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đêm', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều b bức bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới hiệu con nhan mới của đèn chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tế dụng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải bút bê đâu con', 'ba đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà d dịp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đêm', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều b bức bề quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tế dựng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải bút bê đâu con', 'ba đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà d dịp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu vàền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới củaền chúng ta', 'không được đâu đó là đồ uống', 'tôi xin cảm ơn quý vị đã tế dựng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi rồi không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'ba đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'này ơi sao đây có nhiều búp bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đèn chúng ta', 'thông được đâu đó là đồ cuốn', 'tôi xin cảm ơn quý vị đã tế dụng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao đây có nhiều búp bê quá giờ']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cuốn', 'tôi xin cảm ơn quý vị đã tế dụng buổi hậu thánh hôm nay', 'vậy chứ con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhan mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà dẹp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bạn đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sau ở đây có nhiều búp bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu trước đó là đồúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hồ thánh hôm nay', 'vậy chứ con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['mà diệm', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hồ thánh hôm nay', 'vậy chứ con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao đây có nhiều búp bê quá vợ']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu trước đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để chúng tu bản', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá giờ']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hồ thánh hôm nay', 'vậy chứ con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương ra huy đã cúng một tỷ đồng để trung tu vàền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vợ']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tế dựng buổi hầu thánh hôm nay', 'vậy chắc con xin một con chơi rồi gốc']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu và nền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản', 'đó hình nhân đừng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có gì búp bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đèn chúng ta', 'không được đâu đó là đồ uống', 'tôi xin cảmm ơn quý vị đã tới dựng buổi hậu thánh hôm nay', 'vậy con xin con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['ba diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao này có nhiều búp bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hồ thánh hôm nay', 'vậy chị con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'ban đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao đây có gì bút bề quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã xây dựng g buổi hậu thánh hôm nay', 'vậy chị con xin một con chơi rồi không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'ba đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sau ở đây có nhiều búpê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tế dựng buổi hầu thánh hôm nay', 'vậy thì con xin một con chơi được góc']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu bảnền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao này có nhiều búp bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cú', 'tôi xin cảm ơn quý vị đã tế dựng buổi hầu thánh hôm nay', 'vậy thì con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'ba đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệm', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu bảnền', 'đó là hình nhân tượng trưng cho bà thầy và những người hậu', 'mẹ ơi sao đài có nhiều búp bê quá vậy']
+['bà diệp', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đ đèn chúng ta', 'không được đâu đó là đồ cuốn', 'tôi xin cảm ơn quý vị đã tế dựng buổi hầu thánh hôm nay', 'vậy thì con xin một con chơi được không']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không']
+___________
+['không phải búp bê đâu con', 'ba đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['không phải búp bê đâu con', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+GPU rank 0 handle 519774 samples
+['mẹ ơi sao đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để chung tu bản', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'vậy thì con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đ nền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao ai có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương giao huy đã cúng một tỷ đồng để trung tu bản đêm', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã thấy dự buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được không', 'không được đâu đó là đồ cú', 'tôi cũng xin giới thiệu con nhang mới của đèn chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sau ở đây có nhiều búp bê quá giờ', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tế dựng buổi hầu thánh hôm nay', 'vậy chỉ con xin một con chơi được', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao này có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để chúng tu bản đền', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tế dụng khẩu thánh hôm nay', 'vậy chứ con sẽ một con chơi được không', 'không được đâu đó là đồ cú', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['nó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao ngày có gì búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu bảnền', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được không', 'không được đâu đó là đồ cuốn', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà d dịp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao á đây có gì búp bê quá giờ', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'vậy thì con xin một con chơi được gốc', 'không được đâu đó là nó cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao á đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được không', 'không được đâu đó là đồ cú', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao vậy có gì búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu bảnền', 'bà đồng xin hồi hướng tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã thấy dự buổi hội thánh hôm nay', 'vậy chứ con xin một con trai được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đời chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao đây có nhiều búp bê quá giờ', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu và đêm', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hậu thánh hôm nay', 'vậy chứ con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bạnền', 'ba đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hậu thánh hôm nay', 'vậy chứ con xin một con chơi được gốc', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu bảnền', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã thấy dựng buổi hậu thánh hôm nay', 'vậy chỉ con xin một con chơi được gốc', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đ nền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó ra hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao đây có gì búp bê quá giờ', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bạn đêm', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hộ thánh hôm nay', 'vậy chứ con xin một con chơi được gốc', 'không được đâu đó là một cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['nó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công thức của ông vương gia huy đã cúng một tỷ đồng để trùng tu vàền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao đây cái nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hộ thánh hôm nay', 'vậy chỉ con xin một con chơi được gốc', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựngội hậu thánh hôm nay', 'vậy chứ con xin một con chơi được gốc', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tế dựng buổi hộ thánh hôm nay', 'vậy chị con xin một con chơi được góc', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tế dựng buổi hầu thánh hôm nay', 'vậy chứ con xin một con chơi được gốc', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tế dụng buổi hầu thánh hôm nay', 'vậy chỉ con xin một con chơi được góc', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tế dự buổi hậu thánh hôm nay', 'vậy chỉ con xin một con chơi được góc', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đ đèn chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu bản đền', 'ba đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'không phải búp bê đâu con', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi khẩu thánh hôm nay', 'vậy chỉ con xin một con chơi được gốc', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'vậy cho con xin một con chơi được không', 'không được đâu đó là đồ cúng', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'bà diệp']
+___________
+GPU rank 0 handle 519774 samples
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu vàền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được gốc', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cú', 'tôi xin cảm ơn quý vị đã tới dụng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đèn chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chắc con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hậu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cuốn', 'tôi xin cảm ơn quý vị đã đến dựng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cuốn', 'tôi xin cảm ơn quý vị đã tới dụng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới củaền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tế dụng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy thì con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hậu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đ đêm', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tế dụng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đêm', 'mẹ ơi sau này có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đêm', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã thấy dựng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được gốc', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đêm', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tế dụng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đ nền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đêm', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tế dụng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['ba đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới củaền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy vậy con xin một con chơi được không', 'đó ra hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['ba đồng xin hồi hướng của tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đèn chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chỉ con xin một con chơi được gốc', 'đó ra hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó ra hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng của tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được không', 'ót ra hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu bản', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được không', 'lót ra hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu và', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã xây dựng buổi hầu thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng của tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đ nền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đ nền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dựng buổi hộ thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đèn chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu và đền', 'mẹ ơi sao á đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã xây dựng buổi hầu thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu và đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu và đền', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của nền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+['không phải búp bê đâu con', 'không được đâu đó là đồ cúng', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đ nền chúng ta']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta']
+___________
+GPU rank 0 handle 519774 samples
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chứ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chứ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chứ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chứ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chứ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dựng buổi hậu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chỉ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy như con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản nền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['ba đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dựng của hậu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chứ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'không được đâu đó là nó cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng của tượng thánh cho gia đình ông', 'mà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dựng của hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chứ con xin một con chơi được không', 'mẹ ơi sao đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu và đền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng của tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dựng buổi hộ thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chỉ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trung tu và đền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['ba đồng xin hồi hướng của tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chứ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đêm', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dụng buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chỉ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dụng buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chỉ con xin một con chơi được không', 'mẹ ơi sao đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chỉ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dụng buổi hồ thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chỉ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản nền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chỉ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đêm', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chỉ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản nền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chỉ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chỉ con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['ba đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tế dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['không phải búp bê đâu con', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['vậy chứ con xin một con chơi được không', 'mẹ ơi sao đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu và đền', 'không được đâu đó là đồ cúng']
+['vậy cho con xin một con chơi được không', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'không được đâu đó là đồ cúng']
+___________
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+['bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'bà diệp']
+___________
+GPU rank 0 handle 519774 samples
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cú', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'mà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tế dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu và đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chỉ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bề quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hồ thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông', 'vậy như con xin một con chơi được gốc']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hồ thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chỉ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chỉ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'mẹ ơi sao ở này có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu trước đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chứ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'mẹ ơi sao đây có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chỉ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sau này có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy chỉ con xin một con chơi được không']
+['đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông', 'vậy cho con xin một con chơi được không']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'mẹ ơi sau này có nhiều búp bê quá vậy']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy']
+___________
+GPU rank 0 handle 519774 samples
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hồ thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy như con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hồ thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy như con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy như con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hồ thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao này có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'mà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chị con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bảnền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chứ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+['để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền', 'bà diệp', 'không được đâu đó là đồ cúng', 'không phải búp bê đâu con']
+___________
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['vậy chỉ con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+['vậy cho con xin một con chơi được không', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu']
+___________
+GPU rank 0 handle 519774 samples
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+___________
+['vậy chỉ con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['vậy cho con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'không phải búp bê đâu con']
+['bà diệp', 'không phải búp bê đâu con']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+___________
+['vậy chỉ con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['vậy cho con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'không phải búp bê đâu con']
+['bà diệp', 'không phải búp bê đâu con']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hồ thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+___________
+['vậy chỉ con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['vậy cho con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'không phải búp bê đâu con']
+['bà diệp', 'không phải búp bê đâu con']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hồ thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+___________
+['vậy chứ con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['vậy cho con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'không phải búp bê đâu con']
+['bà diệp', 'không phải búp bê đâu con']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hồ thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu và đền']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+___________
+['vậy chứ con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['vậy cho con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'không phải búp bê đâu con']
+['bà diệp', 'không phải búp bê đâu con']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+___________
+['vậy chỉ con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['vậy cho con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'không phải búp bê đâu con']
+['bà diệp', 'không phải búp bê đâu con']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+___________
+['vậy chỉ con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['vậy cho con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'không phải búp bê đâu con']
+['bà diệp', 'không phải búp bê đâu con']
+___________
+['tôi xin cảm ơn quý vị đã tới dựng buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+___________
+['vậy chứ con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['vậy cho con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'không phải búp bê đâu con']
+['bà diệp', 'không phải búp bê đâu con']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó thành hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+___________
+['vậy chứ con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+['vậy cho con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'không phải búp bê đâu con']
+['bà diệp', 'không phải búp bê đâu con']
+___________
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu và đền']
+['tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay', 'đó là hình nhân tượng trưng cho bà thầy và những người hầu', 'mẹ ơi sao ở đây có nhiều búp bê quá vậy', 'để ghi nhận công đức của ông vương gia huy đã cúng một tỷ đồng để trùng tu bản đền']
+___________
+['vậy chứ con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng của tượng thánh cho gia đình ông']
+['vậy cho con xin một con chơi được không', 'tôi cũng xin giới thiệu con nhang mới của đền chúng ta', 'không được đâu đó là đồ cúng', 'bà đồng xin hồi hướng một tượng thánh cho gia đình ông']
+___________
+['bà diệp', 'không phải búp bê đâu con']
+['bà diệp', 'không phải búp bê đâu con']
+___________

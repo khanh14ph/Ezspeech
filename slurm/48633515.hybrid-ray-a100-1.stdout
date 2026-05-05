@@ -1,0 +1,2780 @@
+[2026-04-14 18:56:49,822][__main__][INFO] - Starting EzSpeech training...
+[2026-04-14 18:56:49,827][__main__][INFO] - Configuration:
+training_module: ezspeech.models.ctc_llm.ASR_ctc_llm_training
+dataset:
+  spe_file: /scratch/midway3/khanhnd/Ezspeech/tokenizer/vi/tokenizer.model
+  pre_prompt: ''
+  post_prompt: 'Transcribe:'
+  train_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechLLMDataset
+    filepaths:
+    - /scratch/midway3/khanhnd/data/metadata/youtube_norm.jsonl
+    data_dir: /scratch/midway2/khanhnd/data/audio/
+    max_duration: 8
+  val_ds:
+    _target_: ezspeech.modules.data.dataset.SpeechLLMDataset
+    filepaths:
+    - /scratch/midway3/khanhnd/data/metadata/hehe.jsonl
+    data_dir: /scratch/midway2/khanhnd/data/audio/
+    max_duration: 5
+  train_loader:
+    batch_size: 1
+    num_workers: 4
+    pin_memory: true
+  val_loader:
+    batch_size: 1
+    num_workers: 4
+    pin_memory: true
+model:
+  d_model: 512
+  model_pretrained:
+    path: /scratch/midway3/khanhnd/exported_checkpoint/ckpt.ckpt
+    include:
+    - encoder
+  finetune_encoder: true
+  finetune_llm: true
+  preprocessor:
+    _target_: ezspeech.modules.data.utils.audio.AudioToMelSpectrogramPreprocessor
+    sample_rate: 16000
+    normalize: per_feature
+    window_size: 0.025
+    window_stride: 0.01
+    window: hann
+    features: 80
+    n_fft: 512
+    frame_splicing: 1
+    dither: 1.0e-05
+    pad_to: 0
+  spec_augment:
+    _target_: ezspeech.modules.data.augment.SpecAugment
+    freq_masks: 2
+    time_masks: 10
+    freq_width: 27
+    time_width: 0.05
+  encoder:
+    _target_: ezspeech.modules.encoder.conformer.ConformerEncoder
+    feat_in: ${model.preprocessor.features}
+    feat_out: -1
+    n_layers: 17
+    d_model: 512
+    subsampling: dw_striding
+    subsampling_factor: 8
+    subsampling_conv_channels: 256
+    causal_downsampling: false
+    reduction: null
+    reduction_position: null
+    reduction_factor: 1
+    ff_expansion_factor: 4
+    self_attention_model: rel_pos
+    n_heads: 8
+    att_context_size:
+    - -1
+    - -1
+    att_context_style: regular
+    xscaling: false
+    untie_biases: true
+    pos_emb_max_len: 5000
+    conv_kernel_size: 9
+    conv_norm_type: batch_norm
+    conv_context_size: null
+    dropout: 0.1
+    dropout_pre_encoder: 0.1
+    dropout_emb: 0.0
+    dropout_att: 0.1
+    stochastic_depth_drop_prob: 0.0
+    stochastic_depth_mode: linear
+    stochastic_depth_start_layer: 1
+  connector:
+    enc_dim: 512
+    llm_dim: 2048
+    pool_factor: 3
+  llm:
+    name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+  optimizer:
+    lr: 0.002
+    encoder_lr: 0.0001
+    betas:
+    - 0.9
+    - 0.999
+    weight_decay: 0.01
+    eps: 1.0e-09
+  scheduler:
+    d_model: 512
+    warmup_steps: 1000
+callbacks:
+  lr:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+  cb:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: val_loss
+    save_top_k: 1
+    save_last: true
+    filename: '{epoch}-{val_loss:.4f}-{step}'
+    every_n_epochs: 1
+    mode: min
+loggers:
+  tb:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: /scratch/midway2/khanhnd/lightning_logs
+    name: ctc_llm
+    default_hp_metric: false
+trainer:
+  max_epochs: 50
+  strategy: ddp
+  accelerator: cuda
+  devices:
+  - 0
+  accumulate_grad_batches: 1
+  precision: 32
+  val_check_interval: 1000
+  use_distributed_sampler: false
+
+PADDING: 0
+Loaded pretrained weights for: encoder
+[2026-04-14 18:57:08,574][__main__][INFO] - Added callback: lr
+[2026-04-14 18:57:08,616][__main__][INFO] - Added callback: cb
+[2026-04-14 18:57:08,618][__main__][INFO] - Initializing PyTorch Lightning trainer...
+[2026-04-14 18:57:08,672][__main__][INFO] - Starting training process...
+┏━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name         ┃ Type                             ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ preprocessor │ AudioToMelSpectrogramPreprocess… │      0 │ train │     0 │
+│ 1 │ spec_augment │ SpecAugment                      │      0 │ train │     0 │
+│ 2 │ encoder      │ ConformerEncoder                 │  108 M │ train │     0 │
+│ 3 │ connector    │ LinearPoolConnector              │  9.4 M │ train │     0 │
+│ 4 │ llm          │ LlamaForCausalLM                 │  1.1 B │ eval  │     0 │
+└───┴──────────────┴──────────────────────────────────┴────────┴───────┴───────┘
+Trainable params: 1.2 B                                                         
+Non-trainable params: 0                                                         
+Total params: 1.2 B                                                             
+Total estimated model params size (MB): 4.9 K                                   
+Modules in train mode: 502                                                      
+Modules in eval mode: 293                                                       
+Total FLOPs: 0                                                                  
+max_duration:  5
+Pred: idsaking kđược đểm đư.mđingủng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: oursi,uhán điha àt1�iại ư ộ��n ànu i  �n h. 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+max_duration:  8
+Pred: hông cóđược điuđâ nđingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cóin lảm ơn cý vị đã là�i vự ồ��i nộu hưhản nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cóảng cóinhái thiệu c h ội ủa mđi c th�ng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ạiện  
+Ref: bà diệp
+---
+Pred: ày là n inhột c úiđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ạiđ�ng nguy cãi nọớng dột c�ơng tríchh m cia đình cđng  
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� cđi lào nđ�� đây n mhều ngệp ú táày 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông cóải làịc búuđiu 
+Ref: không phải búp bê đâu con
+---
+Pred: đi là mệnh hư vôơng trườ tr cảiin à những người ọu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông cóđược đâuđâ đingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in lảm ơn cý vị đã ựi ự ồ��iọu nuhuym nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi ũng in lái thiệu c có àiủa mđồuú 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ác ễm 
+Ref: bà diệp
+---
+Pred: ây là c cin lột c uyiđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ạ đãng ngu l�i c�ơng dột cínơng trih cia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ộ�� cđi emo mđ�� đây n nóều ngácng éáậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông cóải làácc úuđâu 
+Ref: không phải búp bê đâu con
+---
+Pred: đểng cệnh àư vương cườ b cạ iyàohưngườiọu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông cóđược điuđi mđingủ 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in phảm ơn cý vị đã �i ự ồ��i họu nưhuyn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi ũng in phới thiệu m h n�i ùa mđồuịng 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ạ ễm 
+Ref: bà diệp
+---
+Pred: ậy là an in ph�t chuyiđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ạ đãng ngin l�i ôớng d�t cấớng nưh m mia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� đi mo mđ�� đây n mhều ngạp êáậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông cóải là�p bêđưu 
+Ref: không phải búp bê đâu con
+---
+Pred: để là mọnh hân c�ớng ongớ b cảiunà bhững ngườiọu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông phđược điu cóđâ đingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in chảm ơn cý vị đã �i ự ồ��iọm hưhạn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi ũng in chới thiệu cho h �i òaôi� ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: â ễt 
+Ref: bà diệp
+---
+Pred: ớy là ch in l�t l àiđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ả đãng in ch�i ch�ớng �t cấơng ưh th cia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� đi mo mđ�� đây  mhều ngácp úáậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải làịc úđiu 
+Ref: không phải búp bê đâu con
+---
+Pred: để là mợnh hư c�ơng congớ b cảiiyàohững ngườiọu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông phđược điu cóđư là mđingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ại in lảm ơn cý vị đã ìi ự ồ��iọm háhạn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi ũng in lúi thiệu c à àiủa tôồu th�ng 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ạ ễt 
+Ref: bà diệp
+---
+Pred: ậy là n em lờt c ịiđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ạ đãng u l�i qu�ớng ột c�ơng uh th nia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� đi mo mđ�� đây  nhều nạng nú ná nậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải là�ng bú nđâu 
+Ref: không phải búp bê đâu con
+---
+Pred: để là mình hư c�ơng cư� b cạiunàohững người ọu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông cóđược điu đâ mđingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in lảm ơn cý vị đã ìi ự ồ��iọm hưhòn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi sũng kin lúi thiệu c hộiủa tôiồng 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiễt 
+Ref: bà diệp
+---
+Pred: ậy m em u lờt lútiđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: àiđãng u l�i �ớng ột cíơng ầh th nia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� đi mo mđ�� đây  ghều ácúáậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông cóải làịp úđâu 
+Ref: không phải búp bê đâu con
+---
+Pred: đư là mơnh hư cựơng ư� b cạiiyàhữngườiọu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông cóđược đểu đâ là mđingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in lảm ơn cý kị đã ìi ân ồ��iọm hưhảm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi ũng in chúi thiệu m à ội ủa tôồu thúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiễt 
+Ref: bà diệp
+---
+Pred: ậy em n in lờt c áiđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ả đãng u l�i nướng ột cíơng ầh th nia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� đi mo emđ�� đây n nhều ngácp bêáậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông cóải làịp bê nđâu 
+Ref: không phải búp bê đâu con
+---
+Pred: đã là mệnh hư c�ơng cư� b cảiuyà chững ngườiọu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông phđược đểu cóđư là mđingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ại in chảm ơn cý vị đã quanìi vự ồ��iọm hếhản nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ại cóũng cóin chúi thiệu cho h nội ủa tôứu thúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ố ễu 
+Ref: bà diệp
+---
+Pred: ậy m n minhột c núi điợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ảiđãng uh�i n�ớng vột cíơng ầh th nia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� đi mo mđ�� đây n mhều ngốp ê ná ậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải là�p bê nđưu 
+Ref: không phải búp bê đâu con
+---
+Pred: đư là mệnh hư c�ơng ư� b cảiuy àohững người ọu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông cóđược đểu cóđể là mđingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in lảm ơn aný vị đã quanìi ựngồ��i tọm hưhảm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ại ũng cóin lúi thiệu cho à mội ùa tôồ tồng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ốiễm 
+Ref: bà diệp
+---
+Pred: ây m n in lờt c úi điợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: àiđãng chu l�i nướng ột cíơng trứh  ia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� ơi mo mđ�� đây  mhều ngácp bê áậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông cóải là�c bê nđâu 
+Ref: không phải búp bê đâu con
+---
+Pred: để là mệnh hư c�ơng cư� b cảiiy à chững ngườiọu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông cóđược đểu cóđể là mđingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in lảm ơn cý vị đã �i ự ồ��iọm hưhàn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi sũng in lúi thiệu cho ngh ội ủa tôồồng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ảiễn 
+Ref: bà diệp
+---
+Pred: ậy th n in lột c ói điợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ạ đãng u l�i nộớng ột cíơng trểh th nia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� đi mo mđ�� đây  mhều ngáci bê áậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông cóải làệc bê đâu 
+Ref: không phải búp bê đâu con
+---
+Pred: để là mệnh hư cương cưng b cảiiy cà chững ngườiàu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông thđược nđâu mđâ làmđingủc 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in lảm ơn cý vị đã quanìi vự ổi tọm hếhản nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng kin lải thiệu v ngh mài ủa tôứ tú 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ảiễn  
+Ref: bà diệp
+---
+Pred: ậy m n in lột c úi điợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ảiđãng u l�i nọớng vột cíơng tríchh th nia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� đi mo mđ�� đây  nhều ngácc bê áậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông cóải làịc bê nđâu 
+Ref: không phải búp bê đâu con
+---
+Pred: để là mệnh hư c�ơng congớ b cảiiy cà chững ngườiọu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông cóđược đánu cóđâ là cđingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in lảm ơn cý vị đã quanìi ự ộ��iọm hưhàn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng in lải thiệu v vh vộiủa tôồuú 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: êniễt 
+Ref: bà diệp
+---
+Pred: ậy c m mong lột c úiđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: êniđãng u l�i nộớng ột cíơng trầh  nia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� ơi mo mđ�� đây n mhều ngácp bêáậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông cóải làịc bê nđâu 
+Ref: không phải búp bê đâu con
+---
+Pred: để là cànnh hư cương congớ b cảiầyà chững ngườiàu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông cóđược đểu làđể là cđưngủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in lảm ơn cý vị vđã quanìi vân ổi tôm hưhạn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng in lái thiệu v vh vài vủa tôứuúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ên ễp 
+Ref: bà diệp
+---
+Pred: ậy cô con min lột l mái điợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ên đãng u l�i ộớng dột ngíơng trành  nia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� đi sao kđ�� đây k ghều ngịp bê náậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông cóải làâc bê cđâu 
+Ref: không phải búp bê đâu con
+---
+Pred: để là cànnh hân cương congớ b cả un và bhững ngườiàm 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được nđưu làđể là nđingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi in lảm ơn cý vị đã quanìi vân ổi tọm háhòm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng thin lúi thiệu v trah vội vủa nôồ túng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiễn 
+Ref: bà diệp
+---
+Pred: ậy con con mem lột con mài nđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: àiđãng in l�i nọớng dột ngíơng trưh n nia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� nđi no nđ�� đây n nóều nịng bê náậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải mâng bê nđâu 
+Ref: không phải búp bê đâu con
+---
+Pred: đâ là cọnh hân cương congờ b nàiưy và những ngườiọu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đâ là đingủng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi tin lảm ơn cý vị vđã quan�i vự ổi họm hành nạn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng inhúi thiệu v trah vội vùa ngôồn núng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ảiễn h 
+Ref: bà diệp
+---
+Pred: ậy con con memhột con cái trđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đãng uh�i nọớng vột ngíơng thầh v ngia đìnhđng 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� saơi sao sađ�� đâu k nóều kịng bê váậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bâng bê cđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là phànnh thhân t�ơng chongớ b tàiin và nghững ngườiọm h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đưu đâ là cđưngáng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi sin phảm ơn hý vị vđã quanìi hự ồ��i họm hếh nòn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng sin phúi thiệu v ngh mội vủa chđạnú 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiễp 
+Ref: bà diệp
+---
+Pred: ậy con con mem conột c ái điợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đãng huh�i ọớng dột ngâơng thầh  ania đìnhông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� ơi sao kđ�� đâu k nóều bóng bê vá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bịng bê cđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đ� là phọnh thhân c�ơng chongờ b vàiiy và những người họu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đưu đâ là cđưngáng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi sin tiảm ơn cý vị đã quanìi hân ổi hôm hếh nạn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin húi thiệu v ngh m�i nủa chđồnú ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiễn  
+Ref: bà diệp
+---
+Pred: ậy c con sem một ch chưi đúợc không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đãng u h�i họớng dớt tâ tng thứh  nia đìnhông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đâu k nhều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bắ b bê đúu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân ch�ơng chongớ b vàiầy và những người họu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đưu đâ là cđạ cáng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin hảm ơn cý vị đã tinìi hự ổi hộm hưh nản nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng sinhúi thiệu k hh m�i mùa ngđồu ngúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiễp d 
+Ref: bà diệp
+---
+Pred: ậy c con memhột con chài trđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đãng u h�i hứớng mớt tâ tng thầh t ia đìnhông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: à�� ơi sao sađ�� sađâu k nóều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bị b bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là hànnh thhân c�ơng chongớ b chàiầy và những người họu h 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đâ là cđộngơng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn cý vị đã xìi hự ổi hộm hếh nòn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng sin hới thiệu k ngh m�i vủa chđồnúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiệp gi 
+Ref: bà diệp
+---
+Pred: ậy c con xong conột cô trâni điợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: � đãng u h�i hôớng một tâơng thành cho ia đìnhông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ thơi sao sađ�� đây k nhiều b�p bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải b� b bê đưu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là hình thhân ch�ơng trong� cho bàiầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông thđược đưu đó là cđộngủng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị đã quanìi hự ổi họm háh nòn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng sin hiúi thiệu k ngh m�i vùa chđồ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiệp gi 
+Ref: bà diệp
+---
+Pred: ậy có con mem một cô chồi trđiợchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đãng ngin h�i họớng dột tâ�ng thành cho ia đìnhông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đâu có nhều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bắ b bê đưu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tựơng chư� cho bà thầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cđứ cáng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị đã quanìi hự ổi họm hành nôn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin húi thiệu h ngh m�i vùa chđồ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiệp 
+Ref: bà diệp
+---
+Pred: ậy con con xem conột cô chui trđượchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đãng u h�i hứớng một tâơng thành cho ia đìnhông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ă�� đâu có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bị b bê đưu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân chựơng trưng cho baàiầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cđầ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi sin cảm ơn cý vị tđã tìi ự ổi hộm hành nôn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng sin tới thiệu v ngh mới vùa chđồu chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiệp 
+Ref: bà diệp
+---
+Pred: ậy c con xu một cô trui trđượchông 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đãng u h�i hôớng vột tâ tng thành cho ia đìnhông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao sađ�� đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải phịp bê bđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân t�ơng trưng cho bàiầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cđộ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã quanưi hự ộ��i hộm háh nòn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng sin hiúi thiệu cho ngh mới vủa chđồ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiệp 
+Ref: bà diệp
+---
+Pred: ậy c con mong một cô chài trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ả đầng hu h�i hứớng vột thậơng thành cho ia đìnhông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bộp bê cđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân chựơng trưng cho baàiầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đưu đó là đứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tinìi bự ổi hộm háh nòm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng sin hiúi thiệu v ngh mới vùa chđồ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiệp 
+Ref: bà diệp
+---
+Pred: ậy c cô su một cô châni trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng sinu h�i hôớng vột tậ�ng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây k nhiều bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải kắp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân t�ơng trưng cho bà thầy và những lười họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cđúngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tinìi bự ộ��i hộm háh nôn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin hiới thiệu con nh mới ủa chđồ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: ạ diệp 
+Ref: bà diệp
+---
+Pred: ậy c con song một cô chui thđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng hu h�i hứớng vột thậ�ng thành cho ia đìnhông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây k nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bưp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân t�ơng trưng cho baà thầy và những lười họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tìi bự ộ��i hộm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng sin hiới thiệu cho nh mới ủa chđồ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy c con xin conột con chái được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng hin h�i hứớng vột tậ�ng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đâu có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứ b bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân t�ơng chưng cho bà thầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông thđược đâu đó là cđứ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tin�i hự ộ��i hộm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin thới thiệu v nh mới vủa chđồuhúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiệp 
+Ref: bà diệp
+---
+Pred: ậy có con song một cô trơi trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hôớng vột tậ�ng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đâu có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđưu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân t�ơng trưng cho bàiầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tìi dù ộ��i hộm háh nôn nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin diới thiệu c nh mới ủa chđồ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiệp 
+Ref: bà diệp
+---
+Pred: ậy c con xu một con trái trđiợc không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ả đầng xu h�i nứớng tột tâớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao sađ�� đâu có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứ b bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân t�ơng trướ cho bàiầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông thđược đâu đó là cđứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tìi dự ộ��i hộm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng sin hiới thiệu v nh mới ủa chđề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy c con xong một cô chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i nứớng vột thâớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bụ b bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó th thình thhân tr�ơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đầngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tìi dự ộ��i hộm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu c nh mới ủa chđồn chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à dệp 
+Ref: bà diệp
+---
+Pred: ậy có con xu một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i xứớng vọt tâớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứ b bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân t�ơng chênng cho bàiầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cđứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã têni dù ộ��i hộm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xinhới thiệu c ngh mới vủa chđồ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à dệp 
+Ref: bà diệp
+---
+Pred: ậy c cô xong một cô chơi trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột tậ�ng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saă�� đây có nhiều bịp bê quá vậy có 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứ b bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tựơng chưng cho bà thầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i hự ộ��i hộm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu v nh mới ủa chđàn ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xu một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ả đầng xin h�i hứớng tột thậớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiều bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là hình hhân tựơng chưng cho bàiầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là rđingúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tìi dù ổi hộm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xinhới thiệu v nh mới vủa chđền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy c c xu một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ả đầng xin h�i nứớng một tậớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi mo ở đây k nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tựơng chưng cho bàiầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông thđược đâu đó là đingứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã dìi hụ ộ��i hộm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin diới thiệu v nh mới ủa chđànn chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy c con xong một con chài được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng in h�i nứớng một thậớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiều bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tựơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cđingúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i dù bộ��i hồm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin hới thiệu v nh mới ủa chđờn chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy c con xu một cô chơi thđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột thậớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứ b bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tựơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là lđi cứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tìi dù ộ��i hồm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xinhới thiệu v nh mới vủa chđồn chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: àiệp 
+Ref: bà diệp
+---
+Pred: ậy c con xin một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng một tậớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi mo saở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cđứ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dù bộ��i họm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin rới thiệu v nh mới ủa chđồ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xin một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng tột tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiều bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thầnh thhân tương trưng cho bà thầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã d�i dù ổi họm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu v nh mới ủa chđền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xu một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột tậớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bụ b bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tựơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là rđâ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tìi dù ổi họm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ủa chđền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy c con xâ một con chơi thđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng dột tạớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây k nhiều bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tương trưng cho bàiầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủ cúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i dù ộ��i hồm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ủa chđờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xu một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột tạ�ng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bụ b bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân t�ơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là rđủ cúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã d�i dụ bộ��i hồm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu c nh mới ủa chđờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xin một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng một thạớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tựơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là rđingứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã t�i dù ổi hồm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xinhới thiệu con nh mới ủa emđàn ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy có con xong một con chơi trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng một tâ�ng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: è�� ơi sao ở đây k nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bụp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là hànnh thhân tựơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là lđủ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dụ ộ��i hồm háh nôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới của đờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy có con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng một tạ�ng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bục bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tựơng trưng cho bà thầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã t�i dù ộ��i hộm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu c nh mới ủa đờn chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột tậớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tựơng trưng cho bà thầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là rđủngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã t�i dù ổi hộm hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu cho nh mới ủa chđàn ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xô một con chơi thđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột tâ�ng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tự�ng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đingứng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã d�i dù ổi hồm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu c nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy có con xô một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ả đầng xin h�i hứớng vột tậ�ng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bức bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đingúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã dìi dụ ộ��i hộm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu k nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: ả đầng xin h�i hứớng vột tậớng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người họu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông thđược đâu đó là đingúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dù ổi hồm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ùa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy có con xư một con chơi thđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột tâớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tư�ng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đúngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã t�i dụ ộ��i hồm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu c nh mới ủa đờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng hột tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây k nhiều bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bụp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tư�ng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã t�i dù ổi hộm hành hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu c nh mới ủa chđề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng cột t��ng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân t�ơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứngứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i dụ ồ��i họm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa chđờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng hin hứi hứớng vột tựớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình dhân tự�ng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là rđúngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị đã t�i dù ổi hộm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ùa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi thđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng sinin h�i hứớng vột thậ�ng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bịp bê quá vậy có 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bụp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđủ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i dù ộ��i hồm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng tột tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bụp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân trự�ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cđứngứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã t�i dù ổi hạm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ủa chđề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin hứi hứớng tột tạ thng thành cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tương trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứ cứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i dụ ổi họm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ủa chđề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xô một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng một tướng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiêu bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bụp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tự�ng trưng cho bà thầy và những người hậu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủ cúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i dù ổi hộm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng tột tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bụp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người hậu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđi cúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã tôi dù ổi hộm hành hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xư một con chơi thđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng hột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao sađ�� đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhư tựơng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđứ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dù ổi hộm hành hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy cô cô xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột thạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân t�ơng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđủ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i dù ổi hộm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à dệp 
+Ref: bà diệp
+---
+Pred: ậy con con xư một con chơi trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột thạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có bhiều bịp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tư�ng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủngúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i dù ổi hạm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xu một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin hứi hứớng một tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tương trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđú cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã t�i dù ổi hộm hành hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xư một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng tột tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tương trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđủ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã d�i dù ổi hộm hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xu một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng một thạơng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông thđược đâu đó là rđúngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã t�i dù ổi hộm hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đờn chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi thđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứơng cột tạ�ng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhư tựơng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứngứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tìi dù ổi hạm hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy cô con xô một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứơng một thương thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tương trưng cho bà thầy và những người hậu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủ cứng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tìi dù ổi hộm hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ùa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứơng vột tướng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đú cúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị đã tíchi dù bổi hộm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng cột thướng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là hình hhân tựơng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i dù ổi họm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ủa đờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xu một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin hưi hứớng một tướng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhư tương chưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứngứng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã d�i dù ổi hộm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa chđờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xư một con chơi trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin hứi hứớng một tướng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân d�ơng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứ cứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã t�i dù ổi hồm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xu một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin hứi hứớng một tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là hình thhân tự�ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứ cứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dù ổi h�m hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy cô con x� một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng tột tạ�ng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân t��ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứ cúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã d�i dù bổi hồm háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đờ ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin hứi hứớng cột tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tượng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủ cứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã d�i dù bổi họm hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ủa đờn chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy cô con x� một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin hứi hứớng một tư�ng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tư�ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđồ cúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã d�i dù ộ��i hồm hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đêmn chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đồng xin hồi hứớng cột tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là hình thhân tựợng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đúngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã dìi dù ổi hộm hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy có con xư một con chơi trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin hứi hứớng cột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân t��ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđứngúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã t�i dù bổi họm hạh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy cô con xư một con chơi trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đồng xin h�i hứơng cột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tự�ng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã t�i dù bổi hạu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy có con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin hứi hứớng ột tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiêu bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tự�ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđốngứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã díchi dù bổi hạu hành hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tự�ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđứngúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã t�i dù ổi hồu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi trđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin hồi hứớng ột tạ thng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tự�ng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dù ổi họu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy c con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng một tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựợng trưng cho bà thầy và những người hậu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứngứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dù ổi họm hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng một tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người hậu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dù ổi hồu háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi thđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng hột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựợng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđúngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã t�i dù ổi hồu nánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủngúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dự bộ��i hộu nánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhư tựợng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủngúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã têni dù bổi hộu nánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy cô con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng vột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tượng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đingúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi cin cảm ơn quý vị tđã tíchi dù ổi họu nánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ủa đền chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đồng xin h�i hứớng vột thạơng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tương trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứngứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã têni dù ổi hồu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin dới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng một tạớng thán cho cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiêu bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tượng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã tíchi dự bổi họu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng cột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đúngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã t�i dù bổi họu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi thđược không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng cột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tương trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đingứng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dùngổi họu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng một tạớng thánh cho ia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thànnh thhân tư�ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đingứng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã tìi dù ổi họu háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy cô con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng hột tướng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiêu bíp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là hình thhân tựợng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđứngúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã tìi dù ổi hộu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xin một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng cột tạ thng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tự�ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã díchi dù ổi hồu háh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ùa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xong một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đồng xin h�i hứớng vột tạ thng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựơng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là cuđứngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã t�i dụ ổi họu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con x� một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đồng xin h�i hướng cột tạ thng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiều bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tự�ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủngúng 
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị đã t�i dụ ổi hồm hành hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con x� một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đồng xin h�i hướng vột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao ở đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê conđâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tượng trưng cho bà thầy và những người hồu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đingúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã díchi dụ ổi hồu hành hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con xư một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hướng cột tạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao đ�� đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhân tựợng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là đủngúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã têni dùngổi họu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con x� một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hướng cột tạ�ng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: ẹ ơi sao saở đây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhư tự�ng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---
+Pred: hông được đâu đó là rđứ cúng  
+Ref: không được đâu đó là đồ cúng
+---
+Pred: ôi xin cảm ơn quý vị tđã tíchi dụ ổi hồu hánh hôm nay 
+Ref: tôi xin cảm ơn quý vị đã tới dự buổi hầu thánh hôm nay
+---
+Pred: ôi cũng xin giới thiệu con nh mới ủa đề ch chúng ta 
+Ref: tôi cũng xin giới thiệu con nhang mới của đền chúng ta
+---
+Pred: à diệp 
+Ref: bà diệp
+---
+Pred: ậy con con x� một con chơi được không 
+Ref: vậy cho con xin một con chơi được không
+---
+Pred: à đầng xin h�i hứớng cột thạớng thánh cho gia đình ông 
+Ref: bà đồng xin hồi hướng một tượng thánh cho gia đình ông
+---
+Pred: è�� ơi sao saở xđây có nhiêu bứp bê quá vậy 
+Ref: mẹ ơi sao ở đây có nhiều búp bê quá vậy
+---
+Pred: hông phải bứp bê đâu con 
+Ref: không phải búp bê đâu con
+---
+Pred: đó là thình thhư tựợng trưng cho bà thầy và những người hầu 
+Ref: đó là hình nhân tượng trưng cho bà thầy và những người hầu
+---

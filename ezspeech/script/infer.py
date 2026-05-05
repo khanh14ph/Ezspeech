@@ -3,11 +3,11 @@ import time
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from ezspeech.utils.common import load_dataset
+from ezspeech.utils.common import load_jsonl
 from jiwer import wer
 BATCH_SIZE = 8
 
-dataset = load_dataset(
+dataset = load_jsonl(
     "/scratch/midway3/khanhnd/data/metadata/vivos_test.jsonl",
     data_dir="/scratch/midway3/khanhnd/data/audio",
 )

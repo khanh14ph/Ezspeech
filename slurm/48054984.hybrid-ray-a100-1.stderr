@@ -1,0 +1,8 @@
+[rank: 0] Seed set to 42
+Could not override 'trainer.resume_from_checkpoint'.
+To append to your config use +trainer.resume_from_checkpoint=/scratch/midway2/khanhnd/lightning_logs/ctc_llm/version_1/checkpoints/last.ckpt
+Key 'resume_from_checkpoint' is not in struct
+    full_key: trainer.resume_from_checkpoint
+    object_type=dict
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
